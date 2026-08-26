@@ -1,0 +1,271 @@
+Redesign and improve my existing chat application into a premium, minimal, modern, mobile-first, highly responsive messaging platform.
+
+Take general UX inspiration from polished products such as WhatsApp, Telegram, Discord, and modern SaaS applications, but do not copy their interfaces. Build one cohesive design system that feels intentional and original.
+
+The UI should feel fast, refined, calm, compact, and effortless to navigate. Every element should have a purpose. Prioritize hierarchy, spacing, typography, alignment, and interaction quality over decoration.
+
+Do not use gradients. Avoid excessive cards, heavy shadows, excessive borders, oversized components, excessive rounded containers, unnecessary badges, visual noise, or information-dense layouts. The premium feeling should come from excellent spacing, typography, proportions, subtle contrast, precise alignment, and thoughtful interaction states, not decoration.
+
+Preserve all existing functionality, API behavior, routes, and backend/data flow. Focus on improving the frontend UI/UX and structure.
+
+1. Application Shell & Navigation
+
+Create a strong application shell that adapts naturally across mobile, tablet, and desktop.
+
+Desktop
+
+Use a clean left sidebar + main chat panel layout.
+
+The sidebar should contain:
+
+Compact application/header area.
+User profile access.
+Global search.
+Chat/DM list.
+Clear distinction between conversations without excessive visual treatment.
+Active/selected conversation state.
+Compact unread indicators.
+Create DM action.
+Create Group action.
+Access to profile, settings, devices, and future sections.
+
+Keep the sidebar narrow and efficient. It should feel like a navigation workspace rather than a large information panel.
+
+Mobile
+
+Do not simply shrink the desktop sidebar.
+
+Use a focused navigation experience where the chat list becomes the primary screen and opening a conversation transitions naturally into a full-screen chat view.
+
+Use clean back navigation and appropriate drawers/sheets where necessary.
+
+2. Chat / Message Panel
+
+The chat panel should be the visual center of the application.
+
+Create a clean, compact chat header with:
+
+Conversation identity.
+Relevant contextual information.
+A minimal menu/action area.
+
+Keep the header visually quiet and avoid unnecessary controls.
+
+The message area should have:
+
+Comfortable but compact spacing.
+Clear sent/received distinction.
+Elegant message bubbles.
+Excellent text readability.
+Subtle timestamps and metadata.
+Good handling of consecutive messages.
+Clean long-message wrapping.
+Hover, selected, and interaction states.
+Smooth scrolling.
+Subtle date/message separators.
+Thoughtful empty and loading states.
+
+The conversation should feel spacious without wasting screen real estate.
+
+3. Chat Panel Menu
+
+Create a refined contextual menu accessible from the chat header.
+
+Use a clean dropdown/popover on desktop and a mobile-friendly bottom sheet or equivalent on smaller screens.
+
+Keep actions logically grouped and visually lightweight.
+
+Avoid oversized menus, excessive icons, or unnecessary descriptions.
+
+4. Message Input
+
+Create a minimal, premium composer that feels integrated into the conversation.
+
+It should:
+
+Be compact and comfortable.
+Work exceptionally well on mobile.
+Support multiline input naturally.
+Have clear focus/active states.
+Provide an elegant send/action interaction.
+Remain usable above the mobile keyboard.
+Stay visually connected to the chat without becoming a large floating card.
+
+Use subtle contrast and borders where appropriate instead of heavy containers or shadows.
+
+5. Message Bubbles
+
+Create a reusable message-bubble system that feels modern and understated.
+
+Support:
+
+Short and long messages.
+Consecutive messages.
+Timestamps and metadata.
+Selected/hover states.
+Different screen widths.
+Future message types.
+
+Keep bubbles compact, readable, and visually distinct without excessive colors or decoration.
+
+6. Chat Banners & States
+
+Create a consistent system for contextual banners and conversation states.
+
+Keep banners:
+
+Compact.
+Subtle.
+Easy to understand.
+Visually integrated with the conversation.
+
+They should never dominate or unnecessarily interrupt the message flow.
+
+7. Search
+
+Create a dedicated global search experience that feels fast and immediate.
+
+Use:
+
+A prominent but compact search field.
+Clear result grouping.
+Clean user/group/conversation rows.
+Strong visual hierarchy.
+Minimal metadata.
+Elegant loading states.
+Clean empty/no-result states.
+
+Search results should be easy to scan without making the screen feel crowded.
+
+8. Create DM
+
+Create a dedicated New DM experience.
+
+Make it extremely simple to search/select a user and start a conversation.
+
+Prioritize:
+
+Fast interaction.
+Minimal steps.
+Excellent mobile usability.
+Clear selection states.
+
+Avoid unnecessary confirmation screens or excessive information.
+
+9. Create Group
+
+Create a dedicated Create Group experience with a clean, structured flow.
+
+Make each step focused and easy to understand.
+
+The design should work naturally as:
+
+A full-screen mobile experience.
+A focused desktop page/modal.
+
+Keep the architecture extensible for future group functionality.
+
+10. Profile Service
+
+Treat Profile as a dedicated application service/page, not merely a sidebar popup.
+
+Create a premium profile experience where the user can view and update their own profile.
+
+The page should have:
+
+Strong visual hierarchy.
+A refined profile presentation.
+Clear editing interactions.
+Dedicated navigation.
+Room for future profile functionality.
+
+Keep it spacious and polished without making it information-heavy.
+
+11. Settings Service
+
+Create Settings as a dedicated, extensible section.
+
+Use a clean structure that can accommodate additional settings later without requiring a redesign.
+
+Desktop can use a balanced navigation + content layout.
+
+Mobile should transition into a focused full-screen settings experience with clear navigation and back behavior.
+
+Keep the interface calm, organized, and minimal.
+
+12. Devices Service
+
+Create a dedicated Devices section inspired by the usability of WhatsApp and Telegram device-management experiences.
+
+It should feel like a first-class application section rather than a modal.
+
+Use:
+
+Clean device rows.
+Clear hierarchy.
+Subtle active/status indicators.
+Simple device-management actions.
+Strong spacing and alignment.
+
+Design the structure so future security/device functionality can be added naturally.
+
+13. Responsive Design
+
+Design mobile first, then progressively enhance for larger screens.
+
+Ensure:
+
+Comfortable touch targets.
+No cramped layouts.
+No unnecessary horizontal scrolling.
+Proper keyboard behavior.
+Natural back navigation.
+Appropriate mobile sheets/drawers/full-screen views.
+Smooth transitions between responsive layouts.
+Desktop layouts take advantage of space without becoming oversized.
+
+Every screen should feel intentionally designed for its viewport rather than simply resized.
+
+14. Premium Visual System
+
+Build a consistent visual system across the entire application.
+
+Prioritize:
+
+Excellent typography.
+Precise spacing.
+Strong alignment.
+Restrained color palette.
+Subtle surface contrast.
+Thin, intentional borders.
+Very restrained shadows.
+Consistent corner radius.
+Clean iconography.
+Elegant hover/focus/active states.
+Fast, subtle animations.
+
+Absolutely no gradients.
+
+Avoid making everything a card. Use the page itself, spacing, typography, and subtle separation to establish hierarchy.
+
+The interface should feel premium because it is precise and restrained, not because it is visually busy.
+
+15. Overall Product Feel
+
+The final application should feel like a high-quality production messaging product: minimal like a focused communication tool, polished like a premium SaaS product, and flexible enough to grow into a larger platform.
+
+Do not simply restyle existing components individually.
+
+First establish a consistent design language, application shell, navigation model, spacing system, typography hierarchy, component patterns, and responsive behavior, then apply it consistently across every screen.
+
+Keep the implementation:
+
+Reusable.
+Componentized.
+Performant.
+Accessible.
+Responsive.
+Maintainable.
+Easy to extend.
+
+Inspect the existing project before making changes. Reuse existing functionality and data flow wherever possible. Do not introduce unnecessary features or change backend behavior. The goal is a substantial UI/UX refinement while preserving the application's existing functionality.
