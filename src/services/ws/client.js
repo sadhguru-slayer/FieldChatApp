@@ -1,6 +1,7 @@
 // Fieldchat WebSocket Client Service
 
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
+const BACKEND_URL = import.meta.env.BACKEND_API_URL || import.meta.env.VITE_API_URL || "http://localhost:8000";
+const WS_URL = BACKEND_URL.replace(/^http/, "ws");
 
 class WebSocketClient {
   constructor() {
@@ -38,7 +39,7 @@ class WebSocketClient {
     this.ws.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        if(payload.event === "presence"){
+        if (payload.event === "presence") {
           console.log("[WS] Received message:", payload);
         }
         if (payload.event) {
