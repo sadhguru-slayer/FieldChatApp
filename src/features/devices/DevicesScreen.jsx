@@ -48,6 +48,9 @@ export function DevicesScreen({ onClose }) {
   const handleBack = () => {
     if (onClose) onClose();
     else setActiveScreen("chat");
+    if (!useAppStore.getState().activeId) {
+      useAppStore.getState().setMobileView("list");
+    }
   };
 
   const activeTokens = rawTokens.filter((t) => !t.revoked);

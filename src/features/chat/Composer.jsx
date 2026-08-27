@@ -91,8 +91,12 @@ export function Composer({ onSend, onEdit, disabled }) {
 
   return (
     <div
-      className="border-t px-3 pb-3 pt-2 md:px-4"
-      style={{ background: "#17212b", borderColor: "rgba(255,255,255,0.07)" }}
+      className="border-t px-2.5 pb-2 pt-2 md:px-4 shrink-0"
+      style={{
+        background: "#17212b",
+        borderColor: "rgba(255,255,255,0.07)",
+        paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))",
+      }}
     >
       {/* Reply / Edit banner — no icons, pure text */}
       {context && (
@@ -123,7 +127,7 @@ export function Composer({ onSend, onEdit, disabled }) {
       {/* Emoji Picker */}
       {emojiOpen && (
         <div
-          className="mb-2 flex flex-wrap gap-1 rounded-xl p-2.5"
+          className="mb-2 flex flex-wrap gap-1 rounded-xl p-2"
           style={{
             background: "#1c2633",
             border: "1px solid rgba(255,255,255,0.08)",
@@ -148,7 +152,7 @@ export function Composer({ onSend, onEdit, disabled }) {
 
       {/* Input row */}
       <div
-        className="flex items-end gap-1 rounded-2xl px-2 py-1.5 transition-all focus-within:ring-1"
+        className="flex items-end gap-1 rounded-2xl px-2 py-1 transition-all focus-within:ring-1"
         style={{
           background: "#1c2633",
           border: "1px solid rgba(255,255,255,0.07)",
@@ -161,7 +165,7 @@ export function Composer({ onSend, onEdit, disabled }) {
           aria-label="Emoji"
           onClick={() => setEmojiOpen((v) => !v)}
           className={cn(
-            "grid size-8 shrink-0 place-items-center rounded-lg transition-colors",
+            "grid size-8 shrink-0 place-items-center rounded-lg transition-colors mb-0.5",
             emojiOpen
               ? "text-[#5d8aa8] bg-white/8"
               : "text-[#4a6b82] hover:text-[#7aabcb] hover:bg-white/6"
@@ -174,12 +178,12 @@ export function Composer({ onSend, onEdit, disabled }) {
         <button
           type="button"
           aria-label="Attach"
-          className="grid size-8 shrink-0 place-items-center rounded-lg transition-colors text-[#4a6b82] hover:text-[#7aabcb] hover:bg-white/6"
+          className="grid size-8 shrink-0 place-items-center rounded-lg transition-colors text-[#4a6b82] hover:text-[#7aabcb] hover:bg-white/6 mb-0.5"
         >
           <Paperclip className="size-[18px]" />
         </button>
 
-        {/* Textarea */}
+        {/* Textarea — text-[16px] on mobile prevents iOS automatic zoom */}
         <textarea
           ref={ref}
           rows={1}
@@ -188,7 +192,7 @@ export function Composer({ onSend, onEdit, disabled }) {
           onChange={handleChange}
           onKeyDown={onKeyDown}
           placeholder={editing ? "Edit message..." : reply ? `Reply...` : "Message..."}
-          className="scroll-slim max-h-36 flex-1 resize-none bg-transparent py-1.5 text-[13px] leading-relaxed outline-none placeholder:text-[#4a6b82]"
+          className="scroll-slim max-h-28 md:max-h-36 flex-1 resize-none bg-transparent py-1.5 text-[16px] md:text-[13px] leading-relaxed outline-none placeholder:text-[#4a6b82]"
           style={{ color: "#e3e3e3" }}
         />
 
@@ -198,7 +202,7 @@ export function Composer({ onSend, onEdit, disabled }) {
           onClick={submit}
           disabled={!canSend}
           aria-label="Send"
-          className="grid size-8 shrink-0 place-items-center rounded-lg text-white transition-all disabled:opacity-25 active:scale-90"
+          className="grid size-8 shrink-0 place-items-center rounded-lg text-white transition-all disabled:opacity-25 active:scale-90 mb-0.5"
           style={{ background: canSend ? "#5d8aa8" : "rgba(93,138,168,0.2)" }}
         >
           <SendHorizonal className="size-[17px]" />

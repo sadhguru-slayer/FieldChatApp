@@ -59,7 +59,7 @@ function ChatApp() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden font-sans antialiased" style={{ background: "#0e1621" }}>
+    <div className="flex h-[100dvh] w-full overflow-hidden font-sans antialiased" style={{ background: "#0e1621" }}>
       {/* Sidebar View (Left) */}
       <div
         className={cn(

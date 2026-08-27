@@ -50,6 +50,9 @@ export function ProfileScreen({ onClose }) {
     } else {
       setActiveScreen("chat");
     }
+    if (!useAppStore.getState().activeId) {
+      useAppStore.getState().setMobileView("list");
+    }
   };
 
   return (

@@ -84,7 +84,13 @@ export function SettingsScreen({ onClose }) {
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => {
+            if (onClose) onClose();
+            else useAppStore.getState().setActiveScreen("chat");
+            if (!useAppStore.getState().activeId) {
+              useAppStore.getState().setMobileView("list");
+            }
+          }}
           className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/5 hover:text-[#e3e3e3]"
         >
           <ArrowLeft className="size-4" />

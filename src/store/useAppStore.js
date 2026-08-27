@@ -72,7 +72,11 @@ export const useAppStore = create((set, get) => ({
 
   // navigation screens: 'chat' | 'profile' | 'settings' | 'devices'
   activeScreen: "chat",
-  setActiveScreen: (activeScreen) => set({ activeScreen }),
+  setActiveScreen: (activeScreen) =>
+    set((state) => ({
+      activeScreen,
+      mobileView: activeScreen !== "chat" ? "chat" : state.mobileView,
+    })),
 
   // dialogs & sheets
   searchOpen: false,
