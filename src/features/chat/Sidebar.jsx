@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAppStore } from "@/store/useAppStore";
 import { getConversations, getMe } from "@/services/api";
-import { formatListTime } from "@/lib/format";
+import { formatListTime, formatLastSeen } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export function Sidebar({ onOpenSettings }) {
@@ -27,6 +27,7 @@ export function Sidebar({ onOpenSettings }) {
   const setActiveScreen = useAppStore((s) => s.setActiveScreen);
   const activeScreen = useAppStore((s) => s.activeScreen);
   const signOut = useAppStore((s) => s.signOut);
+  const presence = useAppStore((s) => s.presence);
 
   const queryClient = useQueryClient();
 
@@ -181,6 +182,16 @@ export function Sidebar({ onOpenSettings }) {
           filtered.map((c) => {
             const isActive = activeId === String(c.id);
             const lastMsg = c.lastMessage;
+            const isDm = c.type === "dm";
+            // Live WS presence overrides; fall back to API snapshot on initial load
+            const wsPresence = isDm && c.otherUserId ? presence[String(c.otherUserId)] : undefined;
+            const isOnline = isDm
+              ? (wsPresence !== undefined ? wsPresence.online : Boolean(c.isOnline))
+              : false;
+            const lastSeenTs = isDm
+              ? (wsPresence !== undefined ? wsPresence.lastSeen : c.lastSeen)
+              : null;
+            const lastSeenText = !isOnline ? formatLastSeen(lastSeenTs) : null;
 
             return (
               <button
@@ -200,7 +211,20 @@ export function Sidebar({ onOpenSettings }) {
                   />
                 )}
 
-                <Avatar src={c.avatar} name={c.title} size="lg" className="shrink-0" />
+                {/* Avatar with online dot for DMs */}
+                <div className="relative shrink-0">
+                  <Avatar src={c.avatar} name={c.title} size="lg" />
+                  {isDm && (
+                    <span
+                      className={cn(
+                        "absolute bottom-0 right-0 size-3 rounded-full border-2 transition-colors duration-500",
+                        isOnline
+                          ? "bg-emerald-400 border-[#17212b] animate-pulse"
+                          : "bg-zinc-600 border-[#17212b]"
+                      )}
+                    />
+                  )}
+                </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-1 mb-0.5">
@@ -215,7 +239,11 @@ export function Sidebar({ onOpenSettings }) {
                   </div>
 
                   <p className="line-clamp-1 text-[12px] text-[#5d8aa8]">
-                    {lastMsg
+                    {isDm && !isOnline && lastSeenText ? (
+                      <span className="text-[11px]" style={{ color: "rgba(93,138,168,0.7)" }}>
+                        {lastSeenText}
+                      </span>
+                    ) : lastMsg
                       ? lastMsg.deletedForEveryone
                         ? "🚫 Message removed"
                         : lastMsg.senderName && c.type === "group"

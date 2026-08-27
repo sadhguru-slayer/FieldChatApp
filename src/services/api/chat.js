@@ -23,6 +23,14 @@ function normalizeConversation(c, defaultType) {
     role: c.role || "MEMBER",
     unread: 0,
     updatedAt,
+    // For DMs: the other participant's user ID (needed for presence lookup)
+    otherUserId: isGroup ? null : (c.other_user_id ? String(c.other_user_id) : null),
+    // Initial online snapshot from Redis (WS events override this reactively)
+    isOnline: isGroup ? false : Boolean(c.is_online),
+    // Last seen Unix timestamp in seconds (null if never seen offline)
+    lastSeen: isGroup ? null : (c.last_seen ? Number(c.last_seen) : null),
+    // Group member count from backend (null for DMs)
+    memberCount: isGroup ? (c.member_count ?? null) : null,
     lastMessage: latest
       ? {
           id: String(latest.id || ""),

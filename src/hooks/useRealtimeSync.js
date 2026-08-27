@@ -18,6 +18,14 @@ export function useRealtimeSync(authed) {
     const unsub = wsClient.on("*", (payload) => {
       if (!payload || !payload.event) return;
 
+      if (payload.event === "presence" && payload.user_id !== undefined) {
+        useAppStore.getState().setPresence(
+          payload.user_id,
+          payload.online,
+          payload.last_seen ?? null,
+        );
+      }
+
       if (payload.event === "typing" && payload.conversation_id && payload.sender_id) {
         useAppStore.getState().setTypingUser(
           String(payload.conversation_id),

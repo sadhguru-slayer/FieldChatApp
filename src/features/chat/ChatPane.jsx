@@ -6,6 +6,7 @@ import { Avatar } from "@/components/Avatar";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { useAppStore } from "@/store/useAppStore";
+import { formatLastSeen } from "@/lib/format";
 import {
   deleteMessageForEveryone,
   deleteMessageForMe,
@@ -149,6 +150,7 @@ export function ChatPane() {
   const setReply = useAppStore((s) => s.setReply);
   const setEditing = useAppStore((s) => s.setEditing);
   const typingUsers = useAppStore((s) => s.typingUsers);
+  const presence = useAppStore((s) => s.presence);
 
   const qc = useQueryClient();
   const [ctxMenu, setCtxMenu] = useState(null);
@@ -319,6 +321,15 @@ export function ChatPane() {
 
   const isGroup = activeConv.type === "group";
   const messages = msgData?.items || [];
+  const wsPresenceForActive = !isGroup && activeConv.otherUserId
+    ? presence[String(activeConv.otherUserId)]
+    : undefined;
+  const otherUserOnline = !isGroup
+    ? (wsPresenceForActive !== undefined ? wsPresenceForActive.online : Boolean(activeConv.isOnline))
+    : false;
+  const otherUserLastSeen = !isGroup
+    ? (wsPresenceForActive !== undefined ? wsPresenceForActive.lastSeen : activeConv.lastSeen)
+    : null;
 
   const rawTypingUsers = typingUsers[activeId] || {};
   const typingNames = Object.values(rawTypingUsers)
@@ -359,8 +370,17 @@ export function ChatPane() {
             <p className="truncate text-[11px]" style={{ color: "#5d8aa8" }}>
               {typingText ? (
                 <span className="text-sky-400 font-medium animate-pulse">{typingText}</span>
+              ) : isGroup ? (
+                activeConv.memberCount ? `${activeConv.memberCount} members` : "Group"
               ) : (
-                isGroup ? "Group" : "Direct Message"
+                <span
+                  className="font-medium transition-colors duration-500"
+                  style={{ color: otherUserOnline ? "#34d399" : "#5d8aa8" }}
+                >
+                  {otherUserOnline
+                    ? "Online"
+                    : formatLastSeen(otherUserLastSeen) || "Offline"}
+                </span>
               )}
               {msgError && (
                 <span className="ml-2 text-red-400/70 text-[10px]">

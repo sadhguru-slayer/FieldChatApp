@@ -84,6 +84,19 @@ export const useAppStore = create((set, get) => ({
   forwardFor: null,
   setForwardFor: (forwardFor) => set({ forwardFor }),
 
+  // real-time presence { [userId]: { online: boolean, lastSeen: number|null } }
+  presence: {},
+  setPresence: (userId, online, lastSeen = null) =>
+    set((state) => ({
+      presence: {
+        ...state.presence,
+        [String(userId)]: {
+          online: Boolean(online),
+          lastSeen: online ? null : (lastSeen ?? state.presence[String(userId)]?.lastSeen ?? null),
+        },
+      },
+    })),
+
   // real-time typing indicators { [convId]: { [userId]: { username, timestamp } } }
   typingUsers: {},
   setTypingUser: (conversationId, userId, username) => {
