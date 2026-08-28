@@ -60,8 +60,8 @@ export function Sidebar({ onOpenSettings }) {
     <aside className="flex h-full w-full flex-col select-none border-r border-border/40 bg-sidebar text-sidebar-foreground">
       {/* ── Workspace Branding ──────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 border-b border-border/30 px-3.5 py-2.5 bg-surface/20">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-zinc-950/20 border border-zinc-800/30 p-0.5 overflow-hidden select-none pointer-events-none shadow-inner">
-          <img src="/Logo.png" alt="Logo" className="size-full object-contain scale-[1.35] origin-center" />
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg overflow-hidden select-none pointer-events-none border border-border/20 shadow-xs">
+          <img src="/Logo.svg" alt="Logo" className="size-full object-contain scale-[1.35] origin-center" />
         </div>
         <span className="text-[12px] font-bold tracking-tight text-foreground/90 uppercase font-sans">
           Fieldchat
