@@ -6,6 +6,28 @@ import { wsClient } from "@/services/ws";
 import { Avatar } from "@/components/Avatar";
 import { markNotificationAsRead } from "@/services/api";
 
+let lastPopPlayedAt = 0;
+
+function playPopSound(queryClient) {
+  const settings = queryClient.getQueryData(["settings"]);
+  const soundEnabled = settings?.sound_enabled ?? true;
+  if (!soundEnabled) return;
+
+  const now = Date.now();
+  if (now - lastPopPlayedAt < 500) return;
+  lastPopPlayedAt = now;
+
+  try {
+    const audio = new Audio("/pop.mp3");
+    audio.volume = 0.4;
+    audio.play().catch((err) => {
+      console.debug("[Audio] Play prevented:", err);
+    });
+  } catch (err) {
+    console.warn("[Audio] Error playing pop sound:", err);
+  }
+}
+
 export function useRealtimeSync(authed) {
   const queryClient = useQueryClient();
 
@@ -186,6 +208,10 @@ export function useRealtimeSync(authed) {
         const activeId = useAppStore.getState().activeId;
         const me = queryClient.getQueryData(["me"]);
         const meId = me?.id;
+
+        if (payload.event === "message.created" && convId === String(activeId)) {
+          playPopSound(queryClient);
+        }
 
         // 1. Update conversations list
         queryClient.setQueryData(["conversations"], (old) => {

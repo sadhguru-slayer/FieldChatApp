@@ -95,12 +95,49 @@ export function SettingsScreen({ onClose }) {
         <div className="mx-auto w-full max-w-xl space-y-5">
           
           {/* ── User Header Overview ──────────────────────────────────── */}
-          <div className="flex items-center gap-4 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs">
+          <div className="flex items-center gap-4 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent pointer-events-none" />
             <Avatar src={me?.avatar} name={me?.name || "User"} size="xl" />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 z-10">
               <h2 className="text-sm font-bold text-foreground">{me?.name}</h2>
               <p className="text-xs text-muted-foreground">@{me?.username}</p>
               <p className="text-[11px] text-muted-foreground/80 mt-1 italic">{me?.bio || "No bio set."}</p>
+            </div>
+          </div>
+
+          {/* ── Profile Editing ────────────────────────────────────────── */}
+          <div className="space-y-4 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs">
+            <h3 className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Edit Profile
+            </h3>
+            <div className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-[10.5px] font-medium text-muted-foreground">Display Name</label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter display name"
+                  className="h-9 text-xs rounded-xl bg-background border-border/40 text-foreground"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10.5px] font-medium text-muted-foreground">Bio</label>
+                <Input
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Tell contacts about yourself"
+                  className="h-9 text-xs rounded-xl bg-background border-border/40 text-foreground"
+                />
+              </div>
+              {(name !== (me?.name || "") || bio !== (me?.bio || "")) && (
+                <Button
+                  onClick={() => updateProfileMut.mutate()}
+                  disabled={updateProfileMut.isPending}
+                  className="h-8.5 w-full rounded-xl text-xs bg-accent text-accent-foreground hover:bg-accent/90 transition-all font-semibold"
+                >
+                  {updateProfileMut.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -119,7 +156,7 @@ export function SettingsScreen({ onClose }) {
                     : "border-border/40 text-muted-foreground hover:bg-elevated/50 hover:text-foreground"
                 }`}
               >
-                <Moon className="size-4" /> Dark Mode
+                <Moon className="size-4 text-accent" /> Dark Mode
               </button>
               <button
                 type="button"
@@ -130,7 +167,7 @@ export function SettingsScreen({ onClose }) {
                     : "border-border/40 text-muted-foreground hover:bg-elevated/50 hover:text-foreground"
                 }`}
               >
-                <Sun className="size-4" /> Light Mode
+                <Sun className="size-4 text-accent" /> Light Mode
               </button>
             </div>
           </div>
@@ -144,8 +181,8 @@ export function SettingsScreen({ onClose }) {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
-                    <Bell className="size-4 text-muted-foreground" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <Bell className="size-4" />
                   </div>
                   <div>
                     <p className="text-xs font-medium text-foreground">Notifications</p>
@@ -157,8 +194,8 @@ export function SettingsScreen({ onClose }) {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
-                    <Volume2 className="size-4 text-muted-foreground" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Volume2 className="size-4" />
                   </div>
                   <div>
                     <p className="text-xs font-medium text-foreground">In-App Sounds</p>
@@ -170,8 +207,8 @@ export function SettingsScreen({ onClose }) {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
-                    <CheckCheck className="size-4 text-muted-foreground" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <CheckCheck className="size-4" />
                   </div>
                   <div>
                     <p className="text-xs font-medium text-foreground">Read Receipts</p>
@@ -183,8 +220,8 @@ export function SettingsScreen({ onClose }) {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
-                    <Keyboard className="size-4 text-muted-foreground" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <Keyboard className="size-4" />
                   </div>
                   <div>
                     <p className="text-xs font-medium text-foreground">Enter to Send</p>
@@ -196,8 +233,8 @@ export function SettingsScreen({ onClose }) {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
-                    <PlaySquare className="size-4 text-muted-foreground" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                    <PlaySquare className="size-4" />
                   </div>
                   <div>
                     <p className="text-xs font-medium text-foreground">Auto-download Media</p>
@@ -207,6 +244,29 @@ export function SettingsScreen({ onClose }) {
                 <Switch checked={mediaAuto} onCheckedChange={(v) => handleSettingChange("media_auto_download", v)} />
               </div>
             </div>
+          </div>
+
+          {/* ── Devices & Security ────────────────────────────────────────── */}
+          <div className="space-y-3 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs">
+            <h3 className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Devices & Security
+            </h3>
+            <button
+              type="button"
+              onClick={() => useAppStore.getState().setActiveScreen("devices")}
+              className="flex w-full items-center justify-between rounded-xl border border-border/40 bg-elevated/40 p-4 transition-all hover:bg-elevated/80 hover:border-border/80 text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="grid size-8 place-items-center rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 transition-transform group-hover:scale-105">
+                  <CheckCheck className="size-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Active Sessions</p>
+                  <p className="text-[10.5px] text-muted-foreground">View and revoke active device tokens</p>
+                </div>
+              </div>
+              <ArrowLeft className="size-4 rotate-180 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </button>
           </div>
 
           {/* ── Danger Zone ────────────────────────────────────────────── */}
@@ -220,7 +280,7 @@ export function SettingsScreen({ onClose }) {
                 signOut();
                 toast.success("Signed out successfully");
               }}
-              className="h-9 w-full gap-2 rounded-xl text-xs bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20"
+              className="h-9 w-full gap-2 rounded-xl text-xs bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20 transition-all font-semibold"
             >
               <LogOut className="size-3.5" />
               Sign Out
