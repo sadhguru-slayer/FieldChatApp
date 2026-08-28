@@ -48,9 +48,9 @@ export function AuthScreen() {
 
       <div className="relative z-10 w-full max-w-md space-y-6">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-zinc-900 border border-zinc-800 shadow-md text-foreground">
-            <Sparkles className="size-6 text-zinc-100" />
+        <div className="text-center space-y-2.5">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-zinc-950/40 border border-zinc-800/40 p-2 shadow-inner select-none pointer-events-none">
+            <img src="/Logo.png" alt="Fieldchat Logo" className="size-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Fieldchat</h1>
           <p className="text-xs text-muted-foreground">
