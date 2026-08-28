@@ -202,7 +202,22 @@ export function SettingsScreen({ onClose }) {
                     <p className="text-[10.5px] text-muted-foreground">Play sound cues for incoming messages</p>
                   </div>
                 </div>
-                <Switch checked={sounds} onCheckedChange={(v) => handleSettingChange("sound_enabled", v)} />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        const audio = new Audio("/pop.mp3");
+                        audio.volume = 0.4;
+                        audio.play().catch((err) => console.warn("[Audio] Blocked by browser autoplay policy:", err));
+                      } catch (e) {}
+                    }}
+                    className="h-7 px-2 bg-accent/10 hover:bg-accent/25 border border-accent/20 hover:border-accent/40 rounded-lg text-[9.5px] text-accent font-semibold tracking-wide transition-all shadow-3xs"
+                  >
+                    Test Sound
+                  </button>
+                  <Switch checked={sounds} onCheckedChange={(v) => handleSettingChange("sound_enabled", v)} />
+                </div>
               </div>
 
               <div className="flex items-center justify-between">

@@ -41,6 +41,35 @@ function ChatApp() {
     hydrate();
   }, [hydrate]);
 
+  // Unlock browser audio engine on very first user click, keydown, or touch
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const unlockAudio = () => {
+      try {
+        const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAAAD");
+        audio.volume = 0.01;
+        audio.play()
+          .then(() => {
+            window.removeEventListener("click", unlockAudio);
+            window.removeEventListener("keydown", unlockAudio);
+            window.removeEventListener("touchstart", unlockAudio);
+          })
+          .catch(() => {});
+      } catch (e) {}
+    };
+
+    window.addEventListener("click", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+    window.addEventListener("touchstart", unlockAudio);
+
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+    };
+  }, []);
+
   // Mobile browser navigation stack/back-button integration
   useEffect(() => {
     if (typeof window === "undefined" || !authed) return;
