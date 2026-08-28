@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, Monitor, Smartphone, ShieldAlert, LogOut, CheckCircle2, Laptop, RefreshCw } from "lucide-react";
@@ -10,6 +11,13 @@ export function DevicesScreen({ onClose }) {
   const setActiveScreen = useAppStore((s) => s.setActiveScreen);
   const signOut = useAppStore((s) => s.signOut);
   const currentDeviceId = getDeviceId();
+
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: null, // "all" | "current" | "other"
+    tokenId: null,
+    deviceName: "",
+  });
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe });
 
@@ -46,7 +54,15 @@ export function DevicesScreen({ onClose }) {
     else setActiveScreen("chat");
   };
 
-  const activeTokens = rawTokens.filter((t) => !t.revoked);
+  const activeTokens = [...rawTokens]
+    .filter((t) => !t.revoked)
+    .sort((a, b) => {
+      const isCurrentA = a.device_id === currentDeviceId;
+      const isCurrentB = b.device_id === currentDeviceId;
+      if (isCurrentA && !isCurrentB) return -1;
+      if (!isCurrentA && isCurrentB) return 1;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
 
   return (
     <div className="flex h-full w-full flex-col bg-background text-foreground select-none overflow-hidden">
@@ -99,7 +115,12 @@ export function DevicesScreen({ onClose }) {
               {activeTokens.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => revokeAllMut.mutate()}
+                  onClick={() => setConfirmModal({
+                    isOpen: true,
+                    type: "all",
+                    tokenId: null,
+                    deviceName: "",
+                  })}
                   disabled={revokeAllMut.isPending}
                   className="text-[11px] font-medium text-destructive hover:underline disabled:opacity-50"
                 >
@@ -118,47 +139,55 @@ export function DevicesScreen({ onClose }) {
               </div>
             ) : (
               <div className="space-y-2.5">
-                {activeTokens.map((t, idx) => (
-                  <div
-                    key={t.id || idx}
-                    className="flex items-center justify-between rounded-xl border border-border/40 bg-elevated/60 p-3 transition-colors hover:border-border/80"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-surface border border-border/40 text-muted-foreground">
-                        {t.device_name?.toLowerCase().includes("mobile") ? (
-                          <Smartphone className="size-4" />
-                        ) : (
-                          <Laptop className="size-4" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-semibold text-foreground truncate">
-                            {t.device_name || "Fieldchat Web Client"}
-                          </p>
-                          {(t.device_id === currentDeviceId || (idx === 0 && !t.device_id)) && (
-                            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-medium text-emerald-400 border border-emerald-500/20">
-                              This Device (Active)
-                            </span>
+                {activeTokens.map((t, idx) => {
+                  const isCurrent = t.device_id === currentDeviceId;
+                  return (
+                    <div
+                      key={t.id || idx}
+                      className="flex items-center justify-between rounded-xl border border-border/40 bg-elevated/60 p-3 transition-colors hover:border-border/80"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-surface border border-border/40 text-muted-foreground">
+                          {t.device_name?.toLowerCase().includes("mobile") ? (
+                            <Smartphone className="size-4" />
+                          ) : (
+                            <Laptop className="size-4" />
                           )}
                         </div>
-                        <p className="text-[10.5px] text-muted-foreground truncate">
-                          IP: {t.ip_address || "127.0.0.1"} • Created: {new Date(t.created_at).toLocaleDateString()}
-                        </p>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-semibold text-foreground truncate">
+                              {t.device_name || "Fieldchat Web Client"}
+                            </p>
+                            {isCurrent && (
+                              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-medium text-emerald-400 border border-emerald-500/20">
+                                This Device (Active)
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10.5px] text-muted-foreground truncate">
+                            IP: {t.ip_address || "127.0.0.1"} • Created: {new Date(t.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => deleteTokenMut.mutate(t.id)}
-                      disabled={deleteTokenMut.isPending}
-                      className="ml-2 grid size-7 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
-                      title="Revoke Session"
-                    >
-                      <LogOut className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        type="button"
+                        onClick={() => setConfirmModal({
+                          isOpen: true,
+                          type: isCurrent ? "current" : "other",
+                          tokenId: t.id,
+                          deviceName: t.device_name || "Fieldchat Web Client",
+                        })}
+                        disabled={deleteTokenMut.isPending}
+                        className="ml-2 grid size-7 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
+                        title="Revoke Session"
+                      >
+                        <LogOut className="size-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -173,6 +202,49 @@ export function DevicesScreen({ onClose }) {
 
         </div>
       </div>
+
+      {/* ── Confirmation Modal ── */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-[#1c2633] p-5 shadow-xl animate-in fade-in-0 zoom-in-95 duration-150">
+            <h3 className="text-sm font-bold text-[#fafafa] mb-2">
+              {confirmModal.type === "all" && "Revoke All Sessions"}
+              {confirmModal.type === "current" && "Revoke Current Session"}
+              {confirmModal.type === "other" && "Revoke Session"}
+            </h3>
+            
+            <p className="text-[11.5px] leading-relaxed text-[#a0a5ad] mb-5">
+              {confirmModal.type === "all" && "This will revoke all active sessions, logging you out of this device and all other connected devices immediately. You will need to sign back in."}
+              {confirmModal.type === "current" && "This will end your current session. You will be logged out of this device immediately and need to sign back in."}
+              {confirmModal.type === "other" && `This will end the active session for "${confirmModal.deviceName}". That device will lose access immediately and be logged out.`}
+            </p>
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModal({ isOpen: false, type: null, tokenId: null, deviceName: "" })}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-transparent border border-white/10 text-[#fafafa] transition-all hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirmModal.type === "all") {
+                    revokeAllMut.mutate();
+                  } else {
+                    deleteTokenMut.mutate(confirmModal.tokenId);
+                  }
+                  setConfirmModal({ isOpen: false, type: null, tokenId: null, deviceName: "" });
+                }}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white transition-all hover:bg-red-500 active:scale-95"
+              >
+                Confirm Revoke
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

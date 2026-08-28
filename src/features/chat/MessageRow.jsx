@@ -13,9 +13,25 @@ import { cn } from "@/lib/utils";
 
 // ─── Delivery Ticks ──────────────────────────────────────────────────────────
 function Ticks({ delivered, read, mine }) {
-  if (read) return <CheckCheck className="size-3.5 text-sky-300 drop-shadow-2xs font-bold shrink-0" />;
-  if (delivered) return <CheckCheck className="size-3.5 text-white/85 shrink-0" />;
-  return <Check className="size-3.5 text-white/85 shrink-0" />;
+  if (read) {
+    return (
+      <span className="inline-flex items-center justify-center rounded-md bg-emerald-500/20 px-1 py-[1.5px] border border-emerald-500/30 shrink-0 select-none">
+        <CheckCheck className="size-3 text-emerald-400 font-extrabold" />
+      </span>
+    );
+  }
+  if (delivered) {
+    return (
+      <span className="inline-flex items-center justify-center rounded-md bg-white/10 px-1 py-[1.5px] border border-white/15 shrink-0 select-none">
+        <CheckCheck className="size-3 text-white/90" />
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center justify-center rounded-md bg-white/5 px-1 py-[1.5px] border border-white/10 shrink-0 select-none">
+      <Check className="size-3 text-white/70" />
+    </span>
+  );
 }
 
 // ─── Reply Preview Bar ───────────────────────────────────────────────────────

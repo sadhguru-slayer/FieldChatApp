@@ -20,6 +20,27 @@ export function useRealtimeSync(authed) {
     }
   }, [authed]);
 
+  // Handle notification click messages from service worker (especially on mobile)
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+    const handleSWMessage = (event) => {
+      if (event.data && event.data.type === 'NAVIGATE_TO_CONVERSATION') {
+        const targetConvId = event.data.conversationId;
+        if (targetConvId) {
+          useAppStore.getState().setActiveId(targetConvId);
+          useAppStore.getState().setActiveScreen("chat");
+          useAppStore.getState().setMobileView("chat");
+        }
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+    };
+  }, []);
+
   useEffect(() => {
     if (!authed) {
       wsClient.disconnect();
@@ -60,22 +81,49 @@ export function useRealtimeSync(authed) {
           });
         }
 
-        // Trigger native HTML5 Desktop Notification
+        // Trigger native HTML5 Desktop/Mobile Notification
         if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
           if (document.hidden || !targetConvId || String(activeId) !== String(targetConvId)) {
-            const nativeNotif = new Notification(notif.title, {
-              body: notif.body,
-              icon: notif.data?.avatar || undefined,
-              tag: notif.id,
-            });
-            nativeNotif.onclick = () => {
-              window.focus();
-              if (targetConvId) {
-                useAppStore.getState().setActiveId(targetConvId);
-                useAppStore.getState().setActiveScreen("chat");
-                useAppStore.getState().setMobileView("chat");
-              }
-            };
+            if ("serviceWorker" in navigator) {
+              navigator.serviceWorker.ready.then((registration) => {
+                registration.showNotification(notif.title, {
+                  body: notif.body,
+                  icon: notif.data?.avatar || undefined,
+                  tag: notif.id,
+                  data: {
+                    conversation_id: targetConvId,
+                  },
+                });
+              }).catch(() => {
+                const nativeNotif = new Notification(notif.title, {
+                  body: notif.body,
+                  icon: notif.data?.avatar || undefined,
+                  tag: notif.id,
+                });
+                nativeNotif.onclick = () => {
+                  window.focus();
+                  if (targetConvId) {
+                    useAppStore.getState().setActiveId(targetConvId);
+                    useAppStore.getState().setActiveScreen("chat");
+                    useAppStore.getState().setMobileView("chat");
+                  }
+                };
+              });
+            } else {
+              const nativeNotif = new Notification(notif.title, {
+                body: notif.body,
+                icon: notif.data?.avatar || undefined,
+                tag: notif.id,
+              });
+              nativeNotif.onclick = () => {
+                window.focus();
+                if (targetConvId) {
+                  useAppStore.getState().setActiveId(targetConvId);
+                  useAppStore.getState().setActiveScreen("chat");
+                  useAppStore.getState().setMobileView("chat");
+                }
+              };
+            }
           }
         }
 
