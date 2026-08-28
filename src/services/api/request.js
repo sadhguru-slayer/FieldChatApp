@@ -1,6 +1,17 @@
 // Base request helper — shared across all API modules
 
-const API_URL = import.meta.env.BACKEND_API_URL || import.meta.env.VITE_API_URL || "http://localhost:8000";
+function normalizeApiUrl(url) {
+  if (!url) return "http://localhost:8000";
+  // If no protocol prefix, assume http://
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return `http://${url}`;
+  }
+  return url;
+}
+
+const API_URL = normalizeApiUrl(
+  import.meta.env.BACKEND_API_URL || import.meta.env.VITE_API_URL
+);
 
 let isRefreshing = false;
 let refreshSubscribers = [];

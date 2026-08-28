@@ -32,13 +32,11 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
   const MENU_W = 192;
   const MENU_H = 260;
 
-  // Horizontal — stay on the same side as the bubble, clamp to viewport
   let left = mine
     ? Math.min(anchor.x, window.innerWidth - MENU_W - 8)
     : Math.max(8, anchor.x - MENU_W);
   left = Math.max(8, Math.min(left, window.innerWidth - MENU_W - 8));
 
-  // Vertical — prefer below, flip up if needed
   let top = anchor.y + 6;
   if (top + MENU_H > window.innerHeight - 8) top = anchor.y - MENU_H - 6;
   top = Math.max(8, top);
@@ -53,41 +51,29 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-[9998]"
         onClick={onClose}
         onContextMenu={(e) => { e.preventDefault(); onClose(); }}
       />
 
-      {/* Menu panel */}
       <div
-        className="fixed z-[9999] overflow-hidden rounded-xl animate-in fade-in-0 zoom-in-95 duration-100"
-        style={{
-          top, left, width: MENU_W,
-          background: "#1c2633",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.55)",
-        }}
+        className="fixed z-[9999] overflow-hidden rounded-xl animate-in fade-in-0 zoom-in-95 duration-100 bg-surface border border-border text-foreground shadow-2xl"
+        style={{ top, left, width: MENU_W }}
       >
-        {/* Quick reactions strip */}
-        <div
-          className="flex items-center justify-between px-2.5 py-2"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
-        >
+        <div className="flex items-center justify-between px-2.5 py-2 border-b border-border/40">
           {QUICK_REACTIONS.map((e) => (
             <button
               key={e}
               type="button"
               onClick={() => { onAction("react", message, e); onClose(); }}
-              className="grid size-8 place-items-center rounded-lg text-[16px] transition-all hover:bg-white/10 hover:scale-110 active:scale-95"
+              className="grid size-8 place-items-center rounded-lg text-[16px] transition-all hover:bg-elevated hover:scale-110 active:scale-95"
             >
               {e}
             </button>
           ))}
         </div>
 
-        {/* Action items — Lucide icons, zinc palette */}
         <div className="py-1">
           {items.map(({ id, label, Icon, danger }) => (
             <button
@@ -95,10 +81,10 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
               type="button"
               onClick={() => { onAction(id, message); onClose(); }}
               className={cn(
-                "flex w-full items-center gap-2.5 px-3.5 py-[9px] text-left text-[12.5px] transition-colors",
+                "flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs transition-colors",
                 danger
-                  ? "text-red-400/80 hover:bg-red-500/8 hover:text-red-400"
-                  : "text-[#b8c9d8] hover:bg-white/6 hover:text-[#e3e3e3]"
+                  ? "text-destructive/90 hover:bg-destructive/10 hover:text-destructive"
+                  : "text-foreground/80 hover:bg-elevated hover:text-foreground"
               )}
             >
               <Icon className="size-3.5 shrink-0 opacity-60" />
@@ -114,15 +100,15 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function NothingSelected() {
   return (
-    <main className="flex h-full flex-1 flex-col items-center justify-center p-8 text-center select-none" style={{ background: "#0e1621" }}>
-      <div className="mx-auto grid size-16 place-items-center rounded-3xl border mb-4" style={{ background: "#182533", borderColor: "rgba(255,255,255,0.07)" }}>
-        <MessageSquare className="size-7" style={{ color: "rgba(93,138,168,0.5)" }} />
+    <main className="flex h-full flex-1 flex-col items-center justify-center p-8 text-center select-none bg-background">
+      <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-border/40 bg-surface/50 mb-3.5 text-muted-foreground shadow-2xs">
+        <MessageSquare className="size-6 opacity-60" />
       </div>
-      <h3 className="text-sm font-semibold" style={{ color: "rgba(227,227,227,0.7)" }}>
+      <h3 className="text-xs font-semibold text-foreground/80">
         Select a conversation
       </h3>
-      <p className="mt-1.5 text-[12px] max-w-xs leading-relaxed" style={{ color: "rgba(93,138,168,0.8)" }}>
-        Choose a group or direct message from the sidebar, or start a new one.
+      <p className="mt-1 text-[11.5px] max-w-xs leading-relaxed text-muted-foreground">
+        Choose a group or direct message from the sidebar to begin chatting.
       </p>
     </main>
   );
@@ -180,7 +166,6 @@ export function ChatPane() {
     staleTime: 10000,
   });
 
-  // Automatically acknowledge delivery and read status for incoming messages
   useEffect(() => {
     if (activeId && msgData?.items?.length) {
       msgData.items.forEach((msg) => {
@@ -275,7 +260,51 @@ export function ChatPane() {
     onError: (err) => toast.error(err.message || "Failed to react"),
   });
 
-  // ── Action handler ────────────────────────────────────────────────────────
+  const updateOptimisticReactions = (msgId, emojiToSet) => {
+    qc.setQueryData(["messages", activeId], (oldData) => {
+      if (!oldData || !Array.isArray(oldData.items)) return oldData;
+      const updatedItems = oldData.items.map((m) => {
+        if (String(m.id) !== String(msgId)) return m;
+
+        let currentReactions = m.reactions ? [...m.reactions] : [];
+
+        // Remove any reaction previously set by me
+        currentReactions = currentReactions
+          .map((r) => {
+            if (r.reactedByMe) {
+              const newCount = r.count - 1;
+              return newCount > 0 ? { ...r, count: newCount, reactedByMe: false } : null;
+            }
+            return r;
+          })
+          .filter(Boolean);
+
+        // If emojiToSet is provided, add or update that emoji for me
+        if (emojiToSet) {
+          const existingIdx = currentReactions.findIndex((r) => r.emoji === emojiToSet);
+          if (existingIdx >= 0) {
+            const existing = currentReactions[existingIdx];
+            currentReactions[existingIdx] = {
+              ...existing,
+              count: existing.count + 1,
+              reactedByMe: true,
+            };
+          } else {
+            currentReactions.push({
+              emoji: emojiToSet,
+              count: 1,
+              reactedByMe: true,
+            });
+          }
+        }
+
+        return { ...m, reactions: currentReactions };
+      });
+
+      return { ...oldData, items: updatedItems };
+    });
+  };
+
   const handleAction = (action, msg, extra) => {
     if (action === "reply") {
       setReply({ ...msg, senderName: msg.senderName || (msg.isMine ? "You" : "Unknown") });
@@ -290,23 +319,30 @@ export function ChatPane() {
       deleteAllM.mutate(msg);
     } else if (action === "react") {
       const emoji = extra;
-      const alreadyReacted = msg.reactions?.find((r) => r.emoji === emoji && r.reactedByMe);
-      if (alreadyReacted) {
+      const existingByMe = msg.reactions?.find((r) => r.reactedByMe);
+
+      if (existingByMe && existingByMe.emoji === emoji) {
+        // Toggling off existing reaction
+        updateOptimisticReactions(msg.id, null);
         removeReaction({ conversationId: activeId, messageId: msg.id })
-          .catch((e) => toast.error(e.message));
+          .catch(() => qc.invalidateQueries({ queryKey: ["messages", activeId] }));
       } else {
+        // Adding or replacing reaction with new emoji
+        updateOptimisticReactions(msg.id, emoji);
         reactM.mutate({ msg, emoji });
       }
+    } else if (action === "remove-reaction") {
+      updateOptimisticReactions(msg.id, null);
+      removeReaction({ conversationId: activeId, messageId: msg.id })
+        .catch(() => qc.invalidateQueries({ queryKey: ["messages", activeId] }));
     }
   };
 
-  // ── Open context menu, using button position as anchor ───────────────────
   const openContextMenu = (msg, e) => {
     const rect = e?.currentTarget?.getBoundingClientRect?.();
     const isMine = msg.isMine || msg.senderId === me?.id;
     const anchor = rect
       ? {
-        // For outgoing messages, anchor right edge; for incoming, left edge
         x: isMine ? rect.left : rect.right,
         y: rect.bottom,
       }
@@ -344,18 +380,14 @@ export function ChatPane() {
   }
 
   return (
-    <main className="flex h-full flex-1 flex-col" style={{ background: "#0e1621" }}>
+    <main className="flex h-full flex-1 flex-col bg-background">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header
-        className="flex h-14 items-center justify-between border-b px-4 select-none"
-        style={{ background: "#17212b", borderColor: "rgba(255,255,255,0.07)" }}
-      >
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="flex h-13.5 items-center justify-between border-b border-border/40 px-3.5 select-none bg-surface/50 backdrop-blur-md shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           <button
             type="button"
             onClick={() => setMobileView("list")}
-            className="grid size-8 place-items-center rounded-lg transition-colors md:hidden"
-            style={{ color: "#8a9baf" }}
+            className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground transition-colors md:hidden"
             aria-label="Back"
           >
             <ArrowLeft className="size-4" />
@@ -364,18 +396,20 @@ export function ChatPane() {
           <Avatar src={activeConv.avatar} name={activeConv.title} size="md" />
 
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[14px] font-semibold" style={{ color: "#e3e3e3" }}>
+            <h1 className="truncate text-xs font-semibold text-foreground tracking-tight">
               {activeConv.title}
             </h1>
-            <p className="truncate text-[11px]" style={{ color: "#5d8aa8" }}>
+            <p className="truncate text-[11px] text-muted-foreground">
               {typingText ? (
-                <span className="text-sky-400 font-medium animate-pulse">{typingText}</span>
+                <span className="text-emerald-400 font-medium animate-pulse">{typingText}</span>
               ) : isGroup ? (
                 activeConv.memberCount ? `${activeConv.memberCount} members` : "Group"
               ) : (
                 <span
-                  className="font-medium transition-colors duration-500"
-                  style={{ color: otherUserOnline ? "#34d399" : "#5d8aa8" }}
+                  className={cn(
+                    "font-medium transition-colors duration-300",
+                    otherUserOnline ? "text-emerald-400" : "text-muted-foreground"
+                  )}
                 >
                   {otherUserOnline
                     ? "Online"
@@ -383,7 +417,7 @@ export function ChatPane() {
                 </span>
               )}
               {msgError && (
-                <span className="ml-2 text-red-400/70 text-[10px]">
+                <span className="ml-2 text-destructive/80 text-[10px]">
                   · Messages unavailable
                 </span>
               )}
@@ -395,8 +429,7 @@ export function ChatPane() {
           type="button"
           onClick={() => togglePanel("details")}
           aria-label="Details"
-          className="grid size-8 place-items-center rounded-lg transition-colors"
-          style={{ color: "#5d8aa8" }}
+          className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground transition-colors hover:bg-elevated"
         >
           <Info className="size-4" />
         </button>
@@ -418,13 +451,13 @@ export function ChatPane() {
 
       {/* Sleek typing indicator bottom bar */}
       {typingText && (
-        <div className="flex items-center gap-2 px-4 py-1 text-xs text-sky-400/90 animate-in fade-in duration-200 select-none">
+        <div className="flex items-center gap-2 px-4 py-1 text-xs text-emerald-400/90 animate-in fade-in duration-200 select-none">
           <span className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-sky-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-            <span className="size-1.5 rounded-full bg-sky-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-            <span className="size-1.5 rounded-full bg-sky-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+            <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: "300ms" }} />
           </span>
-          <span className="italic font-medium">{typingText}</span>
+          <span className="italic font-medium text-[11px]">{typingText}</span>
         </div>
       )}
 
@@ -451,6 +484,7 @@ export function ChatPane() {
         <ReactionsDetailModal
           message={reactionsDetailMsg}
           meId={me?.id}
+          onRemoveReaction={(msg) => handleAction("remove-reaction", msg)}
           onClose={() => setReactionsDetailMsg(null)}
         />
       )}

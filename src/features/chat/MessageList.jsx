@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect, useRef } from "react";
+import { Fragment, useLayoutEffect, useRef, useState } from "react";
 import { MessageRow } from "./MessageRow";
 import { formatDayLabel } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,6 +61,24 @@ export function MessageList({
   const bottomRef = useRef(null);
   const prevLength = useRef(0);
 
+  // Single active action state across all messages
+  const [activeActionMsgId, setActiveActionMsgId] = useState(null);
+  const inactivityTimerRef = useRef(null);
+
+  const handleToggleAction = (msgId) => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+
+    if (activeActionMsgId === msgId) {
+      setActiveActionMsgId(null);
+    } else {
+      setActiveActionMsgId(msgId);
+      // Auto-clear active action highlight after 4.5 seconds of inactivity
+      inactivityTimerRef.current = setTimeout(() => {
+        setActiveActionMsgId(null);
+      }, 4500);
+    }
+  };
+
   // Scroll to bottom when new messages arrive
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -92,6 +110,7 @@ export function MessageList({
   return (
     <div
       ref={scrollRef}
+      onClick={() => setActiveActionMsgId(null)}
       className="scroll-slim flex-1 overflow-y-auto py-1"
       style={{ overscrollBehavior: "contain" }}
     >
@@ -134,6 +153,8 @@ export function MessageList({
                 isGroup={isGroup}
                 showAvatar={showAvatar}
                 showName={showName}
+                isActionActive={activeActionMsgId === m.id}
+                onToggleAction={handleToggleAction}
                 onReply={onReply}
                 onOpenActions={onOpenActions}
                 onReact={onReact}

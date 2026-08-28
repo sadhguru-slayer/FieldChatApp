@@ -59,7 +59,7 @@ function ChatApp() {
   }
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden font-sans antialiased" style={{ background: "#0e1621" }}>
+    <div className="relative flex h-[100dvh] w-full overflow-hidden font-sans antialiased" style={{ background: "#0e1621" }}>
       {/* Sidebar View (Left) */}
       <div
         className={cn(
@@ -83,11 +83,18 @@ function ChatApp() {
         {activeScreen === "devices" && <DevicesScreen onClose={() => setActiveScreen("chat")} />}
       </div>
 
-      {/* Group Panel Details (Right) */}
+      {/* Group Panel Details (Right) — sidebar on lg+, fullscreen overlay on mobile */}
       {panel === "details" && activeScreen === "chat" && (
-        <div className="hidden lg:block h-full border-l border-white/5">
-          <GroupPanel />
-        </div>
+        <>
+          {/* Mobile: full-screen overlay */}
+          <div className="lg:hidden absolute inset-0 z-40 flex flex-col" style={{ background: "#0e1621" }}>
+            <GroupPanel />
+          </div>
+          {/* Desktop: sidebar panel */}
+          <div className="hidden lg:block h-full border-l border-white/5">
+            <GroupPanel />
+          </div>
+        </>
       )}
 
       {/* Dialog Modals */}

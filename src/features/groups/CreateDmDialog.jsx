@@ -32,9 +32,9 @@ export function CreateDmDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm bg-surface border-border/60 text-foreground rounded-2xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle>New Direct Message</DialogTitle>
+          <DialogTitle className="text-sm font-semibold tracking-tight text-foreground">New Direct Message</DialogTitle>
         </DialogHeader>
 
         <div className="scroll-slim max-h-72 overflow-y-auto space-y-1 pt-2">
@@ -47,12 +47,12 @@ export function CreateDmDialog() {
                 type="button"
                 onClick={() => createMut.mutate(u.id)}
                 disabled={createMut.isPending}
-                className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-elevated transition-colors"
+                className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left hover:bg-elevated transition-colors border border-transparent hover:border-border/40"
               >
                 <Avatar src={u.avatar} name={u.name} size="md" online={u.online} />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-foreground truncate">{u.name}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">@{u.username}</p>
+                  <p className="text-[10.5px] text-muted-foreground truncate">@{u.username}</p>
                 </div>
               </button>
             ))

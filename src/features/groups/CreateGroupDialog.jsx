@@ -51,14 +51,14 @@ export function CreateGroupDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md bg-surface border-border/60 text-foreground rounded-2xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle>Create New Group Chat</DialogTitle>
+          <DialogTitle className="text-sm font-semibold tracking-tight text-foreground">Create New Group Chat</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground uppercase">
+            <label className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">
               Group Name
             </label>
             <Input
@@ -66,27 +66,27 @@ export function CreateGroupDialog() {
               placeholder="e.g. Design Guild"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="text-xs"
+              className="text-xs bg-elevated/50 border-border/40 focus-visible:ring-accent/40"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground uppercase">
+            <label className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">
               Description (Optional)
             </label>
             <Input
               placeholder="What is this group about?"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="text-xs"
+              className="text-xs bg-elevated/50 border-border/40 focus-visible:ring-accent/40"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground uppercase">
+            <label className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">
               Add Members
             </label>
-            <div className="scroll-slim max-h-48 overflow-y-auto space-y-1 rounded-lg border border-border bg-background p-1.5">
+            <div className="scroll-slim max-h-48 overflow-y-auto space-y-1 rounded-xl border border-border/40 bg-elevated/30 p-1.5">
               {addableUsers.length === 0 ? (
                 <p className="p-3 text-center text-xs text-muted-foreground">No other users found.</p>
               ) : (
@@ -97,8 +97,8 @@ export function CreateGroupDialog() {
                       key={u.id}
                       type="button"
                       onClick={() => toggleUser(u.id)}
-                      className={`flex w-full items-center justify-between rounded-md p-2 text-left text-xs transition-colors ${
-                        checked ? "bg-elevated font-medium text-foreground" : "hover:bg-elevated/50 text-muted-foreground"
+                      className={`flex w-full items-center justify-between rounded-lg p-2 text-left text-xs transition-colors ${
+                        checked ? "bg-accent/15 border border-accent/30 font-medium text-foreground" : "hover:bg-elevated/60 text-muted-foreground"
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -108,7 +108,7 @@ export function CreateGroupDialog() {
                           <p className="text-[10px] text-muted-foreground">@{u.username}</p>
                         </div>
                       </div>
-                      {checked && <span className="text-primary font-bold">✓</span>}
+                      {checked && <span className="text-accent font-bold text-xs">✓</span>}
                     </button>
                   );
                 })
@@ -119,7 +119,7 @@ export function CreateGroupDialog() {
           <Button
             onClick={() => createMut.mutate()}
             disabled={!name.trim() || createMut.isPending}
-            className="w-full text-xs"
+            className="w-full text-xs font-semibold bg-accent text-accent-foreground hover:bg-accent/90 rounded-xl h-9 shadow-xs"
           >
             {createMut.isPending ? "Creating..." : "Create Group"}
           </Button>

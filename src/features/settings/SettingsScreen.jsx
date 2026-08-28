@@ -64,59 +64,50 @@ export function SettingsScreen({ onClose }) {
   });
 
   const handleSettingChange = (field, value) => {
-    // Optimistic update locally
     if (field === "notifications_enabled") setNotifs(value);
     if (field === "sound_enabled") setSounds(value);
     if (field === "read_receipts_enabled") setReadReceipts(value);
     if (field === "enter_to_send") setEnterToSend(value);
     if (field === "media_auto_download") setMediaAuto(value);
 
-    // Persist
     updateSettingsMut.mutate({ [field]: value });
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-[#0e1621] text-foreground">
+    <div className="flex h-full w-full flex-col bg-background text-foreground select-none overflow-hidden">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header
-        className="flex h-14 items-center gap-3 border-b px-4 select-none"
-        style={{ background: "#17212b", borderColor: "rgba(255,255,255,0.07)" }}
-      >
+      <header className="flex h-13.5 items-center gap-3 border-b border-border/40 px-4 md:px-6 shrink-0 bg-surface/50">
         <button
           type="button"
           onClick={() => {
             if (onClose) onClose();
             else useAppStore.getState().setActiveScreen("chat");
-            if (!useAppStore.getState().activeId) {
-              useAppStore.getState().setMobileView("list");
-            }
           }}
-          className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/5 hover:text-[#e3e3e3]"
+          className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
         </button>
-        <h1 className="text-sm font-semibold text-[#e3e3e3]">Settings</h1>
+        <h1 className="text-xs font-semibold text-foreground tracking-tight">Settings</h1>
       </header>
 
       {/* ── Scrollable Content ─────────────────────────────────────────── */}
       <div className="scroll-slim flex-1 overflow-y-auto px-4 py-6 md:px-8">
-        <div className="mx-auto w-full max-w-xl space-y-6">
+        <div className="mx-auto w-full max-w-xl space-y-5">
           
           {/* ── User Header Overview ──────────────────────────────────── */}
-          <div className="flex items-center gap-4 rounded-2xl border bg-[#182533] p-5 shadow-sm" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+          <div className="flex items-center gap-4 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs">
             <Avatar src={me?.avatar} name={me?.name || "User"} size="xl" />
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-bold text-[#e3e3e3]">{me?.name}</h2>
-              <p className="text-xs text-[#5d8aa8]">@{me?.username}</p>
-              <p className="text-[11px] text-[#5d8aa8]/70 mt-1 italic">{me?.bio || "No bio set."}</p>
+              <h2 className="text-sm font-bold text-foreground">{me?.name}</h2>
+              <p className="text-xs text-muted-foreground">@{me?.username}</p>
+              <p className="text-[11px] text-muted-foreground/80 mt-1 italic">{me?.bio || "No bio set."}</p>
             </div>
           </div>
 
-
           {/* ── Appearance ─────────────────────────────────────────────── */}
-          <div className="space-y-3 rounded-2xl border bg-[#182533] p-5 shadow-sm" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[#5d8aa8]">
-              Appearance
+          <div className="space-y-3 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs">
+            <h3 className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Appearance Mode
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -124,8 +115,8 @@ export function SettingsScreen({ onClose }) {
                 onClick={() => setTheme("dark")}
                 className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-xs font-medium transition-all ${
                   theme === "dark"
-                    ? "border-[#5d8aa8] bg-[#2b5278]/20 text-[#e3e3e3]"
-                    : "border-white/5 text-muted-foreground hover:bg-white/5 hover:text-[#e3e3e3]"
+                    ? "border-accent/40 bg-elevated text-foreground shadow-2xs"
+                    : "border-border/40 text-muted-foreground hover:bg-elevated/50 hover:text-foreground"
                 }`}
               >
                 <Moon className="size-4" /> Dark Mode
@@ -135,8 +126,8 @@ export function SettingsScreen({ onClose }) {
                 onClick={() => setTheme("light")}
                 className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-xs font-medium transition-all ${
                   theme === "light"
-                    ? "border-[#5d8aa8] bg-[#2b5278]/20 text-[#e3e3e3]"
-                    : "border-white/5 text-muted-foreground hover:bg-white/5 hover:text-[#e3e3e3]"
+                    ? "border-accent/40 bg-elevated text-foreground shadow-2xs"
+                    : "border-border/40 text-muted-foreground hover:bg-elevated/50 hover:text-foreground"
                 }`}
               >
                 <Sun className="size-4" /> Light Mode
@@ -145,20 +136,20 @@ export function SettingsScreen({ onClose }) {
           </div>
 
           {/* ── Preferences ────────────────────────────────────────────── */}
-          <div className="space-y-4 rounded-2xl border bg-[#182533] p-5 shadow-sm" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[#5d8aa8]">
-              Preferences
+          <div className="space-y-4 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs">
+            <h3 className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Messaging Preferences
             </h3>
             
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-[#2b5278]/20">
-                    <Bell className="size-4 text-[#5d8aa8]" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
+                    <Bell className="size-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-[#e3e3e3]">Notifications</p>
-                    <p className="text-[10px] text-muted-foreground">Receive push notifications</p>
+                    <p className="text-xs font-medium text-foreground">Notifications</p>
+                    <p className="text-[10.5px] text-muted-foreground">Receive real-time push alerts</p>
                   </div>
                 </div>
                 <Switch checked={notifs} onCheckedChange={(v) => handleSettingChange("notifications_enabled", v)} />
@@ -166,12 +157,12 @@ export function SettingsScreen({ onClose }) {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-[#2b5278]/20">
-                    <Volume2 className="size-4 text-[#5d8aa8]" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
+                    <Volume2 className="size-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-[#e3e3e3]">Sounds</p>
-                    <p className="text-[10px] text-muted-foreground">Play in-app sounds</p>
+                    <p className="text-xs font-medium text-foreground">In-App Sounds</p>
+                    <p className="text-[10.5px] text-muted-foreground">Play sound cues for incoming messages</p>
                   </div>
                 </div>
                 <Switch checked={sounds} onCheckedChange={(v) => handleSettingChange("sound_enabled", v)} />
@@ -179,12 +170,12 @@ export function SettingsScreen({ onClose }) {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-[#2b5278]/20">
-                    <CheckCheck className="size-4 text-[#5d8aa8]" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
+                    <CheckCheck className="size-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-[#e3e3e3]">Read Receipts</p>
-                    <p className="text-[10px] text-muted-foreground">Let others know you've read messages</p>
+                    <p className="text-xs font-medium text-foreground">Read Receipts</p>
+                    <p className="text-[10.5px] text-muted-foreground">Let contacts know when you've seen their messages</p>
                   </div>
                 </div>
                 <Switch checked={readReceipts} onCheckedChange={(v) => handleSettingChange("read_receipts_enabled", v)} />
@@ -192,12 +183,12 @@ export function SettingsScreen({ onClose }) {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-[#2b5278]/20">
-                    <Keyboard className="size-4 text-[#5d8aa8]" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
+                    <Keyboard className="size-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-[#e3e3e3]">Enter to Send</p>
-                    <p className="text-[10px] text-muted-foreground">Send messages by pressing Enter</p>
+                    <p className="text-xs font-medium text-foreground">Enter to Send</p>
+                    <p className="text-[10.5px] text-muted-foreground">Press Enter key to send messages</p>
                   </div>
                 </div>
                 <Switch checked={enterToSend} onCheckedChange={(v) => handleSettingChange("enter_to_send", v)} />
@@ -205,12 +196,12 @@ export function SettingsScreen({ onClose }) {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-lg bg-[#2b5278]/20">
-                    <PlaySquare className="size-4 text-[#5d8aa8]" />
+                  <div className="grid size-8 place-items-center rounded-lg bg-elevated border border-border/40">
+                    <PlaySquare className="size-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-[#e3e3e3]">Auto-download Media</p>
-                    <p className="text-[10px] text-muted-foreground">Automatically download photos & videos</p>
+                    <p className="text-xs font-medium text-foreground">Auto-download Media</p>
+                    <p className="text-[10.5px] text-muted-foreground">Automatically download media files</p>
                   </div>
                 </div>
                 <Switch checked={mediaAuto} onCheckedChange={(v) => handleSettingChange("media_auto_download", v)} />
@@ -219,8 +210,8 @@ export function SettingsScreen({ onClose }) {
           </div>
 
           {/* ── Danger Zone ────────────────────────────────────────────── */}
-          <div className="space-y-3 rounded-2xl border bg-[#182533] p-5 shadow-sm" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[#5d8aa8]">
+          <div className="space-y-3 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs">
+            <h3 className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
               Account Session
             </h3>
             <Button
@@ -229,9 +220,9 @@ export function SettingsScreen({ onClose }) {
                 signOut();
                 toast.success("Signed out successfully");
               }}
-              className="h-10 w-full gap-2 rounded-xl text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 border border-red-500/10"
+              className="h-9 w-full gap-2 rounded-xl text-xs bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20"
             >
-              <LogOut className="size-4" />
+              <LogOut className="size-3.5" />
               Sign Out
             </Button>
           </div>

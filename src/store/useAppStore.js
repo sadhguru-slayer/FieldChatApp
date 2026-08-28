@@ -75,7 +75,9 @@ export const useAppStore = create((set, get) => ({
   setActiveScreen: (activeScreen) =>
     set((state) => ({
       activeScreen,
-      mobileView: activeScreen !== "chat" ? "chat" : state.mobileView,
+      // Going to a secondary screen → show the screen (chat pane area)
+      // Going back to "chat" → always return to the conversation list on mobile
+      mobileView: activeScreen !== "chat" ? "chat" : "list",
     })),
 
   // dialogs & sheets

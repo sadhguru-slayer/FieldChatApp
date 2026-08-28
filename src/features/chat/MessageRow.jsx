@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 
 // ─── Delivery Ticks ──────────────────────────────────────────────────────────
 function Ticks({ delivered, read }) {
-  if (read) return <CheckCheck className="size-3 text-sky-400/80" />;
-  if (delivered) return <CheckCheck className="size-3 opacity-40" />;
-  return <Check className="size-3 opacity-40" />;
+  if (read) return <CheckCheck className="size-3 text-sky-400 opacity-90" />;
+  if (delivered) return <CheckCheck className="size-3 text-muted-foreground/60" />;
+  return <Check className="size-3 text-muted-foreground/60" />;
 }
 
 // ─── Reply Preview Bar ───────────────────────────────────────────────────────
@@ -26,16 +26,16 @@ function ReplyPreview({ replyTo, mine, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "mb-1.5 block w-full rounded-md border-l-[3px] px-2.5 py-1.5 text-left text-[11px] transition-opacity hover:opacity-80",
+        "mb-1.5 block w-full rounded-md border-l-2 px-2.5 py-1 text-left text-[11px] transition-opacity hover:opacity-85",
         mine
-          ? "border-white/50 bg-black/15 text-white/75"
-          : "border-[#5d8aa8] bg-white/5 text-white/70"
+          ? "border-primary-foreground/50 bg-black/10 text-primary-foreground/80"
+          : "border-accent bg-background/40 text-foreground/80"
       )}
     >
-      <span className={cn("block font-semibold text-[11px]", mine ? "text-white/90" : "text-[#5d8aa8]")}>
+      <span className={cn("block font-semibold text-[10.5px]", mine ? "text-primary-foreground/90" : "text-accent")}>
         {replyTo.senderName || "Unknown"}
       </span>
-      <span className="line-clamp-1 opacity-80">
+      <span className="line-clamp-1 opacity-75">
         {replyTo.isDeleted ? "Message unavailable" : replyTo.text}
       </span>
     </button>
@@ -49,14 +49,14 @@ function ReactionPill({ emoji, count, reactedByMe, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] transition-all active:scale-95",
+        "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all active:scale-95 shadow-2xs",
         reactedByMe
-          ? "border-[#5d8aa8]/50 bg-[#5d8aa8]/15 text-[#8ab4d0]"
-          : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10"
+          ? "border-accent/40 bg-accent/10 text-accent"
+          : "border-border/60 bg-elevated/80 text-muted-foreground hover:text-foreground hover:bg-elevated"
       )}
     >
       <span>{emoji}</span>
-      {count > 1 && <span className="tabular-nums">{count}</span>}
+      {count > 1 && <span className="tabular-nums font-mono text-[10px]">{count}</span>}
     </button>
   );
 }
@@ -64,11 +64,8 @@ function ReactionPill({ emoji, count, reactedByMe, onClick }) {
 // ─── System Message ───────────────────────────────────────────────────────────
 function SystemMessage({ text }) {
   return (
-    <div className="my-2 flex justify-center px-4">
-      <span
-        className="rounded-full px-3 py-1 text-[11px] text-white/40 select-none"
-        style={{ background: "rgba(255,255,255,0.05)" }}
-      >
+    <div className="my-2.5 flex justify-center px-4">
+      <span className="rounded-full bg-elevated/60 px-3.5 py-1 text-[11px] font-medium text-muted-foreground border border-border/40 select-none shadow-2xs">
         {text}
       </span>
     </div>
@@ -82,6 +79,8 @@ function MessageRowBase({
   isGroup,
   showAvatar,
   showName,
+  isActionActive,
+  onToggleAction,
   onReply,
   onOpenActions,
   onReact,
@@ -90,7 +89,6 @@ function MessageRowBase({
 }) {
   const pressTimer = useRef(null);
   const isLongPressRef = useRef(false);
-  const [showMobileActions, setShowMobileActions] = useState(false);
 
   // ── SYSTEM type — render as chip, no context menu ────────────────────────
   if (m.type === "SYSTEM") {
@@ -104,10 +102,7 @@ function MessageRowBase({
         id={`msg-${m.id}`}
         className={cn("flex px-4 py-0.5", mine ? "justify-end" : "justify-start")}
       >
-        <div
-          className="flex items-center gap-1.5 max-w-[70%] rounded-2xl px-3.5 py-1.5 text-[12px] italic select-none"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.3)" }}
-        >
+        <div className="flex items-center gap-1.5 max-w-[75%] rounded-2xl border border-dashed border-border/40 bg-surface/30 px-3.5 py-1.5 text-[11.5px] italic text-muted-foreground select-none">
           Message removed
         </div>
       </div>
@@ -127,19 +122,21 @@ function MessageRowBase({
   };
 
   const handleBubbleClick = (e) => {
+    e.stopPropagation();
     if (isLongPressRef.current) {
       isLongPressRef.current = false;
       return;
     }
-    // Single tap on mobile/touch toggles the 3-dots action button
-    setShowMobileActions((prev) => !prev);
+    if (onToggleAction) {
+      onToggleAction(m.id);
+    }
   };
 
   return (
     <div
       id={`msg-${m.id}`}
       className={cn(
-        "group/msg flex gap-2 px-3 py-px md:px-4",
+        "group/msg flex gap-2 px-3 py-0.5 md:px-4",
         mine ? "justify-end" : "justify-start"
       )}
       onDoubleClick={() => onReply(m)}
@@ -159,9 +156,9 @@ function MessageRowBase({
       )}
 
       {/* ── Bubble column ── */}
-      <div className={cn("flex max-w-[78%] flex-col md:max-w-[62%]", mine && "items-end")}>
+      <div className={cn("flex max-w-[80%] flex-col md:max-w-[65%]", mine && "items-end")}>
         {showName && !mine && isGroup && m.senderName && (
-          <span className="mb-0.5 ml-1 text-[11px] font-semibold text-teal-400">
+          <span className="mb-0.5 ml-1 text-[11px] font-semibold text-emerald-400">
             {m.senderName}
           </span>
         )}
@@ -172,10 +169,13 @@ function MessageRowBase({
             <button
               type="button"
               aria-label="Actions"
-              onClick={(e) => onOpenActions(m, e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenActions(m, e);
+              }}
               className={cn(
-                "size-6 place-items-center rounded-md text-white/30 transition-opacity hover:text-white/80",
-                showMobileActions ? "grid text-white/80 bg-white/10" : "hidden group-hover/msg:grid"
+                "size-6 place-items-center rounded-md text-muted-foreground/60 transition-all hover:text-foreground hover:bg-elevated",
+                isActionActive ? "grid text-foreground bg-elevated border border-border/40" : "hidden group-hover/msg:grid"
               )}
             >
               <span className="text-[11px] leading-none">···</span>
@@ -186,10 +186,11 @@ function MessageRowBase({
           <div
             onClick={handleBubbleClick}
             className={cn(
-              "relative rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed cursor-pointer select-none md:select-text",
+              "relative rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed cursor-pointer select-none md:select-text shadow-2xs transition-all duration-150",
               mine
-                ? "rounded-br-[4px] bg-[#2b5278] text-white"
-                : "rounded-bl-[4px] bg-[#182533] text-[#e3e3e3] border border-white/[0.06]"
+                ? "rounded-br-2xs bg-primary text-primary-foreground font-normal"
+                : "rounded-bl-2xs bg-elevated text-foreground border border-border/40 font-normal",
+              isActionActive && "ring-1 ring-accent/40 shadow-xs"
             )}
           >
             {m.replyTo && (
@@ -208,8 +209,8 @@ function MessageRowBase({
             {/* Inline meta — time + ticks */}
             <span
               className={cn(
-                "ml-2 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1",
-                mine ? "text-white/45" : "text-white/30"
+                "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono",
+                mine ? "text-primary-foreground/65" : "text-muted-foreground/75"
               )}
             >
               {m.edited && <span className="italic opacity-70">edited</span>}
@@ -224,10 +225,13 @@ function MessageRowBase({
             <button
               type="button"
               aria-label="Actions"
-              onClick={(e) => onOpenActions(m, e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenActions(m, e);
+              }}
               className={cn(
-                "size-6 place-items-center rounded-md text-white/30 transition-opacity hover:text-white/80",
-                showMobileActions ? "grid text-white/80 bg-white/10" : "hidden group-hover/msg:grid"
+                "size-6 place-items-center rounded-md text-muted-foreground/60 transition-all hover:text-foreground hover:bg-elevated",
+                isActionActive ? "grid text-foreground bg-elevated border border-border/40" : "hidden group-hover/msg:grid"
               )}
             >
               <span className="text-[11px] leading-none">···</span>
@@ -237,7 +241,7 @@ function MessageRowBase({
 
         {/* Reactions row */}
         {m.reactions?.length > 0 && (
-          <div className={cn("mt-1 flex flex-wrap gap-1", mine ? "justify-end mr-1" : "ml-1")}>
+          <div className={cn("mt-1 flex flex-wrap gap-1", mine ? "justify-end mr-0.5" : "ml-0.5")}>
             {m.reactions.map((r) => (
               <ReactionPill
                 key={r.emoji}
@@ -246,7 +250,10 @@ function MessageRowBase({
                 reactedByMe={r.reactedByMe}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (onOpenReactionsDetail) {
+                  if (r.reactedByMe) {
+                    // Direct tap on my own reaction removes it (WhatsApp style)
+                    onReact(m, r.emoji);
+                  } else if (onOpenReactionsDetail) {
                     onOpenReactionsDetail(m);
                   } else if (onReact) {
                     onReact(m, r.emoji);
