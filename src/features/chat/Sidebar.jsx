@@ -13,6 +13,7 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import { getConversations, getMe } from "@/services/api";
 import { formatListTime, formatLastSeen } from "@/lib/format";
+import { NotificationPopover } from "./NotificationPopover";
 import { cn } from "@/lib/utils";
 
 export function Sidebar({ onOpenSettings }) {
@@ -75,32 +76,35 @@ export function Sidebar({ onOpenSettings }) {
           </div>
         </button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label="User Options"
-              className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
-            >
-              <MoreVertical className="size-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 bg-surface border-border text-foreground shadow-lg">
-            <DropdownMenuItem onClick={() => setActiveScreen("profile")} className="gap-2 text-xs hover:bg-elevated cursor-pointer">
-              <User className="size-3.5 text-muted-foreground" /> Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setActiveScreen("settings")} className="gap-2 text-xs hover:bg-elevated cursor-pointer">
-              <Settings className="size-3.5 text-muted-foreground" /> Settings
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setActiveScreen("devices")} className="gap-2 text-xs hover:bg-elevated cursor-pointer">
-              <Laptop className="size-3.5 text-muted-foreground" /> Devices & Sessions
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-border/60" />
-            <DropdownMenuItem onClick={() => signOut()} className="gap-2 text-xs text-destructive hover:bg-destructive/10 cursor-pointer">
-              <LogOut className="size-3.5" /> Sign Out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <NotificationPopover />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="User Options"
+                className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+              >
+                <MoreVertical className="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-surface border-border text-foreground shadow-lg">
+              <DropdownMenuItem onClick={() => setActiveScreen("profile")} className="gap-2 text-xs hover:bg-elevated cursor-pointer">
+                <User className="size-3.5 text-muted-foreground" /> Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setActiveScreen("settings")} className="gap-2 text-xs hover:bg-elevated cursor-pointer">
+                <Settings className="size-3.5 text-muted-foreground" /> Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setActiveScreen("devices")} className="gap-2 text-xs hover:bg-elevated cursor-pointer">
+                <Laptop className="size-3.5 text-muted-foreground" /> Devices & Sessions
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-border/60" />
+              <DropdownMenuItem onClick={() => signOut()} className="gap-2 text-xs text-destructive hover:bg-destructive/10 cursor-pointer">
+                <LogOut className="size-3.5" /> Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* ── Search Bar ───────────────────────────────────────────────────── */}

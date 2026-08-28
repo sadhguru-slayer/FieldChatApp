@@ -1,0 +1,104 @@
+Frontend Notifications — Production Chat UX
+
+Implement the frontend notification experience using the existing notification backend/API and WebSocket events. Do not modify or redesign the backend.
+
+The current backend provides:
+
+GET /api/notifications — fetch notifications
+GET /api/notifications/unread-count — unread notification count
+PATCH /api/notifications/{notification_id}/read — mark one notification read
+POST /api/notifications/read-all — mark all notifications read
+Realtime WebSocket notification events with:
+id
+user_id
+type
+title
+body
+data
+is_read
+created_at
+
+Notification types are:
+
+MESSAGE
+MENTION
+REACTION
+SYSTEM
+ALERT
+
+Goal
+
+Make the notification UX feel like a modern production chat application, not a generic SaaS notification dashboard.
+
+Notifications should primarily help users discover activity such as:
+
+New DM
+New group message
+Mention
+Reaction
+Other system/alert events
+Important UX rules
+Use the existing realtime notification WebSocket instead of polling.
+Show new notifications immediately without requiring a refresh.
+Maintain the unread notification badge/count using the existing API.
+Clicking a chat-related notification should navigate to the relevant conversation/message using IDs available in notification.data.
+Do not make the notification center the source of truth for chat unread messages.
+Opening a conversation should continue to use the existing conversation/message read-state system.
+Marking a notification as read should not automatically mean the underlying chat message was read.
+read-all should only mark notifications as read; don't use it to fake conversation read state.
+Respect the existing notification types and backend permission/suppression behavior.
+Prevent duplicate notifications when realtime events arrive.
+Handle reconnects gracefully and resync notification state when necessary.
+UI
+
+Follow the existing application's design system and UI style.
+
+The notification UI should feel native to the rest of the chat application:
+
+Clean notification panel/popover
+Clear unread/read visual distinction
+Sender/avatar information where available
+Conversation context for message notifications
+Relative timestamps
+Appropriate icons for notification types
+Subtle, professional realtime notification/toast behavior
+Good loading, empty, and error states
+Responsive/mobile-friendly behavior
+No unnecessary SaaS-style tables, management controls, or overly complicated notification settings
+
+For chat notifications, prioritize:
+
+Avatar → sender/context → message preview → time
+
+
+rather than generic:
+
+Notification type → title → body → database actions
+
+Implementation
+
+First inspect the existing frontend architecture and find the current:
+
+WebSocket/realtime handling
+API client
+authentication
+state management
+conversation/message navigation
+design system/components
+
+Reuse those patterns instead of introducing duplicate infrastructure.
+
+Implement the notification UI and state management cleanly within the existing architecture.
+
+Finally, verify:
+
+Initial notification loading
+Unread count
+Realtime notifications
+Mark one as read
+Mark all as read
+Notification navigation
+Duplicate event prevention
+Reconnection behavior
+Mobile/responsive UI
+Consistency with the existing application's UI

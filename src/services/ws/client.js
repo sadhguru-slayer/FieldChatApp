@@ -1,7 +1,24 @@
 // Fieldchat WebSocket Client Service
 
-const BACKEND_URL = import.meta.env.BACKEND_API_URL || import.meta.env.VITE_API_URL || "http://localhost:8000";
-const WS_URL = BACKEND_URL.replace(/^http/, "ws");
+const getWsUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.BACKEND_API_URL;
+  let baseUrl = "";
+  if (envUrl) {
+    baseUrl = envUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
+    if (!/^https?:\/\//i.test(baseUrl) && !/^wss?:\/\//i.test(baseUrl)) {
+      baseUrl = "http://" + baseUrl;
+    }
+  } else if (typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+    baseUrl = `${protocol}//${window.location.hostname}:8000`;
+  } else {
+    baseUrl = "http://localhost:8000";
+  }
+  if (/^https/i.test(baseUrl)) {
+    return baseUrl.replace(/^https/i, "wss");
+  }
+  return baseUrl.replace(/^http/i, "ws");
+};
 
 class WebSocketClient {
   constructor() {
@@ -10,6 +27,7 @@ class WebSocketClient {
     this.reconnectTimer = null;
     this.isConnected = false;
     this.isConnecting = false;
+    this.pendingQueue = [];
   }
 
   connect() {
@@ -24,8 +42,9 @@ class WebSocketClient {
     }
 
     this.isConnecting = true;
-    const url = `${WS_URL}/ws?token=${encodeURIComponent(token)}`;
-    console.log("[WS] Connecting to", WS_URL);
+    const wsBaseUrl = getWsUrl();
+    const url = `${wsBaseUrl}/ws?token=${encodeURIComponent(token)}`;
+    console.log("[WS] Connecting to", url);
 
     this.ws = new WebSocket(url);
 
@@ -34,6 +53,16 @@ class WebSocketClient {
       this.isConnected = true;
       this.isConnecting = false;
       this.emit("open");
+
+      // Flush outgoing message queue automatically on connect
+      while (this.pendingQueue.length > 0) {
+        const queued = this.pendingQueue.shift();
+        try {
+          this.ws.send(JSON.stringify(queued));
+        } catch (err) {
+          console.error("[WS] Error sending queued message:", err);
+        }
+      }
     };
 
     this.ws.onmessage = (event) => {
@@ -85,6 +114,7 @@ class WebSocketClient {
     }
     this.isConnected = false;
     this.isConnecting = false;
+    this.pendingQueue = [];
   }
 
   send(data) {
@@ -92,7 +122,11 @@ class WebSocketClient {
       this.ws.send(JSON.stringify(data));
       return true;
     } else {
-      console.warn("[WS] Cannot send message: WebSocket is not open", data);
+      // Queue outgoing message/receipt so it is sent as soon as socket connects
+      this.pendingQueue.push(data);
+      if (!this.isConnected && !this.isConnecting) {
+        this.connect();
+      }
       return false;
     }
   }

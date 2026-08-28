@@ -1,10 +1,24 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
 import { wsClient } from "@/services/ws";
+import { Avatar } from "@/components/Avatar";
+import { markNotificationAsRead } from "@/services/api";
 
 export function useRealtimeSync(authed) {
   const queryClient = useQueryClient();
+
+  // Request native Web Notification permission on mount / authentication
+  useEffect(() => {
+    if (authed && typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission().catch((err) => {
+          console.warn("[Notifications] Permission request error:", err);
+        });
+      }
+    }
+  }, [authed]);
 
   useEffect(() => {
     if (!authed) {
@@ -17,6 +31,90 @@ export function useRealtimeSync(authed) {
     // Handle incoming real-time events from backend
     const unsub = wsClient.on("*", (payload) => {
       if (!payload || !payload.event) return;
+
+      if (payload.event === "notification" && payload.notification) {
+        const notif = payload.notification;
+        const activeId = useAppStore.getState().activeId;
+        const targetConvId = notif.data?.conversation_id;
+
+        // Do not treat every incoming message as a global notification if user is already viewing the conversation.
+        // Auto-resolve / mark as read on the backend immediately without adding to local cache.
+        if (notif.type === "MESSAGE" && targetConvId && String(activeId) === String(targetConvId)) {
+          markNotificationAsRead(notif.id).catch(() => {});
+          return;
+        }
+
+        // 1. Update notifications list query cache safely with duplicate prevention
+        queryClient.setQueryData(["notifications"], (old) => {
+          if (!Array.isArray(old)) return [notif];
+          const exists = old.some((n) => String(n.id) === String(notif.id));
+          if (exists) return old;
+          return [notif, ...old];
+        });
+
+        // 2. Increment unread count query cache
+        if (!notif.is_read) {
+          queryClient.setQueryData(["notifications", "unread-count"], (old) => {
+            const current = typeof old === "number" ? old : (old?.unread_count ?? 0);
+            return { unread_count: current + 1 };
+          });
+        }
+
+        // Trigger native HTML5 Desktop Notification
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          if (document.hidden || !targetConvId || String(activeId) !== String(targetConvId)) {
+            const nativeNotif = new Notification(notif.title, {
+              body: notif.body,
+              icon: notif.data?.avatar || undefined,
+              tag: notif.id,
+            });
+            nativeNotif.onclick = () => {
+              window.focus();
+              if (targetConvId) {
+                useAppStore.getState().setActiveId(targetConvId);
+                useAppStore.getState().setActiveScreen("chat");
+                useAppStore.getState().setMobileView("chat");
+              }
+            };
+          }
+        }
+
+        // 3. Toast pop-up if user is not currently viewing the active conversation
+        if (!targetConvId || String(activeId) !== String(targetConvId)) {
+          toast.custom((t) => (
+            <div
+              onClick={() => {
+                toast.dismiss(t);
+                if (targetConvId) {
+                  useAppStore.getState().setActiveId(targetConvId);
+                  useAppStore.getState().setActiveScreen("chat");
+                  useAppStore.getState().setMobileView("chat");
+                }
+              }}
+              className="flex items-center gap-3 w-full max-w-sm p-3 rounded-xl bg-surface border border-border/60 text-foreground shadow-xl cursor-pointer hover:bg-elevated transition-all"
+            >
+              <Avatar
+                src={notif.data?.avatar}
+                name={notif.data?.username || notif.title}
+                size="md"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1 mb-0.5">
+                  <span className="text-xs font-semibold text-foreground truncate">
+                    {notif.title}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    Just now
+                  </span>
+                </div>
+                <p className="text-[11.5px] text-muted-foreground/90 truncate">
+                  {notif.body}
+                </p>
+              </div>
+            </div>
+          ));
+        }
+      }
 
       if (payload.event === "presence" && payload.user_id !== undefined) {
         useAppStore.getState().setPresence(
@@ -229,7 +327,6 @@ export function useRealtimeSync(authed) {
     return () => {
       clearInterval(timer);
       unsub();
-      wsClient.disconnect();
     };
   }, [authed, queryClient]);
 }

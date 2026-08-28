@@ -5,4 +5,5 @@ export * from "./auth";
 export * from "./users";
 export * from "./chat";
 export * from "./messages";
+export * from "./notifications";
 export * from "./request";

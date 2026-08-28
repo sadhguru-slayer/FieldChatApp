@@ -17,6 +17,8 @@ import {
   reactToMessage,
   removeReaction,
   sendMessage,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
 } from "@/services/api";
 import { cn } from "@/lib/utils";
 
@@ -122,6 +124,7 @@ import {
   deleteMessageForEveryone as wsDeleteEveryone,
   deleteMessageForMe as wsDeleteMe,
   addReaction as wsAddReaction,
+  removeReaction as wsRemoveReaction,
   markDelivered,
   markRead,
 } from "@/services/ws";
@@ -180,6 +183,35 @@ export function ChatPane() {
       });
     }
   }, [activeId, msgData]);
+
+  // Resolve/mark associated message notifications as read when viewing this conversation
+  useEffect(() => {
+    if (activeId) {
+      const notifications = qc.getQueryData(["notifications"]);
+      if (Array.isArray(notifications)) {
+        let clearedAny = false;
+        const updatedList = notifications.map((n) => {
+          if (!n.is_read && n.type === "MESSAGE" && String(n.data?.conversation_id) === String(activeId)) {
+            markNotificationAsRead(n.id).catch(() => {});
+            clearedAny = true;
+            return { ...n, is_read: true };
+          }
+          return n;
+        });
+
+        if (clearedAny) {
+          qc.setQueryData(["notifications"], updatedList);
+          qc.setQueryData(["notifications", "unread-count"], (old) => {
+            const current = typeof old === "number" ? old : (old?.unread_count ?? 0);
+            const countToDecrement = notifications.filter(
+              (n) => !n.is_read && n.type === "MESSAGE" && String(n.data?.conversation_id) === String(activeId)
+            ).length;
+            return { unread_count: Math.max(0, current - countToDecrement) };
+          });
+        }
+      }
+    }
+  }, [activeId, msgData, qc]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const sendMut = useMutation({
@@ -324,8 +356,11 @@ export function ChatPane() {
       if (existingByMe && existingByMe.emoji === emoji) {
         // Toggling off existing reaction
         updateOptimisticReactions(msg.id, null);
-        removeReaction({ conversationId: activeId, messageId: msg.id })
-          .catch(() => qc.invalidateQueries({ queryKey: ["messages", activeId] }));
+        const sent = wsRemoveReaction(activeId, msg.id);
+        if (!sent) {
+          removeReaction({ conversationId: activeId, messageId: msg.id })
+            .catch(() => qc.invalidateQueries({ queryKey: ["messages", activeId] }));
+        }
       } else {
         // Adding or replacing reaction with new emoji
         updateOptimisticReactions(msg.id, emoji);
@@ -333,8 +368,11 @@ export function ChatPane() {
       }
     } else if (action === "remove-reaction") {
       updateOptimisticReactions(msg.id, null);
-      removeReaction({ conversationId: activeId, messageId: msg.id })
-        .catch(() => qc.invalidateQueries({ queryKey: ["messages", activeId] }));
+      const sent = wsRemoveReaction(activeId, msg.id);
+      if (!sent) {
+        removeReaction({ conversationId: activeId, messageId: msg.id })
+          .catch(() => qc.invalidateQueries({ queryKey: ["messages", activeId] }));
+      }
     }
   };
 
