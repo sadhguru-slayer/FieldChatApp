@@ -12,10 +12,10 @@ import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // ─── Delivery Ticks ──────────────────────────────────────────────────────────
-function Ticks({ delivered, read }) {
-  if (read) return <CheckCheck className="size-3 text-sky-400 opacity-90" />;
-  if (delivered) return <CheckCheck className="size-3 text-muted-foreground/60" />;
-  return <Check className="size-3 text-muted-foreground/60" />;
+function Ticks({ delivered, read, mine }) {
+  if (read) return <CheckCheck className="size-3.5 text-sky-300 drop-shadow-2xs font-bold shrink-0" />;
+  if (delivered) return <CheckCheck className="size-3.5 text-white/85 shrink-0" />;
+  return <Check className="size-3.5 text-white/85 shrink-0" />;
 }
 
 // ─── Reply Preview Bar ───────────────────────────────────────────────────────
@@ -26,16 +26,16 @@ function ReplyPreview({ replyTo, mine, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "mb-1.5 block w-full rounded-md border-l-2 px-2.5 py-1 text-left text-[11px] transition-opacity hover:opacity-85",
+        "mb-1.5 block w-full rounded-lg border-l-2 px-2.5 py-1 text-left text-[11px] transition-opacity hover:opacity-85",
         mine
-          ? "border-primary-foreground/50 bg-black/10 text-primary-foreground/80"
-          : "border-accent bg-background/40 text-foreground/80"
+          ? "border-white/60 bg-black/20 text-white/90"
+          : "border-accent bg-background/50 text-foreground/80"
       )}
     >
-      <span className={cn("block font-semibold text-[10.5px]", mine ? "text-primary-foreground/90" : "text-accent")}>
+      <span className={cn("block font-semibold text-[10.5px]", mine ? "text-white" : "text-accent")}>
         {replyTo.senderName || "Unknown"}
       </span>
-      <span className="line-clamp-1 opacity-75">
+      <span className="line-clamp-1 opacity-80">
         {replyTo.isDeleted ? "Message unavailable" : replyTo.text}
       </span>
     </button>
@@ -188,9 +188,9 @@ function MessageRowBase({
             className={cn(
               "relative rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed cursor-pointer select-none md:select-text shadow-2xs transition-all duration-150",
               mine
-                ? "rounded-br-2xs bg-primary text-primary-foreground font-normal"
-                : "rounded-bl-2xs bg-elevated text-foreground border border-border/40 font-normal",
-              isActionActive && "ring-1 ring-accent/40 shadow-xs"
+                ? "rounded-br-2xs bg-accent text-accent-foreground shadow-xs shadow-accent/20 font-normal"
+                : "rounded-bl-2xs bg-elevated/90 text-foreground border border-border/50 font-normal",
+              isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
             )}
           >
             {m.replyTo && (
@@ -210,12 +210,12 @@ function MessageRowBase({
             <span
               className={cn(
                 "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono",
-                mine ? "text-primary-foreground/65" : "text-muted-foreground/75"
+                mine ? "text-accent-foreground/80 font-medium" : "text-muted-foreground/75"
               )}
             >
               {m.edited && <span className="italic opacity-70">edited</span>}
               {formatTime(m.createdAt)}
-              {mine && <Ticks delivered={m.delivered} read={m.read} />}
+              {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} />}
             </span>
             <span className="block clear-both h-0" />
           </div>

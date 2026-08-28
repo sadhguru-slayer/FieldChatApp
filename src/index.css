@@ -71,8 +71,8 @@
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.12);
   --ring: rgba(99, 102, 241, 0.4);
-  --bubble-out: #fafafa;       /* My messages in dark mode */
-  --bubble-out-foreground: #09090b;
+  --bubble-out: #6366f1;       /* Indigo accent outgoing bubble */
+  --bubble-out-foreground: #ffffff;
   --bubble-in: #222226;        /* Incoming messages in dark mode */
   --bubble-in-foreground: #f4f4f5;
   --sidebar: #0c0c0e;          /* Deep dark sidebar */
@@ -104,7 +104,7 @@
   --border: rgba(0, 0, 0, 0.08);
   --input: rgba(0, 0, 0, 0.12);
   --ring: rgba(79, 70, 229, 0.4);
-  --bubble-out: #18181b;
+  --bubble-out: #4f46e5;
   --bubble-out-foreground: #ffffff;
   --bubble-in: #f4f4f5;
   --bubble-in-foreground: #09090b;
