@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Paperclip, SendHorizonal, Smile } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,7 @@ const EMOJIS = [
 import { sendTyping } from "@/services/ws";
 
 export function Composer({ onSend, onEdit, disabled }) {
+  const queryClient = useQueryClient();
   const activeId = useAppStore((s) => s.activeId);
   const reply = useAppStore((s) => s.reply);
   const setReply = useAppStore((s) => s.setReply);
@@ -59,6 +61,18 @@ export function Composer({ onSend, onEdit, disabled }) {
     if (editing) {
       onEdit(editing, value);
     } else {
+      // Optimistic instant sound cues on enter/send click
+      const settings = queryClient.getQueryData(["settings"]);
+      const soundEnabled = settings?.sound_enabled ?? true;
+      if (soundEnabled) {
+        try {
+          const audio = new Audio("/pop.mp3");
+          audio.volume = 0.4;
+          audio.play().catch((err) => console.debug("[Audio] Play prevented:", err));
+        } catch (err) {
+          console.warn("[Audio] Error playing pop sound:", err);
+        }
+      }
       onSend(value, reply?.id ?? null);
     }
     setText("");

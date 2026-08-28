@@ -195,6 +195,9 @@ export function useRealtimeSync(authed) {
       }
 
       if (payload.event === "typing" && payload.conversation_id && payload.sender_id) {
+        const me = queryClient.getQueryData(["me"]);
+        if (me && String(payload.sender_id) === String(me.id)) return;
+
         useAppStore.getState().setTypingUser(
           String(payload.conversation_id),
           String(payload.sender_id),
@@ -210,7 +213,9 @@ export function useRealtimeSync(authed) {
         const meId = me?.id;
 
         if (payload.event === "message.created" && convId === String(activeId)) {
-          playPopSound(queryClient);
+          if (payload.sender_id !== meId) {
+            playPopSound(queryClient);
+          }
         }
 
         // 1. Update conversations list
