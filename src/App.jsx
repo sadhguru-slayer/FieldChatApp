@@ -201,10 +201,14 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ChatApp />
       <Toaster
-        position="top-center"
-        richColors
+        position="top-right"
+        theme="dark"
         toastOptions={{
-          style: { background: "#1c2633", border: "1px solid rgba(255,255,255,0.08)", color: "#e3e3e3" },
+          classNames: {
+            toast: "bg-zinc-900 border border-zinc-800 text-zinc-100 font-sans shadow-xl rounded-2xl",
+            title: "text-xs font-semibold text-zinc-100",
+            description: "text-xs text-zinc-400",
+          },
         }}
       />
     </QueryClientProvider>

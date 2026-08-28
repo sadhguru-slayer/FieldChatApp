@@ -22,7 +22,8 @@ export function CreateDmDialog() {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
       toast.success("Direct Message created");
-      if (res?.conversation_id) setActiveId(String(res.conversation_id));
+      const targetId = res?.conversation_id || res?.dm_id || res?.id;
+      if (targetId) setActiveId(String(targetId));
       setOpen(false);
     },
     onError: (err) => {

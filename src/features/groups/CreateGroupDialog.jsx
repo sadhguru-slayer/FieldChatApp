@@ -30,7 +30,8 @@ export function CreateGroupDialog() {
     onSuccess: (newConv) => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
       toast.success("Group created successfully!");
-      setActiveId(newConv.id);
+      const groupId = newConv?.id || newConv?.conversation_id;
+      if (groupId) setActiveId(String(groupId));
       setOpen(false);
       setName("");
       setDescription("");

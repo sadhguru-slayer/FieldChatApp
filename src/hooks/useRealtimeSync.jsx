@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { UserPlus, UserMinus, MessageSquare, Bell, X } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { wsClient } from "@/services/ws";
 import { Avatar } from "@/components/Avatar";
 import { markNotificationAsRead } from "@/services/api";
+import { cn } from "@/lib/utils";
 
 let lastPopPlayedAt = 0;
 
@@ -80,6 +82,9 @@ export function useRealtimeSync(authed) {
         const activeId = useAppStore.getState().activeId;
         const targetConvId = notif.data?.conversation_id;
 
+        // Invalidate conversations list immediately so new DMs / groups appear instantly
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+
         // Do not treat every incoming message as a global notification if user is already viewing the conversation.
         // Auto-resolve / mark as read on the backend immediately without adding to local cache.
         if (notif.type === "MESSAGE" && targetConvId && String(activeId) === String(targetConvId)) {
@@ -151,38 +156,76 @@ export function useRealtimeSync(authed) {
 
         // 3. Toast pop-up if user is not currently viewing the active conversation
         if (!targetConvId || String(activeId) !== String(targetConvId)) {
-          toast.custom((t) => (
-            <div
-              onClick={() => {
-                toast.dismiss(t);
-                if (targetConvId) {
-                  useAppStore.getState().setActiveId(targetConvId);
-                  useAppStore.getState().setActiveScreen("chat");
-                  useAppStore.getState().setMobileView("chat");
-                }
-              }}
-              className="flex items-center gap-3 w-full max-w-sm p-3 rounded-xl bg-surface border border-border/60 text-foreground shadow-xl cursor-pointer hover:bg-elevated transition-all"
-            >
-              <Avatar
-                src={notif.data?.avatar}
-                name={notif.data?.username || notif.title}
-                size="md"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1 mb-0.5">
-                  <span className="text-xs font-semibold text-foreground truncate">
-                    {notif.title}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
-                    Just now
-                  </span>
+          toast.custom((t) => {
+            const action = notif.data?.action;
+            const isAdded = action === "ADDED_TO_GROUP";
+            const isRemoved = action === "REMOVED_FROM_GROUP";
+
+            return (
+              <div
+                onClick={() => {
+                  toast.dismiss(t);
+                  if (targetConvId) {
+                    useAppStore.getState().setActiveId(targetConvId);
+                    useAppStore.getState().setActiveScreen("chat");
+                    useAppStore.getState().setMobileView("chat");
+                  }
+                }}
+                className="group relative flex items-center gap-3 w-full max-w-sm p-3.5 rounded-2xl bg-zinc-900/95 border border-zinc-800/90 shadow-2xl backdrop-blur-xl text-foreground cursor-pointer hover:bg-zinc-800/80 transition-all duration-200 select-none ring-1 ring-white/5"
+              >
+                <div className="relative shrink-0">
+                  <Avatar
+                    src={notif.data?.avatar}
+                    name={notif.data?.username || notif.title}
+                    size="md"
+                  />
+                  <div
+                    className={cn(
+                      "absolute -bottom-1 -right-1 grid size-4.5 place-items-center rounded-full border border-zinc-900 text-[9px] shadow-xs",
+                      isAdded
+                        ? "bg-emerald-500 text-zinc-950 font-bold"
+                        : isRemoved
+                        ? "bg-rose-500 text-white"
+                        : "bg-indigo-500 text-white"
+                    )}
+                  >
+                    {isAdded ? (
+                      <UserPlus className="size-2.5" />
+                    ) : isRemoved ? (
+                      <UserMinus className="size-2.5" />
+                    ) : (
+                      <MessageSquare className="size-2.5" />
+                    )}
+                  </div>
                 </div>
-                <p className="text-[11.5px] text-muted-foreground/90 truncate">
-                  {notif.body}
-                </p>
+
+                <div className="min-w-0 flex-1 pr-3">
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <span className="text-xs font-semibold text-zinc-100 truncate tracking-tight">
+                      {notif.title}
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-medium shrink-0">
+                      Just now
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] text-zinc-300/90 font-normal truncate leading-snug">
+                    {notif.body}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toast.dismiss(t);
+                  }}
+                  className="absolute top-2.5 right-2.5 grid size-5 place-items-center rounded-full text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
+                >
+                  <X className="size-3" />
+                </button>
               </div>
-            </div>
-          ));
+            );
+          }, { unstyled: true });
         }
       }
 
@@ -221,6 +264,13 @@ export function useRealtimeSync(authed) {
         // 1. Update conversations list
         queryClient.setQueryData(["conversations"], (old) => {
           if (!Array.isArray(old)) return old;
+
+          const exists = old.some((conv) => String(conv.id) === convId);
+          if (!exists) {
+            // New conversation / DM received! Refetch conversations immediately so it appears at top of sidebar
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            return old;
+          }
 
           const nextList = old.map((conv) => {
             if (String(conv.id) !== convId) return conv;
@@ -263,12 +313,15 @@ export function useRealtimeSync(authed) {
             };
           });
 
-          // Sort conversations so the one with the newest message rises to the top
-          return [...nextList].sort((a, b) => {
-            const aTime = a.lastMessage?.createdAt || a.updatedAt || 0;
-            const bTime = b.lastMessage?.createdAt || b.updatedAt || 0;
-            return new Date(bTime) - new Date(aTime);
-          });
+          // Helper to get time ms
+          const getTimeMs = (c) => {
+            const t = c.lastMessage?.createdAt || c.updatedAt;
+            if (!t) return 0;
+            return typeof t === "number" ? t : (new Date(t).getTime() || 0);
+          };
+
+          // Sort conversations so the one with the newest message immediately rises to top of sidebar
+          return [...nextList].sort((a, b) => getTimeMs(b) - getTimeMs(a));
         });
 
         // 2. Update message history list for active conversation
