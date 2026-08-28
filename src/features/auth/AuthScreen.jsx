@@ -28,7 +28,7 @@ export function AuthScreen() {
         await registerUser({ email, password });
         toast.success("Account created successfully! Logging you in...");
       }
-      
+
       const tokens = await loginWithPassword({ email, password });
       signIn(tokens);
       toast.success("Welcome back to Fieldchat");
@@ -65,22 +65,20 @@ export function AuthScreen() {
             <button
               type="button"
               onClick={() => setMode("login")}
-              className={`rounded-md py-1.5 text-xs font-medium transition-all ${
-                mode === "login"
+              className={`rounded-md py-1.5 text-xs font-medium transition-all ${mode === "login"
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               Sign In
             </button>
             <button
               type="button"
               onClick={() => setMode("register")}
-              className={`rounded-md py-1.5 text-xs font-medium transition-all ${
-                mode === "register"
+              className={`rounded-md py-1.5 text-xs font-medium transition-all ${mode === "register"
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               Register
             </button>
@@ -125,13 +123,12 @@ export function AuthScreen() {
                     {[1, 2, 3, 4].map((level) => (
                       <div
                         key={level}
-                        className={`h-full flex-1 rounded-full transition-all ${
-                          score >= level
+                        className={`h-full flex-1 rounded-full transition-all ${score >= level
                             ? score >= 3
                               ? "bg-success"
                               : "bg-amber-500"
                             : "bg-muted"
-                        }`}
+                          }`}
                       />
                     ))}
                   </div>
