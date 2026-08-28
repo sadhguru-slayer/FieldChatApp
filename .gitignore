@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 .env
-
+process_logo.py
 
 # Editor directories and files
 .vscode/*
