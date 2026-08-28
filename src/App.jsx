@@ -34,15 +34,77 @@ function ChatApp() {
   const panel = useAppStore((s) => s.panel);
   const mobileView = useAppStore((s) => s.mobileView);
   const activeScreen = useAppStore((s) => s.activeScreen);
+  const activeId = useAppStore((s) => s.activeId);
   const setActiveScreen = useAppStore((s) => s.setActiveScreen);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
+  // Mobile browser navigation stack/back-button integration
   useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+    if (typeof window === "undefined" || !authed) return;
+
+    // 1. Initialize the root history state if not already set
+    if (!window.history.state || !window.history.state.fieldchat) {
+      window.history.replaceState(
+        {
+          fieldchat: true,
+          activeScreen: "chat",
+          activeId: null,
+          mobileView: "list",
+          panel: null,
+        },
+        ""
+      );
+    }
+
+    // 2. Listen to popstate event (e.g. back gesture or browser back button)
+    const handlePopState = (event) => {
+      const state = event.state;
+      if (state && state.fieldchat) {
+        useAppStore.setState({
+          activeScreen: state.activeScreen,
+          activeId: state.activeId,
+          mobileView: state.mobileView,
+          panel: state.panel,
+        });
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [authed]);
+
+  // 3. React to state changes from store and push to history stack
+  useEffect(() => {
+    if (typeof window === "undefined" || !authed) return;
+
+    const currentHistoryState = window.history.state;
+
+    // Check if the current store state is different from what's in history
+    const isDifferent =
+      !currentHistoryState ||
+      currentHistoryState.activeScreen !== activeScreen ||
+      currentHistoryState.activeId !== activeId ||
+      currentHistoryState.mobileView !== mobileView ||
+      currentHistoryState.panel !== panel;
+
+    if (isDifferent) {
+      window.history.pushState(
+        {
+          fieldchat: true,
+          activeScreen,
+          activeId,
+          mobileView,
+          panel,
+        },
+        ""
+      );
+    }
+  }, [activeScreen, activeId, mobileView, panel, authed]);
 
   useRealtimeSync(authed);
 
