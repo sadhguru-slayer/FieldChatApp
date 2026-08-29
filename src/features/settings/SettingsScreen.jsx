@@ -51,15 +51,17 @@ export function SettingsScreen({ onClose }) {
 
   const updateProfileMut = useMutation({
     mutationFn: () => updateMe({ name, bio }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["me"] });
+    onSuccess: (data) => {
+      qc.setQueryData(["me"], (old) => ({ ...old, ...(data || {}), name, bio }));
       toast.success("Profile updated");
     },
   });
 
   const updateSettingsMut = useMutation({
     mutationFn: (patch) => updateSettings(patch),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["settings"] }),
+    onSuccess: (data, patch) => {
+      qc.setQueryData(["settings"], (old) => ({ ...old, ...(data || {}), ...patch }));
+    },
     onError: () => toast.error("Failed to update setting"),
   });
 

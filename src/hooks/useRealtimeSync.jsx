@@ -82,9 +82,6 @@ export function useRealtimeSync(authed) {
         const activeId = useAppStore.getState().activeId;
         const targetConvId = notif.data?.conversation_id;
 
-        // Invalidate conversations list immediately so new DMs / groups appear instantly
-        queryClient.invalidateQueries({ queryKey: ["conversations"] });
-
         // Do not treat every incoming message as a global notification if user is already viewing the conversation.
         // Auto-resolve / mark as read on the backend immediately without adding to local cache.
         if (notif.type === "MESSAGE" && targetConvId && String(activeId) === String(targetConvId)) {
@@ -248,6 +245,28 @@ export function useRealtimeSync(authed) {
         );
       }
 
+      if (payload.event === "user.updated" && payload.user) {
+        const updatedUser = payload.user;
+        queryClient.setQueryData(["me"], (old) => {
+          if (!old || String(old.id) !== String(updatedUser.id)) return old;
+          return { ...old, ...updatedUser };
+        });
+        queryClient.setQueryData(["users"], (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((u) => (String(u.id) === String(updatedUser.id) ? { ...u, ...updatedUser } : u));
+        });
+      }
+
+      if (payload.event === "conversation.created" && payload.conversation) {
+        const newConv = payload.conversation;
+        queryClient.setQueryData(["conversations"], (old) => {
+          if (!Array.isArray(old)) return [newConv];
+          const exists = old.some((c) => String(c.id) === String(newConv.id));
+          if (exists) return old.map((c) => (String(c.id) === String(newConv.id) ? { ...c, ...newConv } : c));
+          return [newConv, ...old];
+        });
+      }
+
       // Update conversations and messages list in-memory on message events
       if (payload.event.startsWith("message.")) {
         const convId = String(payload.conversation_id);
@@ -255,8 +274,20 @@ export function useRealtimeSync(authed) {
         const me = queryClient.getQueryData(["me"]);
         const meId = me?.id;
 
-        if (payload.event === "message.created" && convId === String(activeId)) {
-          if (payload.sender_id !== meId) {
+        if (payload.event === "message.created" && payload.sender_id !== meId) {
+          // Immediately mark as delivered if we are connected to WS
+          wsClient.send({
+            event: "message.delivered",
+            conversation_id: payload.conversation_id,
+            message_id: payload.message_id,
+          });
+
+          if (convId === String(activeId)) {
+            wsClient.send({
+              event: "message.read",
+              conversation_id: payload.conversation_id,
+              message_id: payload.message_id,
+            });
             playPopSound(queryClient);
           }
         }
@@ -266,10 +297,30 @@ export function useRealtimeSync(authed) {
           if (!Array.isArray(old)) return old;
 
           const exists = old.some((conv) => String(conv.id) === convId);
+          const isMe = payload.sender_id && meId && String(payload.sender_id) === String(meId);
+          const senderDisplayName = isMe ? "You" : (payload.display_name || payload.username || payload.sender || "Someone");
+
           if (!exists) {
-            // New conversation / DM received! Refetch conversations immediately so it appears at top of sidebar
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
-            return old;
+            const newConv = {
+              id: convId,
+              title: payload.group_name || payload.conversation_title || payload.display_name || payload.username || "Chat",
+              type: payload.conversation_type || (payload.group_name ? "group" : "dm"),
+              otherUserId: isMe ? null : payload.sender_id,
+              avatar: payload.avatar || null,
+              unread: (!isMe && String(activeId) !== convId) ? 1 : 0,
+              updatedAt: payload.timestamp ? (new Date(payload.timestamp).getTime() || Date.now()) : Date.now(),
+              lastMessage: payload.event === "message.created" ? {
+                id: String(payload.message_id || ""),
+                senderId: payload.sender_id,
+                senderName: senderDisplayName,
+                display_name: payload.display_name,
+                username: payload.username,
+                text: payload.message || "",
+                deletedForEveryone: false,
+                createdAt: payload.timestamp,
+              } : null,
+            };
+            return [newConv, ...old];
           }
 
           const nextList = old.map((conv) => {
@@ -280,12 +331,16 @@ export function useRealtimeSync(authed) {
 
             if (payload.event === "message.created") {
               lastMessage = {
+                id: String(payload.message_id || ""),
+                senderId: payload.sender_id,
+                senderName: senderDisplayName,
+                display_name: payload.display_name,
+                username: payload.username,
                 text: payload.message || "",
-                senderName: payload.username,
                 deletedForEveryone: false,
                 createdAt: payload.timestamp,
               };
-              if (payload.sender_id !== meId && String(activeId) !== convId) {
+              if (!isMe && String(activeId) !== convId) {
                 unread += 1;
               }
             } else if (payload.event === "message.deleted_for_everyone") {
@@ -301,15 +356,18 @@ export function useRealtimeSync(authed) {
                 lastMessage = {
                   ...lastMessage,
                   text: payload.message || "",
+                  senderName: senderDisplayName,
                 };
               }
             }
+
+            const ts = payload.timestamp ? (new Date(payload.timestamp).getTime() || Date.now()) : conv.updatedAt;
 
             return {
               ...conv,
               lastMessage,
               unread,
-              updatedAt: payload.timestamp || conv.updatedAt,
+              updatedAt: ts,
             };
           });
 
@@ -326,127 +384,137 @@ export function useRealtimeSync(authed) {
 
         // 2. Update message history list for active conversation
         queryClient.setQueryData(["messages", convId], (old) => {
-          if (!old || !Array.isArray(old.items)) return old;
+          if (!old || !old.pages) return old;
 
-          const items = [...old.items];
           const msgId = payload.message_id;
-          const existingIdx = items.findIndex((item) => String(item.id) === String(msgId));
+          let found = false;
 
-          if (payload.event === "message.created") {
-            if (existingIdx === -1) {
+          const pages = old.pages.map((page, pageIndex) => {
+            let items = [...page.items];
+            const existingIdx = items.findIndex((item) => String(item.id) === String(msgId));
+            
+            if (existingIdx !== -1) {
+              found = true;
+              const isMine = payload.sender_id && meId && String(payload.sender_id) === String(meId);
+              const msgSenderName = isMine ? "You" : (payload.display_name || payload.username || payload.sender || "Someone");
+
+              if (payload.event === "message.edited") {
+                items[existingIdx] = {
+                  ...items[existingIdx],
+                  text: payload.message || "",
+                  edited: true,
+                  editedAt: payload.edited_at,
+                };
+              } else if (payload.event === "message.deleted_for_everyone") {
+                items[existingIdx] = {
+                  ...items[existingIdx],
+                  text: "",
+                  deletedForEveryone: true,
+                };
+              } else if (payload.event === "message.deleted_for_me") {
+                items.splice(existingIdx, 1);
+              } else if (payload.event === "message.delivered") {
+                const conv = queryClient.getQueryData(["conversations"])?.find((c) => String(c.id) === convId);
+                if (conv?.type !== "group") {
+                  items[existingIdx] = {
+                    ...items[existingIdx],
+                    delivered: true,
+                  };
+                }
+              } else if (payload.event === "message.read") {
+                const conv = queryClient.getQueryData(["conversations"])?.find((c) => String(c.id) === convId);
+                if (conv?.type !== "group") {
+                  items[existingIdx] = {
+                    ...items[existingIdx],
+                    delivered: true,
+                    read: true,
+                  };
+                }
+              } else if (payload.event === "message.reaction_added") {
+                const msg = items[existingIdx];
+                const reactions = [...(msg.reactions || [])];
+                const emoji = payload.reaction;
+                const user_id = payload.user_id;
+                const isMe = user_id === meId;
+
+                const reactIdx = reactions.findIndex((r) => r.emoji === emoji);
+                if (reactIdx !== -1) {
+                  reactions[reactIdx] = {
+                    ...reactions[reactIdx],
+                    count: reactions[reactIdx].count + 1,
+                    reactedByMe: reactions[reactIdx].reactedByMe || isMe,
+                  };
+                } else {
+                  reactions.push({
+                    emoji: emoji,
+                    count: 1,
+                    reactedByMe: isMe,
+                  });
+                }
+                items[existingIdx] = { ...msg, reactions };
+              } else if (payload.event === "message.reaction_removed") {
+                const msg = items[existingIdx];
+                const reactions = [...(msg.reactions || [])];
+                const emoji = payload.reaction;
+                const user_id = payload.user_id;
+                const isMe = user_id === meId;
+
+                const reactIdx = reactions.findIndex((r) => r.emoji === emoji);
+                if (reactIdx !== -1) {
+                  const count = reactions[reactIdx].count - 1;
+                  const reactedByMe = isMe ? false : reactions[reactIdx].reactedByMe;
+                  if (count > 0) {
+                    reactions[reactIdx] = {
+                      ...reactions[reactIdx],
+                      count,
+                      reactedByMe,
+                    };
+                  } else {
+                    reactions.splice(reactIdx, 1);
+                  }
+                }
+                items[existingIdx] = { ...msg, reactions };
+              }
+            }
+
+            // Only add new message if it's the first page
+            if (payload.event === "message.created" && pageIndex === 0 && !found) {
+              const isMine = payload.sender_id && meId && String(payload.sender_id) === String(meId);
+              const msgSenderName = isMine ? "You" : (payload.display_name || payload.username || payload.sender || "Someone");
+              
               const newMsg = {
                 id: msgId,
                 senderId: payload.sender_id,
-                senderName: payload.username,
+                senderName: msgSenderName,
+                display_name: payload.display_name,
+                username: payload.username,
                 text: payload.message || "",
                 createdAt: payload.timestamp,
                 editedAt: null,
                 edited: false,
                 type: "CHAT",
-                isMine: payload.sender_id === meId,
+                isMine,
                 delivered: true,
                 read: false,
                 deletedForEveryone: false,
                 replyTo: payload.reply_to ? {
                   id: payload.reply_to.message_id,
                   senderId: payload.reply_to.sender_id,
-                  senderName: payload.reply_to.username,
+                  senderName: payload.reply_to.display_name || payload.reply_to.username,
                   text: payload.reply_to.message,
                   isDeleted: payload.reply_to.is_deleted || false,
                 } : null,
                 reactions: [],
               };
-              items.push(newMsg);
+              items.unshift(newMsg);
+              found = true;
             }
-          } else if (payload.event === "message.edited") {
-            if (existingIdx !== -1) {
-              items[existingIdx] = {
-                ...items[existingIdx],
-                text: payload.message || "",
-                edited: true,
-                editedAt: payload.edited_at,
-              };
-            }
-          } else if (payload.event === "message.deleted_for_everyone") {
-            if (existingIdx !== -1) {
-              items[existingIdx] = {
-                ...items[existingIdx],
-                text: "",
-                deletedForEveryone: true,
-              };
-            }
-          } else if (payload.event === "message.deleted_for_me") {
-            if (existingIdx !== -1) {
-              items.splice(existingIdx, 1);
-            }
-          } else if (payload.event === "message.delivered") {
-            if (existingIdx !== -1) {
-              items[existingIdx] = {
-                ...items[existingIdx],
-                delivered: true,
-              };
-            }
-          } else if (payload.event === "message.read") {
-            if (existingIdx !== -1) {
-              items[existingIdx] = {
-                ...items[existingIdx],
-                delivered: true,
-                read: true,
-              };
-            }
-          } else if (payload.event === "message.reaction_added") {
-            if (existingIdx !== -1) {
-              const msg = items[existingIdx];
-              const reactions = [...(msg.reactions || [])];
-              const emoji = payload.reaction;
-              const user_id = payload.user_id;
-              const isMe = user_id === meId;
 
-              const reactIdx = reactions.findIndex((r) => r.emoji === emoji);
-              if (reactIdx !== -1) {
-                reactions[reactIdx] = {
-                  ...reactions[reactIdx],
-                  count: reactions[reactIdx].count + 1,
-                  reactedByMe: reactions[reactIdx].reactedByMe || isMe,
-                };
-              } else {
-                reactions.push({
-                  emoji: emoji,
-                  count: 1,
-                  reactedByMe: isMe,
-                });
-              }
-              items[existingIdx] = { ...msg, reactions };
-            }
-          } else if (payload.event === "message.reaction_removed") {
-            if (existingIdx !== -1) {
-              const msg = items[existingIdx];
-              const reactions = [...(msg.reactions || [])];
-              const emoji = payload.reaction;
-              const user_id = payload.user_id;
-              const isMe = user_id === meId;
-
-              const reactIdx = reactions.findIndex((r) => r.emoji === emoji);
-              if (reactIdx !== -1) {
-                const count = reactions[reactIdx].count - 1;
-                const reactedByMe = isMe ? false : reactions[reactIdx].reactedByMe;
-                if (count > 0) {
-                  reactions[reactIdx] = {
-                    ...reactions[reactIdx],
-                    count,
-                    reactedByMe,
-                  };
-                } else {
-                  reactions.splice(reactIdx, 1);
-                }
-              }
-              items[existingIdx] = { ...msg, reactions };
-            }
-          }
-
+            return { ...page, items };
+          });
           return {
             ...old,
-            items,
+            pages,
           };
         });
       }

@@ -17,14 +17,14 @@ export function useNotifications() {
   const notificationsQuery = useQuery({
     queryKey: ["notifications"],
     queryFn: () => getNotifications({ limit: 50 }),
-    staleTime: 10000,
+    staleTime: Infinity,
   });
 
   // Fetch unread notification count
   const unreadCountQuery = useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: getUnreadNotificationCount,
-    staleTime: 10000,
+    staleTime: Infinity,
     select: (data) => data?.unread_count ?? 0,
   });
 
@@ -47,10 +47,6 @@ export function useNotifications() {
         return { unread_count: Math.max(0, currentCount - 1) };
       });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
-    },
   });
 
   // Mutation to mark all notifications as read
@@ -67,10 +63,6 @@ export function useNotifications() {
       queryClient.setQueryData(["notifications", "unread-count"], () => ({
         unread_count: 0,
       }));
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
     },
   });
 

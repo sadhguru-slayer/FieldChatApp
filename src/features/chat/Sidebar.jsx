@@ -36,7 +36,7 @@ export function Sidebar({ onOpenSettings }) {
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ["conversations"],
     queryFn: getConversations,
-    staleTime: 15000,
+    staleTime: Infinity,
   });
 
   const filtered = conversations.filter((c) => {
@@ -237,17 +237,22 @@ export function Sidebar({ onOpenSettings }) {
                         <span className="text-[10.5px] text-muted-foreground/70">
                           {lastSeenText}
                         </span>
-                      ) : lastMsg
-                        ? lastMsg.deletedForEveryone
-                          ? "🚫 Message removed"
-                          : lastMsg.display_name && c.type === "group"
-                            ? `${lastMsg.display_name}: ${lastMsg.text}`
-                            : lastMsg.senderName && c.type === "group"
-                              ? `${lastMsg.senderName}: ${lastMsg.text}`
-                              : lastMsg.text || "New conversation"
-                        : c.type === "group"
-                          ? "Group created"
-                          : "Say hello!"}
+                      ) : lastMsg ? (
+                        lastMsg.deletedForEveryone ? (
+                          "🚫 Message removed"
+                        ) : (() => {
+                          const name = lastMsg.senderName || lastMsg.display_name || lastMsg.username;
+                          const text = lastMsg.text || "";
+                          if (c.type === "group") {
+                            return name ? `${name}: ${text}` : text;
+                          }
+                          return name === "You" ? `You: ${text}` : (text || "New conversation");
+                        })()
+                      ) : c.type === "group" ? (
+                        "Group created"
+                      ) : (
+                        "Say hello!"
+                      )}
                     </p>
                   </div>
 

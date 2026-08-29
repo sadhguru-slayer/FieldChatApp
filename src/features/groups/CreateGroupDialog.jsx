@@ -28,10 +28,28 @@ export function CreateGroupDialog() {
   const createMut = useMutation({
     mutationFn: () => createGroup({ name, description, memberIds: selectedUserIds }),
     onSuccess: (newConv) => {
-      qc.invalidateQueries({ queryKey: ["conversations"] });
-      toast.success("Group created successfully!");
       const groupId = newConv?.id || newConv?.conversation_id;
-      if (groupId) setActiveId(String(groupId));
+      if (groupId) {
+        qc.setQueryData(["conversations"], (old) => {
+          if (!Array.isArray(old)) return old;
+          const exists = old.some((c) => String(c.id) === String(groupId));
+          if (exists) return old;
+          const item = {
+            id: String(groupId),
+            title: name,
+            type: "group",
+            memberCount: (selectedUserIds?.length || 0) + 1,
+            updatedAt: Date.now(),
+            lastMessage: null,
+            unread: 0,
+          };
+          return [item, ...old];
+        });
+        setActiveId(String(groupId));
+      } else {
+        qc.invalidateQueries({ queryKey: ["conversations"] });
+      }
+      toast.success("Group created successfully!");
       setOpen(false);
       setName("");
       setDescription("");

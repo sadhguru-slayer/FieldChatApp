@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, Copy, Info, MessageSquare, Pencil, Reply, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
@@ -162,16 +162,25 @@ export function ChatPane() {
 
   const activeConv = conversations.find((c) => String(c.id) === String(activeId));
 
-  const { data: msgData, isLoading, error: msgError } = useQuery({
+  const {
+    data: msgData,
+    isLoading,
+    error: msgError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["messages", activeId],
-    queryFn: () => getMessages({ conversationId: activeId }),
+    queryFn: ({ pageParam = null }) => getMessages({ conversationId: activeId, pageParam }),
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled: !!activeId,
-    staleTime: 10000,
+    staleTime: Infinity,
   });
 
   useEffect(() => {
-    if (activeId && msgData?.items?.length) {
-      msgData.items.forEach((msg) => {
+    if (activeId && msgData?.pages?.length) {
+      const allItems = msgData.pages.flatMap(p => p.items);
+      allItems.forEach((msg) => {
         if (!msg.isMine && msg.id) {
           if (!msg.delivered) {
             markDelivered(activeId, msg.id);
@@ -294,8 +303,10 @@ export function ChatPane() {
 
   const updateOptimisticReactions = (msgId, emojiToSet) => {
     qc.setQueryData(["messages", activeId], (oldData) => {
-      if (!oldData || !Array.isArray(oldData.items)) return oldData;
-      const updatedItems = oldData.items.map((m) => {
+      if (!oldData || !oldData.pages) return oldData;
+      
+      const updatedPages = oldData.pages.map(page => {
+        const updatedItems = page.items.map((m) => {
         if (String(m.id) !== String(msgId)) return m;
 
         let currentReactions = m.reactions ? [...m.reactions] : [];
@@ -332,10 +343,12 @@ export function ChatPane() {
 
         return { ...m, reactions: currentReactions };
       });
-
-      return { ...oldData, items: updatedItems };
+      return { ...page, items: updatedItems };
     });
-  };
+
+    return { ...oldData, pages: updatedPages };
+  });
+};
 
   const handleAction = (action, msg, extra) => {
     if (action === "reply") {
@@ -394,7 +407,7 @@ export function ChatPane() {
   if (!activeId || !activeConv) return <NothingSelected />;
 
   const isGroup = activeConv.type === "group";
-  const messages = msgData?.items || [];
+  const messages = msgData?.pages?.flatMap(p => p.items).reverse() || [];
   const wsPresenceForActive = !isGroup && activeConv.otherUserId
     ? presence[String(activeConv.otherUserId)]
     : undefined;
@@ -477,6 +490,9 @@ export function ChatPane() {
       <MessageList
         messages={messages}
         loading={isLoading}
+        fetchNextPage={fetchNextPage}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
         meId={me?.id}
         isGroup={isGroup}
         onReply={(msg) =>

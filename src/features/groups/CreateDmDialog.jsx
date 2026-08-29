@@ -19,11 +19,31 @@ export function CreateDmDialog() {
 
   const createMut = useMutation({
     mutationFn: (targetId) => createDm(targetId),
-    onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: ["conversations"] });
+    onSuccess: (res, targetUserId) => {
+      const dmId = res?.conversation_id || res?.dm_id || res?.id;
+      if (dmId) {
+        const targetUser = users.find((u) => String(u.id) === String(targetUserId));
+        qc.setQueryData(["conversations"], (old) => {
+          if (!Array.isArray(old)) return old;
+          const exists = old.some((c) => String(c.id) === String(dmId));
+          if (exists) return old;
+          const item = {
+            id: String(dmId),
+            title: targetUser?.name || targetUser?.username || "Direct Message",
+            type: "dm",
+            otherUserId: targetUserId,
+            avatar: targetUser?.avatar || null,
+            updatedAt: Date.now(),
+            lastMessage: null,
+            unread: 0,
+          };
+          return [item, ...old];
+        });
+        setActiveId(String(dmId));
+      } else {
+        qc.invalidateQueries({ queryKey: ["conversations"] });
+      }
       toast.success("Direct Message created");
-      const targetId = res?.conversation_id || res?.dm_id || res?.id;
-      if (targetId) setActiveId(String(targetId));
       setOpen(false);
     },
     onError: (err) => {

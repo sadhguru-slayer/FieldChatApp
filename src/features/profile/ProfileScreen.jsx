@@ -35,8 +35,15 @@ export function ProfileScreen({ onClose }) {
         customStatus: status,
         avatar,
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["me"] });
+    onSuccess: (data) => {
+      qc.setQueryData(["me"], (old) => ({
+        ...old,
+        ...(data || {}),
+        name,
+        bio,
+        customStatus: status,
+        avatar,
+      }));
       toast.success("Profile updated successfully");
     },
     onError: (err) => {

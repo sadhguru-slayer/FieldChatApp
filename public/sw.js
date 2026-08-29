@@ -1,10 +1,34 @@
-// Service Worker for handling native notifications on mobile and desktop
+// Service Worker for handling native notifications and WebPush/VAPID on mobile and desktop
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
+});
+
+// Handle incoming WebPush / VAPID Push Events
+self.addEventListener('push', (event) => {
+  let data = { title: 'New Notification', body: '' };
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'Notification', body: event.data.text() };
+    }
+  }
+
+  const title = data.title || 'Fieldchat Notification';
+  const options = {
+    body: data.body || data.message || '',
+    icon: data.avatar || data.icon || '/Logo.png',
+    badge: '/Logo.png',
+    tag: data.id || data.tag || 'general-notification',
+    data: data.data || data,
+    vibrate: [100, 50, 100],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {

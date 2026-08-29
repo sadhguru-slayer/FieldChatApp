@@ -86,11 +86,18 @@ function normalizeEvents(events) {
 // ─── Endpoints ────────────────────────────────────────────────────────────────
 
 /** GET /api/messages/get-messages?conversation_id= */
-export const getMessages = async ({ conversationId }) => {
-  const events = await request(
-    `/api/messages/get-messages?conversation_id=${conversationId}`
-  );
-  return { items: normalizeEvents(events), hasMore: false };
+export const getMessages = async ({ conversationId, pageParam = null }) => {
+  let url = `/api/messages/get-messages?conversation_id=${conversationId}`;
+  if (pageParam) {
+    url += `&cursor=${encodeURIComponent(pageParam)}`;
+  }
+  const events = await request(url);
+  const items = normalizeEvents(events);
+  
+  const hasMore = items.length === 50;
+  const nextCursor = items.length > 0 ? items[items.length - 1].createdAt : null;
+
+  return { items, hasMore, nextCursor };
 };
 
 /** POST /api/messages/create-message */

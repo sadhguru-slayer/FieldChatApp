@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useLayoutEffect, useEffect, useRef, useState } from "react";
 import { MessageRow } from "./MessageRow";
 import { formatDayLabel } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -52,6 +52,9 @@ export function MessageList({
   loading = false,
   meId,
   isGroup,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage,
   onReply,
   onOpenActions,
   onReact,
@@ -59,7 +62,13 @@ export function MessageList({
 }) {
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
+  const topRef = useRef(null);
   const prevLength = useRef(0);
+  const isFetchingRef = useRef(isFetchingNextPage);
+
+  useEffect(() => {
+    isFetchingRef.current = isFetchingNextPage;
+  }, [isFetchingNextPage]);
 
   // Single active action state across all messages
   const [activeActionMsgId, setActiveActionMsgId] = useState(null);
@@ -79,19 +88,43 @@ export function MessageList({
     }
   };
 
-  // Scroll to bottom when new messages arrive
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
 
+    const isInitialLoad = prevLength.current === 0 && messages.length > 0;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
     const newMessages = messages.length > prevLength.current;
 
-    if (atBottom || newMessages) {
-      bottomRef.current?.scrollIntoView({ block: "end", behavior: messages.length === prevLength.current ? "smooth" : "auto" });
+    if (isInitialLoad) {
+      bottomRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
+    } else if (newMessages && !isFetchingNextPage) {
+      const lastMessage = messages[messages.length - 1];
+      const isMyNewMessage = lastMessage?.isMine || lastMessage?.senderId === meId;
+
+      // Auto-scroll to bottom if already near bottom, OR if the user just sent a message
+      if (atBottom || isMyNewMessage) {
+        bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+      }
     }
+    
     prevLength.current = messages.length;
-  }, [messages.length, messages]);
+  }, [messages.length, messages, isFetchingNextPage]);
+
+  // Observer for top element to fetch next page
+  useEffect(() => {
+    if (!hasNextPage || !topRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingRef.current) {
+          fetchNextPage();
+        }
+      },
+      { root: scrollRef.current, rootMargin: "200px" }
+    );
+    observer.observe(topRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, fetchNextPage]);
 
   const jumpTo = (id) => {
     const el = document.getElementById(`msg-${id}`);
@@ -114,8 +147,17 @@ export function MessageList({
       className="scroll-slim flex-1 overflow-y-auto py-1"
       style={{ overscrollBehavior: "contain" }}
     >
+      {/* Invisible element at the top to trigger infinite loading */}
+      <div ref={topRef} className="h-1 w-full shrink-0" />
+
       {/* A small header padding */}
-      <div className="h-3" />
+      <div className="h-2" />
+      
+      {isFetchingNextPage && (
+        <div className="flex justify-center py-2">
+          <span className="text-[10px] text-muted-foreground animate-pulse">Loading older messages...</span>
+        </div>
+      )}
 
       {messages.map((m, i) => {
         const day = formatDayLabel(m.createdAt);
