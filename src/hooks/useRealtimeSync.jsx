@@ -80,11 +80,39 @@ export function useRealtimeSync(authed) {
       if (payload.event === "notification" && payload.notification) {
         const notif = payload.notification;
         const activeId = useAppStore.getState().activeId;
-        const targetConvId = notif.data?.conversation_id;
+        const activeScreen = useAppStore.getState().activeScreen;
+        const mobileView = useAppStore.getState().mobileView;
 
-        // Do not treat every incoming message as a global notification if user is already viewing the conversation.
-        // Auto-resolve / mark as read on the backend immediately without adding to local cache.
-        if (notif.type === "MESSAGE" && targetConvId && String(activeId) === String(targetConvId)) {
+        let notifData = notif.data;
+        if (typeof notifData === "string") {
+          try {
+            notifData = JSON.parse(notifData);
+          } catch (e) {
+            notifData = {};
+          }
+        }
+
+        const targetConvId = notifData?.conversation_id;
+        const subEvent = notifData?.sub_event;
+
+        // Invalidate conversations list to pull fresh data on group membership changes
+        if (subEvent === "conversation.added" || subEvent === "conversation.removed") {
+          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          // If the user is removed from the currently active conversation, deselect it
+          if (subEvent === "conversation.removed" && targetConvId && String(activeId) === String(targetConvId)) {
+            useAppStore.getState().setActiveId(null);
+          }
+        }
+
+        const isCurrentlyViewingConv =
+          Boolean(targetConvId) &&
+          String(activeId) === String(targetConvId) &&
+          activeScreen === "chat" &&
+          (typeof window === "undefined" || window.innerWidth >= 768 || mobileView === "chat");
+
+        // Do not treat incoming notifications as global alerts/toasts/push if user is actively viewing the conversation.
+        // Auto-resolve / mark as read on the backend immediately without triggering UI popups or unread badges.
+        if (isCurrentlyViewingConv) {
           markNotificationAsRead(notif.id).catch(() => {});
           return;
         }
@@ -273,6 +301,12 @@ export function useRealtimeSync(authed) {
         const activeId = useAppStore.getState().activeId;
         const me = queryClient.getQueryData(["me"]);
         const meId = me?.id;
+
+        // If it's a SYSTEM message (e.g. member added/removed), refetch group list and members
+        if (payload.event === "message.created" && payload.type === "SYSTEM") {
+          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          queryClient.invalidateQueries({ queryKey: ["groupMembers", convId] });
+        }
 
         if (payload.event === "message.created" && payload.sender_id !== meId) {
           // Immediately mark as delivered if we are connected to WS
