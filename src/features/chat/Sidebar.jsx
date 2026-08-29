@@ -180,7 +180,7 @@ export function Sidebar({ onOpenSettings }) {
             </div>
           ) : (
             filtered.map((c) => {
-              console.log(c);
+              // console.log(c);
               const isActive = activeId === String(c.id);
               const lastMsg = c.lastMessage;
               const isDm = c.type === "dm";
