@@ -1,15 +1,4 @@
-import {
-  ArrowRight,
-  Hash,
-  Lock,
-  MessageSquare,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Send,
-  Settings,
-  Users,
-} from "lucide-react";
+import { ArrowRight, Lock, MessageSquare, Users } from "lucide-react";
 
 export function LandingPage({ onLogin }) {
   return (
@@ -19,11 +8,11 @@ export function LandingPage({ onLogin }) {
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 overflow-hidden"
       >
-        <div className="absolute left-1/2 top-[-320px] h-[650px] w-[900px] -translate-x-1/2 rounded-full bg-[var(--color-accent)]/[0.045] blur-[140px]" />
-        <div className="absolute bottom-[-300px] left-[-200px] h-[550px] w-[550px] rounded-full bg-[var(--color-accent)]/[0.025] blur-[130px]" />
+        <div className="absolute left-1/2 top-[-300px] h-[620px] w-[850px] -translate-x-1/2 rounded-full bg-[var(--color-accent)]/[0.045] blur-[130px]" />
+        <div className="absolute bottom-[-260px] left-[-180px] h-[500px] w-[500px] rounded-full bg-[var(--color-accent)]/[0.025] blur-[120px]" />
 
         <div
-          className="absolute inset-0 opacity-[0.018]"
+          className="absolute inset-0 opacity-[0.014]"
           style={{
             backgroundImage:
               "linear-gradient(var(--color-foreground) 1px, transparent 1px), linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px)",
@@ -33,7 +22,7 @@ export function LandingPage({ onLogin }) {
       </div>
 
       {/* Navigation */}
-      <header className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-5 sm:px-8 lg:px-10">
+      <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 sm:px-8 lg:px-10">
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
@@ -54,79 +43,69 @@ export function LandingPage({ onLogin }) {
           </span>
         </button>
 
-        <nav className="hidden items-center gap-8 text-sm text-[var(--color-muted-foreground)] md:flex">
-          <a
-            href="#features"
-            className="transition-colors hover:text-[var(--color-foreground)]"
-          >
-            Features
-          </a>
-
-          <a
-            href="#security"
-            className="transition-colors hover:text-[var(--color-foreground)]"
-          >
-            Security
-          </a>
-        </nav>
-
         <button
           type="button"
           onClick={onLogin}
-          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-foreground)] shadow-sm transition-all hover:border-[var(--color-input)] hover:bg-[var(--color-elevated)] active:scale-[0.98]"
+          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-foreground)] transition-all hover:border-[var(--color-input)] hover:bg-[var(--color-elevated)] active:scale-[0.98]"
         >
           Log in
         </button>
       </header>
 
       {/* Hero */}
-      <section className="relative z-10 mx-auto flex w-full max-w-7xl items-center px-6 pb-20 pt-14 sm:px-8 lg:min-h-[calc(100dvh-76px)] lg:px-10 lg:py-16">
-        <div className="grid w-full items-center gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
-          {/* Hero copy */}
-          <div className="max-w-xl">
-            {/* Eyebrow */}
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[11px] font-medium text-[var(--color-muted-foreground)] shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)] shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              Private team communication
+      <section className="relative z-10 mx-auto flex min-h-[calc(100dvh-88px)] w-full max-w-7xl items-center px-6 py-16 sm:px-8 lg:px-10 lg:py-20">
+        <div className="grid w-full items-center gap-16 lg:grid-cols-[0.92fr_1.08fr]">
+          {/* Copy */}
+          <div className="max-w-2xl">
+            {/* Badge */}
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-1.5 text-[11px] font-medium text-[var(--color-muted-foreground)] shadow-sm">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-success)] opacity-40" />
+                <span className="relative h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
+              </span>
+              PRIVATE TEAM COMMUNICATION
             </div>
 
-            <h1 className="text-[3.2rem] font-semibold leading-[0.98] tracking-[-0.055em] sm:text-[4.2rem] lg:text-[4.7rem]">
+            {/* Heading */}
+            <h1 className="text-[3.35rem] font-semibold leading-[0.98] tracking-[-0.055em] sm:text-[4.4rem] lg:text-[5rem]">
               Your team,
               <span className="block text-[var(--color-muted-foreground)]">
                 always in the conversation.
               </span>
             </h1>
 
-            <p className="mt-7 max-w-lg text-[15px] leading-7 text-[var(--color-muted-foreground)] sm:text-base">
-              FieldChat keeps your team connected with focused conversations,
-              direct messages, and groups — all in one private workspace.
+            <p className="mt-7 max-w-xl text-[15px] leading-7 text-[var(--color-muted-foreground)] sm:text-[17px]">
+              FieldChat brings direct messages, group conversations, and
+              real-time collaboration into one focused workspace built for
+              fast-moving teams.
             </p>
 
-            {/* Actions */}
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            {/* CTA */}
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={onLogin}
-                className="group inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-5 text-sm font-semibold text-[var(--color-primary-foreground)] shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:opacity-90 active:translate-y-0"
+                className="group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-6 text-sm font-semibold text-[var(--color-primary-foreground)] shadow-[var(--shadow-soft)] transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 active:translate-y-0"
               >
-                Start chatting
+                Get started
+
                 <ArrowRight
                   size={16}
-                  className="transition-transform group-hover:translate-x-0.5"
+                  className="transition-transform duration-200 group-hover:translate-x-0.5"
                 />
               </button>
 
               <button
                 type="button"
                 onClick={onLogin}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 text-sm font-semibold text-[var(--color-foreground)] transition-all hover:border-[var(--color-input)] hover:bg-[var(--color-elevated)] active:scale-[0.98]"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-6 text-sm font-semibold text-[var(--color-foreground)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-input)] hover:bg-[var(--color-elevated)] active:translate-y-0"
               >
                 Log in
               </button>
             </div>
 
-            {/* Trust points */}
-            <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-[11px] font-medium text-[var(--color-muted-foreground)]">
+            {/* Product traits */}
+            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 text-[11px] font-medium text-[var(--color-muted-foreground)]">
               <span className="inline-flex items-center gap-2">
                 <Lock size={13} />
                 Private by design
@@ -143,267 +122,164 @@ export function LandingPage({ onLogin }) {
 
               <span className="inline-flex items-center gap-2">
                 <Users size={13} />
-                Groups & DMs
+                Groups & direct messages
               </span>
             </div>
           </div>
 
-          {/* Chat application preview */}
-          <div className="relative mx-auto w-full max-w-[700px]">
+          {/* Chat skeleton */}
+          <div className="relative mx-auto w-full max-w-[620px]">
             {/* Product glow */}
-            <div className="absolute -inset-8 rounded-[40px] bg-[var(--color-accent)]/[0.045] blur-[70px]" />
+            <div className="absolute -inset-10 rounded-[50px] bg-[var(--color-accent)]/[0.04] blur-[70px]" />
 
-            {/* App shell */}
-            <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
-              {/* App top bar */}
-              <div className="flex h-12 items-center border-b border-[var(--color-border)] bg-[var(--color-sidebar)] px-4">
-                <div className="flex items-center gap-2.5">
-                  <img
-                    src="/Logo.svg"
-                    alt=""
-                    className="h-6 w-6 rounded-full object-cover ring-1 ring-[var(--color-border)]"
-                  />
+            {/* Window */}
+            <div className="relative overflow-hidden rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
+              {/* Window chrome */}
+              <div className="flex h-12 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-sidebar)] px-4">
+                <span className="h-2.5 w-2.5 rounded-full bg-red-400/60" />
+                <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/60" />
+                <span className="h-2.5 w-2.5 rounded-full bg-green-400/60" />
 
-                  <span className="text-xs font-semibold">
-                    FieldChat
-                  </span>
-                </div>
-
-                <div className="mx-auto hidden h-7 w-64 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 sm:flex">
-                  <Search
-                    size={12}
-                    className="text-[var(--color-muted-foreground)]"
-                  />
-                  <span className="ml-2 text-[10px] text-[var(--color-muted-foreground)]">
-                    Search messages
-                  </span>
-                </div>
-
-                <button className="ml-auto rounded-lg p-1.5 text-[var(--color-muted-foreground)]">
-                  <Settings size={15} />
-                </button>
+                <div className="ml-4 h-6 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]" />
               </div>
 
-              <div className="flex h-[430px]">
-                {/* Workspace sidebar */}
-                <aside className="hidden w-[190px] shrink-0 border-r border-[var(--color-border)] bg-[var(--color-sidebar)] p-3 sm:block">
+              <div className="flex min-h-[420px]">
+                {/* Sidebar */}
+                <div className="hidden w-[35%] shrink-0 border-r border-[var(--color-border)] bg-[var(--color-sidebar)] p-4 sm:block">
                   {/* Workspace */}
-                  <div className="mb-5 flex items-center justify-between px-1">
-                    <span className="text-[11px] font-semibold">
-                      Acme Team
-                    </span>
-
-                    <MoreHorizontal
-                      size={14}
-                      className="text-[var(--color-muted-foreground)]"
+                  <div className="mb-6 flex items-center gap-2.5">
+                    <img
+                      src="/Logo.svg"
+                      alt=""
+                      className="h-6 w-6 rounded-full object-cover ring-1 ring-[var(--color-border)]"
                     />
+
+                    <div className="h-2.5 w-20 rounded-full bg-[var(--color-foreground)]/10" />
                   </div>
 
-                  {/* Channels */}
-                  <div className="mb-5">
-                    <div className="mb-2 flex items-center justify-between px-1 text-[9px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
-                      <span>Channels</span>
-                      <Plus size={12} />
+                  {/* Sidebar heading */}
+                  <div className="mb-3 flex items-center justify-between px-1">
+                    <div className="h-2 w-14 rounded-full bg-[var(--color-muted-foreground)]/20" />
+                    <div className="h-3 w-3 rounded bg-[var(--color-muted-foreground)]/10" />
+                  </div>
+
+                  {/* Channel skeletons */}
+                  <div className="space-y-1.5">
+                    <div className="rounded-lg border border-[var(--color-accent)]/10 bg-[var(--color-accent)]/[0.08] px-3 py-2.5">
+                      <div className="h-2.5 w-20 rounded-full bg-[var(--color-accent)]/30" />
                     </div>
 
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 rounded-md bg-[var(--color-accent)]/10 px-2.5 py-2 text-[11px] font-medium text-[var(--color-foreground)]">
-                        <Hash size={13} className="text-[var(--color-accent)]" />
-                        general
-                      </div>
+                    <div className="px-3 py-2.5">
+                      <div className="h-2.5 w-16 rounded-full bg-[var(--color-muted-foreground)]/15" />
+                    </div>
 
-                      <div className="flex items-center gap-2 rounded-md px-2.5 py-2 text-[11px] text-[var(--color-muted-foreground)]">
-                        <Hash size={13} />
-                        product
-                      </div>
-
-                      <div className="flex items-center gap-2 rounded-md px-2.5 py-2 text-[11px] text-[var(--color-muted-foreground)]">
-                        <Hash size={13} />
-                        design
-                      </div>
+                    <div className="px-3 py-2.5">
+                      <div className="h-2.5 w-24 rounded-full bg-[var(--color-muted-foreground)]/15" />
                     </div>
                   </div>
 
-                  {/* Direct messages */}
-                  <div>
-                    <div className="mb-2 flex items-center justify-between px-1 text-[9px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
-                      <span>Direct messages</span>
-                      <Plus size={12} />
+                  {/* DMs */}
+                  <div className="mb-3 mt-6 flex items-center justify-between px-1">
+                    <div className="h-2 w-20 rounded-full bg-[var(--color-muted-foreground)]/20" />
+                    <div className="h-3 w-3 rounded bg-[var(--color-muted-foreground)]/10" />
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2.5 px-2">
+                      <div className="relative">
+                        <div className="h-6 w-6 rounded-full bg-[var(--color-secondary)]" />
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-[var(--color-sidebar)] bg-[var(--color-success)]" />
+                      </div>
+
+                      <div className="h-2.5 w-20 rounded-full bg-[var(--color-muted-foreground)]/12" />
                     </div>
 
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 rounded-md px-2.5 py-2 text-[11px] text-[var(--color-muted-foreground)]">
-                        <span className="relative">
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-secondary)] text-[8px] font-semibold">
-                            AS
-                          </span>
-                          <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-success)] ring-2 ring-[var(--color-sidebar)]" />
-                        </span>
-                        Alex Smith
+                    <div className="flex items-center gap-2.5 px-2">
+                      <div className="relative">
+                        <div className="h-6 w-6 rounded-full bg-[var(--color-secondary)]" />
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-[var(--color-sidebar)] bg-[var(--color-success)]" />
                       </div>
 
-                      <div className="flex items-center gap-2 rounded-md px-2.5 py-2 text-[11px] text-[var(--color-muted-foreground)]">
-                        <span className="relative">
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-secondary)] text-[8px] font-semibold">
-                            JD
-                          </span>
-                          <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-success)] ring-2 ring-[var(--color-sidebar)]" />
-                        </span>
-                        Jordan Davis
-                      </div>
+                      <div className="h-2.5 w-16 rounded-full bg-[var(--color-muted-foreground)]/10" />
+                    </div>
+
+                    <div className="flex items-center gap-2.5 px-2">
+                      <div className="h-6 w-6 rounded-full bg-[var(--color-secondary)]" />
+                      <div className="h-2.5 w-24 rounded-full bg-[var(--color-muted-foreground)]/10" />
                     </div>
                   </div>
-                </aside>
+                </div>
 
                 {/* Conversation */}
                 <div className="flex min-w-0 flex-1 flex-col">
                   {/* Conversation header */}
                   <div className="flex h-14 items-center justify-between border-b border-[var(--color-border)] px-5">
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <Hash
-                          size={14}
-                          className="text-[var(--color-muted-foreground)]"
-                        />
-                        <span className="text-sm font-semibold">
-                          general
-                        </span>
-                      </div>
-
-                      <p className="mt-0.5 text-[9px] text-[var(--color-muted-foreground)]">
-                        Team-wide conversation
-                      </p>
+                      <div className="h-3 w-24 rounded-full bg-[var(--color-foreground)]/15" />
+                      <div className="mt-2 h-2 w-16 rounded-full bg-[var(--color-muted-foreground)]/10" />
                     </div>
 
                     <div className="flex -space-x-1.5">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-zinc-700 text-[7px]">
-                        AS
-                      </span>
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-zinc-600 text-[7px]">
-                        JD
-                      </span>
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-zinc-500 text-[7px]">
-                        MK
-                      </span>
+                      <div className="h-6 w-6 rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-secondary)]" />
+                      <div className="h-6 w-6 rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-secondary)]" />
+                      <div className="h-6 w-6 rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-secondary)]" />
                     </div>
                   </div>
 
                   {/* Messages */}
-                  <div className="flex flex-1 flex-col justify-end gap-5 overflow-hidden px-5 py-5">
-                    {/* Message 1 */}
-                    <div className="flex gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-secondary)] text-[9px] font-semibold">
-                        AS
-                      </div>
+                  <div className="flex flex-1 flex-col justify-end gap-5 p-5">
+                    {/* Incoming message */}
+                    <div className="flex items-end gap-2.5">
+                      <div className="h-7 w-7 shrink-0 rounded-full bg-[var(--color-secondary)]" />
 
-                      <div className="min-w-0">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-[11px] font-semibold">
-                            Alex Smith
-                          </span>
-                          <span className="text-[9px] text-[var(--color-muted-foreground)]">
-                            10:42 AM
-                          </span>
-                        </div>
-
-                        <div className="mt-1.5 max-w-[320px] rounded-2xl rounded-tl-md bg-[var(--color-bubble-in)] px-3.5 py-2.5 text-[11px] leading-5 text-[var(--color-bubble-in-foreground)]">
-                          Hey team! Are we ready for today's launch?
-                        </div>
+                      <div className="rounded-2xl rounded-bl-md bg-[var(--color-bubble-in)] px-4 py-3">
+                        <div className="h-2 w-28 rounded-full bg-[var(--color-bubble-in-foreground)]/10" />
+                        <div className="mt-2 h-2 w-20 rounded-full bg-[var(--color-bubble-in-foreground)]/5" />
                       </div>
                     </div>
 
-                    {/* Message 2 */}
+                    {/* Outgoing message */}
                     <div className="flex justify-end">
-                      <div className="max-w-[320px]">
-                        <div className="mb-1.5 flex justify-end text-[9px] text-[var(--color-muted-foreground)]">
-                          You · 10:43 AM
-                        </div>
-
-                        <div className="rounded-2xl rounded-tr-md bg-[var(--color-bubble-out)] px-3.5 py-2.5 text-[11px] leading-5 text-[var(--color-bubble-out-foreground)] shadow-sm">
-                          Almost! Just finishing the final review. 🚀
-                        </div>
-
-                        <div className="mt-1.5 flex justify-end">
-                          <span className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[8px] text-[var(--color-muted-foreground)]">
-                            ✓✓
-                          </span>
-                        </div>
+                      <div className="rounded-2xl rounded-br-md bg-[var(--color-bubble-out)] px-4 py-3 shadow-sm">
+                        <div className="h-2 w-32 rounded-full bg-[var(--color-bubble-out-foreground)]/30" />
+                        <div className="mt-2 h-2 w-20 rounded-full bg-[var(--color-bubble-out-foreground)]/20" />
                       </div>
                     </div>
 
-                    {/* Message 3 */}
-                    <div className="flex gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-secondary)] text-[9px] font-semibold">
-                        JD
-                      </div>
+                    {/* Incoming message */}
+                    <div className="flex items-end gap-2.5">
+                      <div className="h-7 w-7 shrink-0 rounded-full bg-[var(--color-secondary)]" />
 
-                      <div>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-[11px] font-semibold">
-                            Jordan Davis
-                          </span>
-                          <span className="text-[9px] text-[var(--color-muted-foreground)]">
-                            10:44 AM
-                          </span>
-                        </div>
-
-                        <div className="mt-1.5 max-w-[320px] rounded-2xl rounded-tl-md bg-[var(--color-bubble-in)] px-3.5 py-2.5 text-[11px] leading-5 text-[var(--color-bubble-in-foreground)]">
-                          Perfect. I'll keep an eye on things from here.
-                        </div>
-
-                        <div className="mt-1.5 inline-flex rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[8px]">
-                          👍 2
-                        </div>
+                      <div className="rounded-2xl rounded-bl-md bg-[var(--color-bubble-in)] px-4 py-3">
+                        <div className="h-2 w-36 rounded-full bg-[var(--color-bubble-in-foreground)]/10" />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Typing */}
-                  <div className="px-5 pb-2 text-[9px] text-[var(--color-muted-foreground)]">
-                    Alex is typing...
+                    {/* Short outgoing message */}
+                    <div className="flex justify-end">
+                      <div className="rounded-2xl rounded-br-md bg-[var(--color-bubble-out)] px-4 py-3">
+                        <div className="h-2 w-24 rounded-full bg-[var(--color-bubble-out-foreground)]/25" />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Composer */}
-                  <div className="px-4 pb-4">
-                    <div className="flex h-10 items-center gap-3 rounded-xl border border-[var(--color-input)] bg-[var(--color-card)] px-3 shadow-inner">
-                      <Plus
-                        size={15}
-                        className="text-[var(--color-muted-foreground)]"
-                      />
+                  <div className="p-4">
+                    <div className="flex h-11 items-center rounded-xl border border-[var(--color-input)] bg-[var(--color-card)] px-4 shadow-inner">
+                      <div className="h-2 w-28 rounded-full bg-[var(--color-muted-foreground)]/10" />
 
-                      <span className="flex-1 text-[10px] text-[var(--color-muted-foreground)]">
-                        Message #general
-                      </span>
-
-                      <Send
-                        size={14}
-                        className="text-[var(--color-accent)]"
-                      />
+                      <div className="ml-auto h-7 w-7 rounded-lg bg-[var(--color-accent)]/15" />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Floating presence card */}
-            <div className="absolute -bottom-5 -left-4 hidden items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 shadow-[var(--shadow-soft)] sm:flex">
+            {/* Floating presence */}
+            <div className="absolute -bottom-5 -left-4 hidden items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 shadow-[var(--shadow-soft)] sm:flex">
               <span className="h-2 w-2 rounded-full bg-[var(--color-success)] shadow-[0_0_8px_rgba(16,185,129,0.45)]" />
 
-              <span className="text-[10px] font-medium text-[var(--color-muted-foreground)]">
-                3 teammates online
-              </span>
-            </div>
-
-            {/* Floating notification */}
-            <div className="absolute -right-3 -top-4 hidden items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 shadow-[var(--shadow-soft)] sm:flex">
-              <MessageSquare
-                size={13}
-                className="text-[var(--color-accent)]"
-              />
-
-              <span className="text-[10px] font-medium">
-                New message
-              </span>
+              <div className="h-2 w-20 rounded-full bg-[var(--color-muted-foreground)]/15" />
             </div>
           </div>
         </div>
