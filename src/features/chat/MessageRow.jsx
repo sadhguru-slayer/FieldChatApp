@@ -11,7 +11,7 @@ import { Avatar } from "@/components/Avatar";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-// ─── Delivery Ticks ──────────────────────────────────────────────────────────
+// ─── Delivery Ticks ────────────────────────────────────────────────────────[...]
 function Ticks({ delivered, read, mine }) {
   if (read) {
     return (
@@ -37,6 +37,10 @@ function Ticks({ delivered, read, mine }) {
 // ─── Reply Preview Bar ───────────────────────────────────────────────────────
 function ReplyPreview({ replyTo, mine, onClick }) {
   if (!replyTo) return null;
+  
+  // Use display_name if available, otherwise fall back to senderName
+  const displayName = replyTo.display_name || replyTo.senderName || "Unknown";
+  
   return (
     <button
       type="button"
@@ -49,7 +53,7 @@ function ReplyPreview({ replyTo, mine, onClick }) {
       )}
     >
       <span className={cn("block font-semibold text-[10.5px]", mine ? "text-white" : "text-accent")}>
-        {replyTo.senderName || "Unknown"}
+        {displayName}
       </span>
       <span className="line-clamp-1 opacity-80">
         {replyTo.isDeleted ? "Message unavailable" : replyTo.text}
@@ -58,7 +62,7 @@ function ReplyPreview({ replyTo, mine, onClick }) {
   );
 }
 
-// ─── Reaction Pill ───────────────────────────────────────────────────────────
+// ─── Reaction Pill ────────────────────────────────────────────────────────[...]
 function ReactionPill({ emoji, count, reactedByMe, onClick }) {
   return (
     <button
@@ -77,7 +81,7 @@ function ReactionPill({ emoji, count, reactedByMe, onClick }) {
   );
 }
 
-// ─── System Message ───────────────────────────────────────────────────────────
+// ─── System Message ────────────────────────────────────────────────────────[...]
 function SystemMessage({ text }) {
   return (
     <div className="my-2.5 flex justify-center px-4">
@@ -88,7 +92,7 @@ function SystemMessage({ text }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Component ────────────────────────────────────────────────────────[...]
 function MessageRowBase({
   message: m,
   mine,
@@ -118,7 +122,7 @@ function MessageRowBase({
         id={`msg-${m.id}`}
         className={cn("flex px-4 py-0.5", mine ? "justify-end" : "justify-start")}
       >
-        <div className="flex items-center gap-1.5 max-w-[75%] rounded-2xl border border-dashed border-border/40 bg-surface/30 px-3.5 py-1.5 text-[11.5px] italic text-muted-foreground select-none">
+        <div className="flex items-center gap-1.5 max-w-[75%] rounded-2xl border border-dashed border-border/40 bg-surface/30 px-3.5 py-1.5 text-[11.5px] italic text-muted-foreground select-none"[...]
           Message removed
         </div>
       </div>
@@ -148,6 +152,9 @@ function MessageRowBase({
     }
   };
 
+  // Use display_name if available, otherwise fall back to senderName
+  const senderDisplayName = m.display_name || m.senderName || "?";
+
   return (
     <div
       id={`msg-${m.id}`}
@@ -164,7 +171,7 @@ function MessageRowBase({
       {!mine && isGroup && (
         <div className="w-7 shrink-0 self-end mb-[2px]">
           {showAvatar ? (
-            <Avatar src={null} name={m.senderName || "?"} size="sm" />
+            <Avatar src={null} name={senderDisplayName} size="sm" />
           ) : (
             <span className="block w-7" />
           )}
@@ -173,9 +180,9 @@ function MessageRowBase({
 
       {/* ── Bubble column ── */}
       <div className={cn("flex max-w-[80%] flex-col md:max-w-[65%]", mine && "items-end")}>
-        {showName && !mine && isGroup && m.senderName && (
+        {showName && !mine && isGroup && senderDisplayName && (
           <span className="mb-0.5 ml-1 text-[11px] font-semibold text-emerald-400">
-            {m.senderName}
+            {senderDisplayName}
           </span>
         )}
 
