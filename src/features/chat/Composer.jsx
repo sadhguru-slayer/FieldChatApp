@@ -134,7 +134,7 @@ export function Composer({ onSend, onEdit, disabled }) {
 
       {/* Emoji Picker */}
       {emojiOpen && (
-        <div className="mb-2 flex flex-wrap gap-1 rounded-xl border border-border/60 bg-surface p-2 shadow-xl animate-in fade-in-0 zoom-in-95 duration-100">
+        <div className="mb-2 flex flex-wrap gap-1 rounded-xl border border-border/60 bg-surface p-2 shadow-xl fc-scale-in">
           {EMOJIS.map((e) => (
             <button
               key={e}

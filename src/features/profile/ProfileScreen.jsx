@@ -85,7 +85,7 @@ export function ProfileScreen({ onClose }) {
       </header>
 
       {/* ── Main Content ─────────────────────────────────────────────────── */}
-      <div className="scroll-slim flex-1 overflow-y-auto px-4 py-6 md:px-8">
+      <div className="scroll-slim flex-1 overflow-y-auto px-4 py-6 md:px-8 pb-safe md:pb-6">
         <div className="mx-auto w-full max-w-lg space-y-5">
           
           {/* Profile Header Hero */}

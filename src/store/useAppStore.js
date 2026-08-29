@@ -90,6 +90,19 @@ export const useAppStore = create((set, get) => ({
   forwardFor: null,
   setForwardFor: (forwardFor) => set({ forwardFor }),
 
+  // hamburger menu drawer (desktop)
+  menuOpen: false,
+  setMenuOpen: (menuOpen) => set({ menuOpen }),
+  toggleMenu: () => set((s) => ({ menuOpen: !s.menuOpen })),
+
+  // mobile bottom tab: 'chats' | 'settings' | 'profile'
+  mobileTab: "chats",
+  setMobileTab: (mobileTab) => set({ mobileTab }),
+
+  // add member modal trigger
+  groupAddMemberOpen: false,
+  setGroupAddMemberOpen: (groupAddMemberOpen) => set({ groupAddMemberOpen }),
+
   // real-time presence { [userId]: { online: boolean, lastSeen: number|null } }
   presence: {},
   setPresence: (userId, online, lastSeen = null) =>

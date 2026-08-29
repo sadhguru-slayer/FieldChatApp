@@ -101,7 +101,7 @@ export function NotificationPopover() {
         >
           <Bell className="size-4" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-500 px-1 text-[9.5px] font-bold text-white shadow-md shadow-indigo-500/30 animate-in zoom-in-50 duration-150">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-500 px-1 text-[9.5px] font-bold text-white shadow-md shadow-indigo-500/30 fc-scale-in">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
@@ -111,7 +111,7 @@ export function NotificationPopover() {
       <DropdownMenuContent
         align="end"
         sideOffset={10}
-        className="w-[360px] sm:w-[400px] p-0 bg-zinc-950/95 border border-zinc-800/80 text-foreground shadow-2xl rounded-2xl overflow-hidden backdrop-blur-2xl animate-in fade-in-80 zoom-in-95 duration-150"
+        className="w-[360px] sm:w-[400px] p-0 bg-zinc-950/95 border border-zinc-800/80 text-foreground shadow-2xl rounded-2xl overflow-hidden backdrop-blur-2xl fc-scale-in"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-800/60 px-4 py-3 bg-zinc-900/40">

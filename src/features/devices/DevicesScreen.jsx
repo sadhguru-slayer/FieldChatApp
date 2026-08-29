@@ -93,7 +93,7 @@ export function DevicesScreen({ onClose }) {
       </header>
 
       {/* ── Main Workspace Content ────────────────────────────────────────── */}
-      <div className="scroll-slim flex-1 overflow-y-auto px-4 py-6 md:px-8">
+      <div className="scroll-slim flex-1 overflow-y-auto px-4 py-6 md:px-8 pb-safe md:pb-6">
         <div className="mx-auto w-full max-w-xl space-y-5">
 
           {/* User Banner */}
@@ -206,7 +206,7 @@ export function DevicesScreen({ onClose }) {
       {/* ── Confirmation Modal ── */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-[#1c2633] p-5 shadow-xl animate-in fade-in-0 zoom-in-95 duration-150">
+          <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-[#1c2633] p-5 shadow-xl fc-scale-in">
             <h3 className="text-sm font-bold text-[#fafafa] mb-2">
               {confirmModal.type === "all" && "Revoke All Sessions"}
               {confirmModal.type === "current" && "Revoke Current Session"}

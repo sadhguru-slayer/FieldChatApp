@@ -148,3 +148,108 @@
 .no-tap-highlight {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Safe area bottom padding for mobile bottom nav */
+.pb-safe {
+  padding-bottom: calc(4.3rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Smooth duration-250 transition */
+.duration-250 {
+  transition-duration: 250ms;
+}
+
+/* ─────────────────────────────────────────────
+   Fieldchat Standard Animation System
+   Pure CSS keyframes. GPU-friendly (transform + opacity only).
+   All durations 150–220ms with ease-out for snap responsiveness.
+   ───────────────────────────────────────────── */
+
+/* Keyframes */
+@keyframes fc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fc-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes fc-slide-in-left {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes fc-slide-out-left {
+  from { transform: translateX(0);     opacity: 1; }
+  to   { transform: translateX(-100%); opacity: 0; }
+}
+
+@keyframes fc-slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes fc-slide-out-right {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
+
+/* Partial slide for overlay panels (slides a short distance, not full-width) */
+@keyframes fc-slide-in-right-sm {
+  from { transform: translateX(16px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes fc-slide-in-left-sm {
+  from { transform: translateX(-16px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes fc-slide-down-sm {
+  from { transform: translateY(-8px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes fc-slide-up-sm {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+@keyframes fc-scale-in {
+  from { transform: scale(0.97); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes fc-scale-out {
+  from { transform: scale(1);    opacity: 1; }
+  to   { transform: scale(0.97); opacity: 0; }
+}
+
+/* Utility classes */
+.fc-fade-in     { animation: fc-fade-in     180ms ease-out both; }
+.fc-fade-in[data-state="closed"] { animation: fc-fade-out 150ms ease-in both; }
+
+.fc-fade-out    { animation: fc-fade-out    150ms ease-in  both; }
+
+/* Full-width slide (hamburger drawer, mobile full-screen panels) */
+.fc-slide-in-left  { animation: fc-slide-in-left  200ms ease-out both; }
+.fc-slide-in-left[data-state="closed"] { animation: fc-slide-out-left 180ms ease-in both; }
+
+.fc-slide-out-left { animation: fc-slide-out-left 180ms ease-in  both; }
+
+.fc-slide-in-right  { animation: fc-slide-in-right  200ms ease-out both; }
+.fc-slide-in-right[data-state="closed"] { animation: fc-slide-out-right 180ms ease-in both; }
+
+.fc-slide-out-right { animation: fc-slide-out-right 180ms ease-in  both; }
+
+/* Micro-distance slide for overlay/info panels */
+.fc-slide-in-right-sm { animation: fc-slide-in-right-sm 180ms ease-out both; }
+.fc-slide-in-left-sm  { animation: fc-slide-in-left-sm  180ms ease-out both; }
+.fc-slide-down-sm     { animation: fc-slide-down-sm     150ms ease-out both; }
+.fc-slide-up-sm       { animation: fc-slide-up-sm       150ms ease-out both; }
+
+/* Scale-in for dropdowns, context menus */
+.fc-scale-in { animation: fc-scale-in 150ms ease-out both; }
+.fc-scale-in[data-state="closed"] { animation: fc-scale-out 150ms ease-in both; }

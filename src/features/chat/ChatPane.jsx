@@ -1,12 +1,28 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Copy, Info, MessageSquare, Pencil, Reply, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Copy,
+  Info,
+  MessageSquare,
+  Pencil,
+  Reply,
+  Trash2,
+  MoreVertical,
+  Users,
+  UserPlus,
+  LogOut,
+  User,
+  Menu,
+} from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { useAppStore } from "@/store/useAppStore";
 import { formatLastSeen } from "@/lib/format";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
   deleteMessageForEveryone,
   deleteMessageForMe,
@@ -19,6 +35,10 @@ import {
   sendMessage,
   markAllNotificationsAsRead,
   markNotificationAsRead,
+  leaveGroup as leaveGroupApi,
+  addMembers as addMembersApi,
+  getGroupMembers,
+  getUsers,
 } from "@/services/api";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +80,7 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
       />
 
       <div
-        className="fixed z-[9999] overflow-hidden rounded-xl animate-in fade-in-0 zoom-in-95 duration-100 bg-surface border border-border text-foreground shadow-2xl"
+        className="fixed z-[9999] overflow-hidden rounded-xl fc-scale-in bg-surface border border-border text-foreground shadow-2xl"
         style={{ top, left, width: MENU_W }}
       >
         <div className="flex items-center justify-between px-2.5 py-2 border-b border-border/40">
@@ -99,6 +119,155 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
   );
 }
 
+// ─── Header Three-Dot Action Menu ─────────────────────────────────────────────
+function ConversationHeaderMenu({ isGroup, onToggleDetails, onAddMember, onLeaveGroup }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        aria-label="Actions menu"
+        className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors no-tap-highlight"
+      >
+        <MoreVertical className="size-4.5" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-11 z-50 w-48 rounded-2xl border border-border/50 bg-sidebar/95 backdrop-blur-xl p-1.5 shadow-2xl fc-scale-in ring-1 ring-white/5">
+            {isGroup ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { onToggleDetails(); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors"
+                >
+                  <Users className="size-3.5 text-accent shrink-0" />
+                  <span>Group Info</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { onAddMember(); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors"
+                >
+                  <UserPlus className="size-3.5 text-emerald-400 shrink-0" />
+                  <span>Add Member</span>
+                </button>
+
+                <div className="my-1 border-t border-border/30" />
+
+                <button
+                  type="button"
+                  onClick={() => { onLeaveGroup(); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <LogOut className="size-3.5 shrink-0" />
+                  <span>Exit Group</span>
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { onToggleDetails(); setOpen(false); }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors"
+              >
+                <User className="size-3.5 text-accent shrink-0" />
+                <span>User Info</span>
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Add Member Modal ────────────────────────────────────────────────────────
+function AddMemberModal({ activeId, open, onOpenChange }) {
+  const qc = useQueryClient();
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+
+  const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe });
+  const { data: allUsers = [] } = useQuery({ queryKey: ["users"], queryFn: getUsers });
+  const { data: groupMembers = [] } = useQuery({
+    queryKey: ["groupMembers", activeId],
+    queryFn: () => getGroupMembers(activeId),
+    enabled: !!activeId && open,
+  });
+
+  const addMut = useMutation({
+    mutationFn: (userIds) => addMembersApi({ conversationId: activeId, userIds }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["groupMembers", activeId] });
+      toast.success("Members added");
+      onOpenChange(false);
+      setSelectedUserIds([]);
+    },
+    onError: (err) => toast.error(err.message || "Failed to add members"),
+  });
+
+  const existingMemberIds = new Set(groupMembers.map((m) => String(m.id)));
+  const addableUsers = allUsers.filter(
+    (u) => !existingMemberIds.has(String(u.id)) && String(u.id) !== String(me?.id)
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md bg-sidebar border-border/40 text-foreground">
+        <DialogHeader>
+          <DialogTitle className="text-sm font-bold">Add Members to Group</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-2">
+          <div className="max-h-60 overflow-y-auto space-y-1.5 scroll-slim">
+            {addableUsers.length === 0 ? (
+              <p className="text-center text-xs text-muted-foreground py-4">No users available to add.</p>
+            ) : (
+              addableUsers.map((u) => {
+                const checked = selectedUserIds.includes(u.id);
+                const displayName = u.display_name || u.name || "Unknown";
+
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() =>
+                      setSelectedUserIds((prev) =>
+                        checked ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                      )
+                    }
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-xl p-2.5 text-left text-xs transition-colors border",
+                      checked ? "bg-accent/15 border-accent/30 font-medium" : "border-transparent hover:bg-elevated/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Avatar src={u.avatar} name={displayName} size="sm" />
+                      <span>{displayName}</span>
+                    </div>
+                    {checked && <span className="text-accent text-xs font-bold">✓</span>}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <Button
+            onClick={() => addMut.mutate(selectedUserIds)}
+            disabled={selectedUserIds.length === 0 || addMut.isPending}
+            className="w-full text-xs font-semibold"
+          >
+            Add Selected ({selectedUserIds.length})
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function NothingSelected() {
   return (
@@ -110,7 +279,7 @@ function NothingSelected() {
         Select a conversation
       </h3>
       <p className="mt-1 text-[11.5px] max-w-xs leading-relaxed text-muted-foreground">
-        Choose a group or direct message from the sidebar to begin chatting.
+        Choose a group or direct message to begin chatting.
       </p>
     </main>
   );
@@ -140,10 +309,26 @@ export function ChatPane() {
   const setEditing = useAppStore((s) => s.setEditing);
   const typingUsers = useAppStore((s) => s.typingUsers);
   const presence = useAppStore((s) => s.presence);
+  const toggleMenu = useAppStore((s) => s.toggleMenu);
+  const groupAddMemberOpen = useAppStore((s) => s.groupAddMemberOpen);
+  const setGroupAddMemberOpen = useAppStore((s) => s.setGroupAddMemberOpen);
+  const setActiveId = useAppStore((s) => s.setActiveId);
+  const closePanel = useAppStore((s) => s.closePanel);
 
   const qc = useQueryClient();
   const [ctxMenu, setCtxMenu] = useState(null);
   const [reactionsDetailMsg, setReactionsDetailMsg] = useState(null);
+
+  const leaveGroupMut = useMutation({
+    mutationFn: () => leaveGroupApi({ conversationId: activeId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success("Left group");
+      setActiveId(null);
+      closePanel();
+    },
+    onError: (err) => toast.error(err.message || "Failed to leave group"),
+  });
 
   useEffect(() => {
     if (activeId) {
@@ -433,57 +618,60 @@ export function ChatPane() {
   return (
     <main className="flex h-full flex-1 flex-col bg-background">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header className="flex h-13.5 items-center justify-between border-b border-border/40 px-3.5 select-none bg-surface/50 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <header className="relative z-30 flex h-14 items-center justify-between border-b border-border/30 px-3 select-none bg-sidebar/80 backdrop-blur-md shrink-0">
+        <div className="flex items-center gap-1 min-w-0">
+
+          {/* Mobile Back Button — larger touch target */}
           <button
             type="button"
             onClick={() => setMobileView("list")}
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground transition-colors md:hidden"
+            className="flex items-center gap-0.5 mr-1 rounded-xl text-accent hover:text-foreground transition-colors md:hidden no-tap-highlight -ml-1 px-1 py-2"
             aria-label="Back"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-5" />
           </button>
 
-          <Avatar src={activeConv.avatar} name={activeConv.title} size="md" />
-
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-xs font-semibold text-foreground tracking-tight">
-              {activeConv.title}
-            </h1>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {typingText ? (
-                <span className="text-emerald-400 font-medium animate-pulse">{typingText}</span>
-              ) : isGroup ? (
-                activeConv.memberCount ? `${activeConv.memberCount} members` : "Group"
-              ) : (
-                <span
-                  className={cn(
+          {/* Avatar — clickable to open group/dm info */}
+          <button
+            type="button"
+            onClick={() => togglePanel("details")}
+            className="flex items-center gap-2.5 min-w-0 hover:opacity-90 transition-opacity no-tap-highlight"
+          >
+            <Avatar src={activeConv.avatar} name={activeConv.title} size="md" />
+            <div className="min-w-0 text-left">
+              <h1 className="truncate text-[13.5px] font-semibold text-foreground tracking-tight leading-tight">
+                {activeConv.title}
+              </h1>
+              <p className="truncate text-[11.5px] leading-tight mt-0.5">
+                {typingText ? (
+                  <span className="text-emerald-400 font-medium">{typingText}</span>
+                ) : isGroup ? (
+                  <span className="text-muted-foreground">
+                    {activeConv.memberCount ? `${activeConv.memberCount} members` : "Group"}
+                  </span>
+                ) : (
+                  <span className={cn(
                     "font-medium transition-colors duration-300",
                     otherUserOnline ? "text-emerald-400" : "text-muted-foreground"
-                  )}
-                >
-                  {otherUserOnline
-                    ? "Online"
-                    : formatLastSeen(otherUserLastSeen) || "Offline"}
-                </span>
-              )}
-              {msgError && (
-                <span className="ml-2 text-destructive/80 text-[10px]">
-                  · Messages unavailable
-                </span>
-              )}
-            </p>
-          </div>
+                  )}>
+                    {otherUserOnline ? "Online" : formatLastSeen(otherUserLastSeen) || "Offline"}
+                  </span>
+                )}
+                {msgError && (
+                  <span className="ml-1 text-destructive/80 text-[10px]">· Unavailable</span>
+                )}
+              </p>
+            </div>
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => togglePanel("details")}
-          aria-label="Details"
-          className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground transition-colors hover:bg-elevated"
-        >
-          <Info className="size-4" />
-        </button>
+        {/* Header Action Three-Dot Menu (⋮) */}
+        <ConversationHeaderMenu
+          isGroup={isGroup}
+          onToggleDetails={() => togglePanel("details")}
+          onAddMember={() => setGroupAddMemberOpen(true)}
+          onLeaveGroup={() => leaveGroupMut.mutate()}
+        />
       </header>
 
       {/* ── Message Stream ───────────────────────────────────────────────── */}
@@ -505,7 +693,7 @@ export function ChatPane() {
 
       {/* Sleek typing indicator bottom bar */}
       {typingText && (
-        <div className="flex items-center gap-2 px-4 py-1 text-xs text-emerald-400/90 animate-in fade-in duration-200 select-none">
+        <div className="flex items-center gap-2 px-4 py-1 text-xs text-emerald-400/90 fc-fade-in select-none">
           <span className="flex items-center gap-1">
             <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: "0ms" }} />
             <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -542,6 +730,13 @@ export function ChatPane() {
           onClose={() => setReactionsDetailMsg(null)}
         />
       )}
+
+      {/* ── Add Member Modal ────────────────────────────────────────────── */}
+      <AddMemberModal
+        activeId={activeId}
+        open={groupAddMemberOpen}
+        onOpenChange={setGroupAddMemberOpen}
+      />
     </main>
   );
 }
