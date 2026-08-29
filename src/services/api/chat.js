@@ -35,13 +35,20 @@ function normalizeConversation(c, defaultType) {
       ? {
           id: String(latest.id || ""),
           senderId: latest.sender_id ? String(latest.sender_id) : null,
-          senderName: latest.sender || latest.username || null,
+          senderName:
+          latest.sender === "You"
+            ? "You"
+            : latest.display_name ||
+              latest.sender ||
+              latest.username ||
+              null,
           text: latest.content || latest.message || "",
           createdAt: latest.timestamp,
           deletedForEveryone: !!latest.is_deleted_for_everyone,
         }
       : null,
   };
+
 }
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
@@ -71,7 +78,7 @@ export const getGroupMembers = async (groupId) => {
     const res = await request(`/api/chat/get-group-members?group_id=${groupId}`);
     return res.map((m) => ({
       id: String(m.id),
-      name: m.username,
+      name: m.display_name || m.username,
       username: m.username,
       email: m.email,
       role: m.role || "MEMBER",
