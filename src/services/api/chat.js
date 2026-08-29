@@ -14,7 +14,7 @@ function normalizeConversation(c, defaultType) {
   return {
     id: String(c.id),
     type: isGroup ? "group" : "dm",
-    title: c.title || c.name || "Conversation",
+    title: c.title || c.display_name || c.name || "Conversation",
     avatar:
       c.avatar_url ||
       `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(
