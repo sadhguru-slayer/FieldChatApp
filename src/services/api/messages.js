@@ -20,34 +20,58 @@ function normalizeEvents(events) {
     const isSystem = data.type === "SYSTEM";
 
     messages.push({
-      id: data.message_id,
-      senderId: data.sender_id === "SYSTEM" || isSystem ? null : data.sender_id,
-      senderName: data.username === "SYSTEM" || isSystem ? null : data.username,
-      text: isDeletedForEveryone ? "" : data.message || "",
-      createdAt: data.timestamp,
-      editedAt: data.edited_at || null,
-      edited: !!data.edited_at,
-      type: data.type || "CHAT",         // "CHAT" | "SYSTEM"
-      isMine: data.is_mine ?? false,
-      delivered: data.delivered ?? null,
-      read: data.read ?? null,
-      deletedForEveryone: isDeletedForEveryone,
-      replyTo: data.reply_to
-        ? {
-            id: data.reply_to.message_id,
-            senderId: data.reply_to.sender_id,
-            senderName: data.reply_to.username,
-            text: data.reply_to.message,
-            isDeleted: data.reply_to.is_deleted ?? false,
-          }
-        : null,
-      reactions: (data.reactions || []).map((r) => ({
-        emoji: r.reaction,
-        count: r.count,
-        reactedByMe: r.reacted_by_me,
-      })),
-    });
-  }
+  id: data.message_id,
+  senderId:
+    data.sender_id === "SYSTEM" || isSystem
+      ? null
+      : data.sender_id,
+
+  senderName:
+    data.display_name === "SYSTEM" || isSystem
+      ? null
+      : data.display_name || data.username,
+
+  text: isDeletedForEveryone ? "" : data.message || "",
+
+  createdAt: data.timestamp,
+  editedAt: data.edited_at || null,
+  edited: !!data.edited_at,
+
+  type: data.type || "CHAT", // "CHAT" | "SYSTEM"
+
+  isMine: data.is_mine ?? false,
+  delivered: data.delivered ?? null,
+  read: data.read ?? null,
+
+  deletedForEveryone: isDeletedForEveryone,
+
+  replyTo: data.reply_to
+    ? {
+        id: data.reply_to.message_id,
+
+        senderId:
+          data.reply_to.sender_id === "SYSTEM"
+            ? null
+            : data.reply_to.sender_id,
+
+        senderName:
+          data.reply_to.display_name === "SYSTEM"
+            ? null
+            : data.reply_to.display_name ||
+              data.reply_to.username,
+
+        text: data.reply_to.message,
+
+        isDeleted: data.reply_to.is_deleted ?? false,
+      }
+    : null,
+
+  reactions: (data.reactions || []).map((r) => ({
+    emoji: r.reaction,
+    count: r.count,
+    reactedByMe: r.reacted_by_me,
+  })),
+});
 
   return messages;
 }
