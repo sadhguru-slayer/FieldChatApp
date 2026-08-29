@@ -11,7 +11,7 @@ import { Avatar } from "@/components/Avatar";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-// ─── Delivery Ticks ────────────────────────────────────────────────────────[...]
+// ─── Delivery Ticks ────────────────────────────────────────────────────────
 function Ticks({ delivered, read, mine }) {
   if (read) {
     return (
@@ -62,7 +62,7 @@ function ReplyPreview({ replyTo, mine, onClick }) {
   );
 }
 
-// ─── Reaction Pill ────────────────────────────────────────────────────────[...]
+// ─── Reaction Pill ────────────────────────────────────────────────────────
 function ReactionPill({ emoji, count, reactedByMe, onClick }) {
   return (
     <button
@@ -81,7 +81,7 @@ function ReactionPill({ emoji, count, reactedByMe, onClick }) {
   );
 }
 
-// ─── System Message ────────────────────────────────────────────────────────[...]
+// ─── System Message ────────────────────────────────────────────────────────
 function SystemMessage({ text }) {
   return (
     <div className="my-2.5 flex justify-center px-4">
@@ -92,7 +92,7 @@ function SystemMessage({ text }) {
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────[...]
+// ─── Main Component ────────────────────────────────────────────────────────
 function MessageRowBase({
   message: m,
   mine,
@@ -122,7 +122,7 @@ function MessageRowBase({
         id={`msg-${m.id}`}
         className={cn("flex px-4 py-0.5", mine ? "justify-end" : "justify-start")}
       >
-        <div className="flex items-center gap-1.5 max-w-[75%] rounded-2xl border border-dashed border-border/40 bg-surface/30 px-3.5 py-1.5 text-[11.5px] italic text-muted-foreground select-none"[...]
+        <div className="flex items-center gap-1.5 max-w-[75%] rounded-2xl border border-dashed border-border/40 bg-surface/30 px-3.5 py-1.5 text-[11.5px] italic text-muted-foreground select-none">
           Message removed
         </div>
       </div>
