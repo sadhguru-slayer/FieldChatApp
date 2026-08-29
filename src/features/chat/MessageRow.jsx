@@ -99,6 +99,8 @@ function MessageRowBase({
   isGroup,
   showAvatar,
   showName,
+  prevSameGroup = false,
+  nextSameGroup = false,
   isActionActive,
   onToggleAction,
   onReply,
@@ -109,6 +111,20 @@ function MessageRowBase({
 }) {
   const pressTimer = useRef(null);
   const isLongPressRef = useRef(false);
+
+  const getBubbleRadiusClass = () => {
+    if (mine) {
+      if (prevSameGroup && nextSameGroup) return "rounded-2xl";
+      if (nextSameGroup && !prevSameGroup) return "rounded-2xl rounded-tr-md";
+      if (prevSameGroup && !nextSameGroup) return "rounded-2xl rounded-br-md";
+      return "rounded-2xl rounded-br-md";
+    } else {
+      if (prevSameGroup && nextSameGroup) return "rounded-2xl";
+      if (nextSameGroup && !prevSameGroup) return "rounded-2xl rounded-tl-md";
+      if (prevSameGroup && !nextSameGroup) return "rounded-2xl rounded-bl-md";
+      return "rounded-2xl rounded-tl-md";
+    }
+  };
 
   // ── SYSTEM type — render as chip, no context menu ────────────────────────
   if (m.type === "SYSTEM") {
@@ -181,7 +197,7 @@ function MessageRowBase({
       {/* ── Bubble column ── */}
       <div className={cn("flex max-w-[80%] flex-col md:max-w-[65%]", mine && "items-end")}>
         {showName && !mine && isGroup && senderDisplayName && (
-          <span className="mb-0.5 ml-1 text-[11px] font-semibold text-emerald-400">
+          <span className="mb-0.5 ml-1 text-[10px] font-semibold text-zinc-400">
             {senderDisplayName}
           </span>
         )}
@@ -209,10 +225,11 @@ function MessageRowBase({
           <div
             onClick={handleBubbleClick}
             className={cn(
-              "relative rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed cursor-pointer select-none md:select-text shadow-2xs transition-all duration-150",
+              "relative px-3.5 py-2 text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150",
               mine
-                ? "rounded-br-2xs bg-accent text-accent-foreground shadow-xs shadow-accent/20 font-normal"
-                : "rounded-bl-2xs bg-elevated/90 text-foreground border border-border/50 font-normal",
+                ? "bg-accent/80 text-white font-normal"
+                : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
+              getBubbleRadiusClass(),
               isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
             )}
           >

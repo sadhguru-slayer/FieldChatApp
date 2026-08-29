@@ -48,6 +48,7 @@ function ChatApp() {
   const menuOpen = useAppStore((s) => s.menuOpen);
   const setMenuOpen = useAppStore((s) => s.setMenuOpen);
   const [showLanding, setShowLanding] = useState(true);
+  const [authMode, setAuthMode] = useState("login");
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe, enabled: authed });
 
@@ -165,9 +166,18 @@ function ChatApp() {
 
   if (!authed) {
     return showLanding ? (
-      <LandingPage onLogin={() => setShowLanding(false)} />
+      <LandingPage
+        onLogin={() => {
+          setAuthMode("login");
+          setShowLanding(false);
+        }}
+        onGetStarted={() => {
+          setAuthMode("register");
+          setShowLanding(false);
+        }}
+      />
     ) : (
-      <AuthScreen />
+      <AuthScreen key={authMode} initialMode={authMode} />
     );
   }
 

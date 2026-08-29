@@ -231,6 +231,8 @@ export function MessageList({
                 isGroup={isGroup}
                 showAvatar={showAvatar}
                 showName={showName}
+                prevSameGroup={prevSameGroup}
+                nextSameGroup={nextSameGroup}
                 isActionActive={activeActionMsgId === m.id}
                 onToggleAction={handleToggleAction}
                 onReply={onReply}
