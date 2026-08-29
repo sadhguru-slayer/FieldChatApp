@@ -29,6 +29,7 @@ import { wsClient } from "@/services/ws";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 function ChatApp() {
+  
   const authed = useAppStore((s) => s.authed);
   const hydrated = useAppStore((s) => s.hydrated);
   const hydrate = useAppStore((s) => s.hydrate);
@@ -37,6 +38,8 @@ function ChatApp() {
   const activeScreen = useAppStore((s) => s.activeScreen);
   const activeId = useAppStore((s) => s.activeId);
   const setActiveScreen = useAppStore((s) => s.setActiveScreen);
+  const [showLanding, setShowLanding] = useState(true);
+
 
   useEffect(() => {
     hydrate();
