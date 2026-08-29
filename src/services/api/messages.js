@@ -8,73 +8,80 @@ import { request } from "./request";
 //
 // We strip deleted-for-me events (backend already excludes their content) and
 // flatten the rest into a clean message array for the UI.
-
 function normalizeEvents(events) {
   const messages = [];
 
   for (const evt of events) {
     const { event, data } = evt;
-    if (event === "message.deleted_for_me") continue;
 
-    const isDeletedForEveryone = event === "message.deleted_for_everyone";
+    if (event === "message.deleted_for_me") {
+      continue;
+    }
+
+    const isDeletedForEveryone =
+      event === "message.deleted_for_everyone";
+
     const isSystem = data.type === "SYSTEM";
 
     messages.push({
-  id: data.message_id,
-  senderId:
-    data.sender_id === "SYSTEM" || isSystem
-      ? null
-      : data.sender_id,
+      id: data.message_id,
 
-  senderName:
-    data.display_name === "SYSTEM" || isSystem
-      ? null
-      : data.display_name || data.username,
+      senderId:
+        data.sender_id === "SYSTEM" || isSystem
+          ? null
+          : data.sender_id,
 
-  text: isDeletedForEveryone ? "" : data.message || "",
+      senderName:
+        data.display_name === "SYSTEM" || isSystem
+          ? null
+          : data.display_name || data.username,
 
-  createdAt: data.timestamp,
-  editedAt: data.edited_at || null,
-  edited: !!data.edited_at,
+      text: isDeletedForEveryone ? "" : data.message || "",
 
-  type: data.type || "CHAT", // "CHAT" | "SYSTEM"
+      createdAt: data.timestamp,
+      editedAt: data.edited_at || null,
+      edited: !!data.edited_at,
 
-  isMine: data.is_mine ?? false,
-  delivered: data.delivered ?? null,
-  read: data.read ?? null,
+      type: data.type || "CHAT", // "CHAT" | "SYSTEM"
 
-  deletedForEveryone: isDeletedForEveryone,
+      isMine: data.is_mine ?? false,
+      delivered: data.delivered ?? null,
+      read: data.read ?? null,
 
-  replyTo: data.reply_to
-    ? {
-        id: data.reply_to.message_id,
+      deletedForEveryone: isDeletedForEveryone,
 
-        senderId:
-          data.reply_to.sender_id === "SYSTEM"
-            ? null
-            : data.reply_to.sender_id,
+      replyTo: data.reply_to
+        ? {
+            id: data.reply_to.message_id,
 
-        senderName:
-          data.reply_to.display_name === "SYSTEM"
-            ? null
-            : data.reply_to.display_name ||
-              data.reply_to.username,
+            senderId:
+              data.reply_to.sender_id === "SYSTEM"
+                ? null
+                : data.reply_to.sender_id,
 
-        text: data.reply_to.message,
+            senderName:
+              data.reply_to.display_name === "SYSTEM"
+                ? null
+                : data.reply_to.display_name ||
+                  data.reply_to.username,
 
-        isDeleted: data.reply_to.is_deleted ?? false,
-      }
-    : null,
+            text: data.reply_to.message,
 
-  reactions: (data.reactions || []).map((r) => ({
-    emoji: r.reaction,
-    count: r.count,
-    reactedByMe: r.reacted_by_me,
-  })),
-});
+            isDeleted: data.reply_to.is_deleted ?? false,
+          }
+        : null,
+
+      reactions: (data.reactions || []).map((r) => ({
+        emoji: r.reaction,
+        count: r.count,
+        reactedByMe: r.reacted_by_me,
+      })),
+    });
+  }
 
   return messages;
 }
+
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
 
