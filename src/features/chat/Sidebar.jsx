@@ -122,8 +122,7 @@ export function Sidebar({ onOpenSettings }) {
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
-          className="group flex h-8.5 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-all hover:bg-elevated/70 hover:text-foreground border border-border/40[...]
-        >
+          className="group flex h-8.5 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-all hover:bg-elevated/70 hover:text-foreground border border-border/40">
           <Search className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
           <span className="truncate font-normal text-[11.5px]">Search Fieldchat...</span>
           <kbd className="ml-auto rounded-md bg-accent/10 px-1.5 py-0.5 text-[9px] font-mono text-accent font-medium border border-accent/20">
@@ -301,8 +300,7 @@ function FloatingActionButton({ onNewDm, onNewGroup }) {
                 onNewGroup();
                 setOpen(false);
               }}
-              className="group flex items-center gap-2.5 rounded-full pl-3 pr-1.5 py-1.5 bg-surface border border-border/60 text-foreground shadow-lg transition-all hover:bg-elevated active:scale[...]
-            >
+              className="group flex items-center gap-2.5 rounded-full pl-3 pr-1.5 py-1.5 bg-surface border border-border/60 text-foreground shadow-lg transition-all hover:bg-elevated active:scale-95">
               <span className="text-[11.5px] font-semibold text-foreground tracking-tight select-none">
                 New Group
               </span>
@@ -318,8 +316,7 @@ function FloatingActionButton({ onNewDm, onNewGroup }) {
                 onNewDm();
                 setOpen(false);
               }}
-              className="group flex items-center gap-2.5 rounded-full pl-3 pr-1.5 py-1.5 bg-surface border border-border/60 text-foreground shadow-lg transition-all hover:bg-elevated active:scale[...]
-            >
+              className="group flex items-center gap-2.5 rounded-full pl-3 pr-1.5 py-1.5 bg-surface border border-border/60 text-foreground shadow-lg transition-all hover:bg-elevated active:scale-95">
               <span className="text-[11.5px] font-semibold text-foreground tracking-tight select-none">
                 New DM
               </span>
