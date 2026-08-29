@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { LandingPage } from "@/features/landing/LandingPage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 
@@ -145,9 +146,14 @@ function ChatApp() {
     );
   }
 
-  if (!authed) {
-    return <AuthScreen />;
-  }
+if (!authed) {
+  return showLanding ? (
+    <LandingPage onLogin={() => setShowLanding(false)} />
+  ) : (
+    <AuthScreen />
+  );
+}
+
 
   return (
     <div className="relative flex h-[100dvh] w-full overflow-hidden font-sans antialiased" style={{ background: "#0e1621" }}>
