@@ -75,10 +75,10 @@ export function Sidebar({ onOpenSettings }) {
           onClick={() => setActiveScreen("profile")}
           className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-85 transition-opacity"
         >
-          <Avatar src={me?.avatar} name={me?.name || "User"} size="md" online />
+          <Avatar src={me?.avatar} name={me?.display_name || me?.name || "User"} size="md" online />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-xs font-semibold text-foreground tracking-tight">
-              {me?.name || "User"}
+              {me?.display_name || me?.name || "User"}
             </h2>
             <p className="truncate text-[11px] text-muted-foreground font-normal">
               {me?.customStatus || "Online"}
@@ -122,7 +122,7 @@ export function Sidebar({ onOpenSettings }) {
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
-          className="group flex h-8.5 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-all hover:bg-elevated/70 hover:text-foreground border border-border/40 bg-surface/60 shadow-2xs focus-visible:ring-1 focus-visible:ring-ring"
+          className="group flex h-8.5 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-all hover:bg-elevated/70 hover:text-foreground border border-border/40[...]
         >
           <Search className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
           <span className="truncate font-normal text-[11.5px]">Search Fieldchat...</span>
@@ -240,9 +240,11 @@ export function Sidebar({ onOpenSettings }) {
                       ) : lastMsg
                         ? lastMsg.deletedForEveryone
                           ? "🚫 Message removed"
-                          : lastMsg.senderName && c.type === "group"
-                            ? `${lastMsg.senderName}: ${lastMsg.text}`
-                            : lastMsg.text || "New conversation"
+                          : lastMsg.display_name && c.type === "group"
+                            ? `${lastMsg.display_name}: ${lastMsg.text}`
+                            : lastMsg.senderName && c.type === "group"
+                              ? `${lastMsg.senderName}: ${lastMsg.text}`
+                              : lastMsg.text || "New conversation"
                         : c.type === "group"
                           ? "Group created"
                           : "Say hello!"}
@@ -299,7 +301,7 @@ function FloatingActionButton({ onNewDm, onNewGroup }) {
                 onNewGroup();
                 setOpen(false);
               }}
-              className="group flex items-center gap-2.5 rounded-full pl-3 pr-1.5 py-1.5 bg-surface border border-border/60 text-foreground shadow-lg transition-all hover:bg-elevated active:scale-95"
+              className="group flex items-center gap-2.5 rounded-full pl-3 pr-1.5 py-1.5 bg-surface border border-border/60 text-foreground shadow-lg transition-all hover:bg-elevated active:scale[...]
             >
               <span className="text-[11.5px] font-semibold text-foreground tracking-tight select-none">
                 New Group
@@ -316,7 +318,7 @@ function FloatingActionButton({ onNewDm, onNewGroup }) {
                 onNewDm();
                 setOpen(false);
               }}
-              className="group flex items-center gap-2.5 rounded-full pl-3 pr-1.5 py-1.5 bg-surface border border-border/60 text-foreground shadow-lg transition-all hover:bg-elevated active:scale-95"
+              className="group flex items-center gap-2.5 rounded-full pl-3 pr-1.5 py-1.5 bg-surface border border-border/60 text-foreground shadow-lg transition-all hover:bg-elevated active:scale[...]
             >
               <span className="text-[11.5px] font-semibold text-foreground tracking-tight select-none">
                 New DM
@@ -349,5 +351,3 @@ function FloatingActionButton({ onNewDm, onNewGroup }) {
     </>
   );
 }
-
-
