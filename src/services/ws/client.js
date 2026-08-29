@@ -68,7 +68,7 @@ class WebSocketClient {
     this.ws.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        if (payload.event === "presence") {
+        if (payload.event === "presence" ||payload.event === "message.created") {
           console.log("[WS] Received message:", payload);
         }
         if (payload.event) {
