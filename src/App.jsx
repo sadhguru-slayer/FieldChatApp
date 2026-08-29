@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { getMe } from "@/services/api";
 import { useQuery } from "@tanstack/react-query";
 
+import { useAnimatePresence } from "@/hooks/useAnimatePresence";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -145,6 +147,9 @@ function ChatApp() {
 
   useRealtimeSync(authed);
 
+  const isDetailsOpen = panel === "details" && activeScreen === "chat";
+  const { shouldRender: showDetails, isClosing: isClosingDetails } = useAnimatePresence(isDetailsOpen, 180);
+
   if (!hydrated) {
     return (
       <div className="grid min-h-screen place-items-center bg-[#09090b] text-muted-foreground text-xs gap-3">
@@ -169,7 +174,7 @@ function ChatApp() {
   return (
     <div className="relative flex h-[100dvh] w-full overflow-hidden font-sans antialiased bg-[#09090b]">
       {/* ── Desktop Drawer (Hamburger triggered) ───────────────────────── */}
-      {menuOpen && <DesktopMenuDrawer me={me} onClose={() => setMenuOpen(false)} />}
+      <DesktopMenuDrawer isOpen={menuOpen} me={me} onClose={() => setMenuOpen(false)} />
 
       {/* ── Sidebar — On Mobile: shown in list view. On Desktop: compact sidebar panel ── */}
       <div
@@ -198,8 +203,13 @@ function ChatApp() {
         </div>
 
         {/* ── Group/DM Details Panel (Slides over the conversation area) ── */}
-        {panel === "details" && activeScreen === "chat" && (
-          <div className="absolute inset-0 z-50 md:left-auto md:right-0 md:w-[340px] md:border-l md:border-border/30 bg-background fc-slide-in-right shadow-2xl">
+        {showDetails && (
+          <div
+            className={cn(
+              "absolute inset-0 z-50 md:left-auto md:right-0 md:w-[340px] md:border-l md:border-border/30 bg-background shadow-2xl",
+              isClosingDetails ? "fc-slide-out-right" : "fc-slide-in-right"
+            )}
+          >
             <GroupPanel />
           </div>
         )}

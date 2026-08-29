@@ -253,3 +253,38 @@
 /* Scale-in for dropdowns, context menus */
 .fc-scale-in { animation: fc-scale-in 150ms ease-out both; }
 .fc-scale-in[data-state="closed"] { animation: fc-scale-out 150ms ease-in both; }
+
+/* Modal & Dialog animations */
+@keyframes fc-dialog-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fc-dialog-overlay-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes fc-dialog-content-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes fc-dialog-content-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.96) translateY(8px); }
+}
+
+.fc-dialog-overlay[data-state="open"] {
+  animation: fc-dialog-overlay-in 180ms ease-out both;
+}
+.fc-dialog-overlay[data-state="closed"] {
+  animation: fc-dialog-overlay-out 150ms ease-in both;
+}
+
+.fc-dialog-content[data-state="open"] {
+  animation: fc-dialog-content-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.fc-dialog-content[data-state="closed"] {
+  animation: fc-dialog-content-out 150ms ease-in both;
+}

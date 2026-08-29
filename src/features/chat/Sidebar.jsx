@@ -24,12 +24,17 @@ import { formatListTime, formatLastSeen } from "@/lib/format";
 import { NotificationPopover } from "./NotificationPopover";
 import { cn } from "@/lib/utils";
 
+import { useAnimatePresence } from "@/hooks/useAnimatePresence";
+
 // ─── Desktop Hamburger Drawer ─────────────────────────────────────────────────
-export function DesktopMenuDrawer({ me, onClose }) {
+export function DesktopMenuDrawer({ isOpen, me, onClose }) {
+  const { shouldRender, isClosing } = useAnimatePresence(isOpen, 180);
   const setActiveScreen = useAppStore((s) => s.setActiveScreen);
   const signOut = useAppStore((s) => s.signOut);
   const setCreateGroupOpen = useAppStore((s) => s.setCreateGroupOpen);
   const setCreateDmOpen = useAppStore((s) => s.setCreateDmOpen);
+
+  if (!shouldRender) return null;
 
   const navItems = [
     { icon: User, label: "Profile", screen: "profile", color: "text-indigo-400", bg: "bg-indigo-500/10 border-indigo-500/20" },
@@ -41,13 +46,22 @@ export function DesktopMenuDrawer({ me, onClose }) {
     <>
       {/* Semi-transparent backdrop — shows app content behind it */}
       <div
-        className="fc-fade-in fixed inset-0 z-40 bg-black/30 cursor-pointer"
+        className={cn(
+          "fixed inset-0 z-40 bg-black/30 cursor-pointer",
+          isClosing ? "fc-fade-out" : "fc-fade-in"
+        )}
         style={{ backdropFilter: "blur(2px)" }}
         onClick={onClose}
       />
 
       {/* Slide-in drawer from left */}
-      <div className="fc-slide-in-left fixed left-0 top-0 bottom-0 z-50 w-[275px] flex flex-col bg-sidebar/98 border-r border-border/40 shadow-2xl" style={{ backdropFilter: "blur(20px)" }}>
+      <div
+        className={cn(
+          "fixed left-0 top-0 bottom-0 z-50 w-[275px] flex flex-col bg-sidebar/98 border-r border-border/40 shadow-2xl",
+          isClosing ? "fc-slide-out-left" : "fc-slide-in-left"
+        )}
+        style={{ backdropFilter: "blur(20px)" }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-5 pb-4 border-b border-border/30">
           <div className="flex items-center gap-2.5">
@@ -340,7 +354,7 @@ export function Sidebar({ onOpenSettings }) {
     <aside className="flex h-full w-full flex-col select-none bg-sidebar text-sidebar-foreground relative overflow-hidden">
 
       {/* ── Desktop Hamburger Drawer ─────────────────────────────────────── */}
-      {menuOpen && <DesktopMenuDrawer me={me} onClose={() => setMenuOpen(false)} />}
+      <DesktopMenuDrawer isOpen={menuOpen} me={me} onClose={() => setMenuOpen(false)} />
 
       {/* ── Desktop Header ───────────────────────────────────────────────── */}
       <div className="hidden md:flex items-center justify-between border-b border-border/30 px-3.5 py-3 bg-sidebar shrink-0">
@@ -454,14 +468,23 @@ export function Sidebar({ onOpenSettings }) {
               <span className="text-[13px] text-muted-foreground/80">Search Fieldchat...</span>
             </button>
           </div>
-          {isLoading ? (
-            <div className="space-y-1 p-1">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2.5">
-                  <Skeleton className="size-10 rounded-full shrink-0" />
-                  <div className="space-y-1.5 flex-1">
-                    <Skeleton className="h-3 w-28" />
-                    <Skeleton className="h-2.5 w-40" />
+          {isLoading && conversations.length === 0 ? (
+            <div className="space-y-1 px-1 py-1.5 fc-fade-in">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-2xl px-3 py-2.5 bg-surface/20 border border-transparent"
+                >
+                  <Skeleton className="size-10 shrink-0 rounded-full bg-elevated/80" />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Skeleton className="h-3.5 w-24 rounded-md bg-elevated/80" />
+                      <Skeleton className="h-2.5 w-9 rounded-md bg-elevated/50" />
+                    </div>
+                    <Skeleton
+                      className="h-3 rounded-md bg-elevated/50"
+                      style={{ width: `${Math.max(45, 85 - ((i * 13) % 40))}%` }}
+                    />
                   </div>
                 </div>
               ))}

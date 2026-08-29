@@ -30,10 +30,15 @@ export function GroupPanel() {
   const [addOpen, setAddOpen] = useState(false);
   const [name, setName] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [addMemberSearch, setAddMemberSearch] = useState("");
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe });
   const { data: conversations = [] } = useQuery({ queryKey: ["conversations"], queryFn: getConversations });
-  const { data: allUsers = [] } = useQuery({ queryKey: ["users"], queryFn: getUsers });
+  const { data: allUsers = [], isFetching: isFetchingUsers } = useQuery({
+    queryKey: ["users", addMemberSearch],
+    queryFn: () => getUsers(addMemberSearch, 20, 0),
+    enabled: addOpen,
+  });
   
   const activeConv = conversations.find((c) => String(c.id) === String(activeId));
   const isGroup = activeConv?.type === "group";
@@ -269,36 +274,59 @@ export function GroupPanel() {
             <DialogTitle>Add Members to Group</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-2">
-            <div className="max-h-60 overflow-y-auto space-y-1.5 scroll-slim">
-              {addableUsers.length === 0 ? (
-                <p className="text-center text-xs text-muted-foreground py-4">No users available to add.</p>
+            <Input
+              placeholder="Search users to add..."
+              value={addMemberSearch}
+              onChange={(e) => setAddMemberSearch(e.target.value)}
+              className="text-xs bg-elevated/50 border-border/40 focus-visible:ring-accent/40 h-8"
+            />
+
+            <div className="max-h-60 overflow-y-auto space-y-1.5 scroll-slim border border-border/30 rounded-xl p-1.5 bg-elevated/20">
+              {isFetchingUsers ? (
+                <p className="text-center text-xs text-muted-foreground py-4 animate-pulse">Loading users...</p>
+              ) : addableUsers.length === 0 ? (
+                <p className="text-center text-xs text-muted-foreground py-4">
+                  {addMemberSearch ? `No users found matching "${addMemberSearch}"` : "No users available to add."}
+                </p>
               ) : (
-                addableUsers.map((u) => {
-                  const checked = selectedUserIds.includes(u.id);
-                  // Use display_name if available, otherwise fall back to name
-                  const displayName = u.display_name || u.name || "Unknown";
-                  
-                  return (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() =>
-                        setSelectedUserIds((prev) =>
-                          checked ? prev.filter((id) => id !== u.id) : [...prev, u.id]
-                        )
-                      }
-                      className={`flex w-full items-center justify-between rounded-lg p-2 text-left text-xs transition-colors ${
-                        checked ? "bg-elevated font-medium" : "hover:bg-elevated/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Avatar src={u.avatar} name={displayName} size="sm" />
-                        <span>{displayName}</span>
-                      </div>
-                      {checked && <span className="text-primary text-xs">✓</span>}
-                    </button>
-                  );
-                })
+                <>
+                  {addableUsers.map((u) => {
+                    const checked = selectedUserIds.includes(u.id);
+                    const displayName = u.display_name || u.name || "Unknown";
+                    
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedUserIds((prev) =>
+                            checked ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                          )
+                        }
+                        className={`flex w-full items-center justify-between rounded-lg p-2 text-left text-xs transition-colors ${
+                          checked ? "bg-elevated font-medium border border-border/40" : "hover:bg-elevated/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Avatar src={u.avatar} name={displayName} size="sm" />
+                          <div>
+                            <p className="font-medium text-foreground">{displayName}</p>
+                            <p className="text-[10px] text-muted-foreground">@{u.username}</p>
+                          </div>
+                        </div>
+                        {checked && <span className="text-primary text-xs font-bold">✓</span>}
+                      </button>
+                    );
+                  })}
+
+                  {addableUsers.length >= 20 && (
+                    <div className="p-2 text-center border-t border-border/20 mt-1">
+                      <p className="text-[10.5px] text-muted-foreground">
+                        Type in search bar above to find more users...
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
             <Button

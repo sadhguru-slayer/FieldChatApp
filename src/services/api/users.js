@@ -138,9 +138,15 @@ export const revokeAllUserTokens = async (userId) => {
 
 
 // GET /api/auth/users/get_users
-export const getUsers = async () => {
+export const getUsers = async (q = "", limit = 20, offset = 0) => {
   try {
-    const users = await request("/api/auth/users/get_users");
+    const params = new URLSearchParams();
+    if (q) params.set("q", q.trim());
+    if (limit) params.set("limit", limit);
+    if (offset) params.set("offset", offset);
+    const queryString = params.toString();
+
+    const users = await request(`/api/auth/users/get_users${queryString ? `?${queryString}` : ""}`);
     return users.map((u) => ({
       id: String(u.id),
       name: u.username,

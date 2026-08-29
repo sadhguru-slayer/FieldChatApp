@@ -2,18 +2,50 @@ import { Fragment, useLayoutEffect, useEffect, useRef, useState } from "react";
 import { MessageRow } from "./MessageRow";
 import { formatDayLabel } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 // ─── Loading State ────────────────────────────────────────────────────────────
 function MessagesSkeleton() {
+  const SKELETON_ITEMS = [
+    { type: "incoming", width: "52%", height: "h-10", avatar: true },
+    { type: "incoming", width: "68%", height: "h-14", avatar: false },
+    { type: "outgoing", width: "42%", height: "h-10", avatar: false },
+    { type: "incoming", width: "58%", height: "h-10", avatar: true },
+    { type: "outgoing", width: "64%", height: "h-14", avatar: false },
+    { type: "incoming", width: "38%", height: "h-9", avatar: true },
+    { type: "outgoing", width: "48%", height: "h-10", avatar: false },
+  ];
+
   return (
-    <div className="space-y-3 px-4 py-6">
-      {[38, 60, 45, 70, 30, 55, 80].map((w, i) => (
-        <div key={i} className={i % 3 === 2 ? "flex justify-end" : "flex gap-2"}>
-          {i % 3 !== 2 && <Skeleton className="size-7 shrink-0 rounded-full mt-auto" />}
-          <Skeleton
-            className="h-9 rounded-2xl"
-            style={{ width: `${w * 2.8}px`, maxWidth: "72%" }}
-          />
+    <div className="flex-1 space-y-3.5 px-4 py-6 overflow-hidden fc-fade-in flex flex-col justify-end">
+      {SKELETON_ITEMS.map((item, i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex items-end gap-2.5",
+            item.type === "outgoing" ? "justify-end" : "justify-start"
+          )}
+        >
+          {item.type === "incoming" && (
+            <div className="size-7 shrink-0">
+              {item.avatar && <Skeleton className="size-7 rounded-full bg-elevated/80" />}
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "rounded-2xl p-3 space-y-2 border border-border/20 shadow-2xs",
+              item.type === "outgoing"
+                ? "bg-accent/15 border-accent/20 rounded-br-xs"
+                : "bg-surface/60 rounded-bl-xs"
+            )}
+            style={{ width: item.width, maxWidth: "75%" }}
+          >
+            <Skeleton className={cn("rounded-lg bg-elevated/70", item.height === "h-14" ? "h-3.5 w-full" : "h-3.5 w-3/4")} />
+            {item.height === "h-14" && (
+              <Skeleton className="h-3 w-1/2 rounded-lg bg-elevated/50" />
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -88,6 +120,8 @@ export function MessageList({
     }
   };
 
+  const prevLastMsgId = useRef(null);
+
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -95,13 +129,14 @@ export function MessageList({
     const isInitialLoad = prevLength.current === 0 && messages.length > 0;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
     const newMessages = messages.length > prevLength.current;
+    
+    const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+    const addedAtBottom = lastMessage && lastMessage.id !== prevLastMsgId.current;
 
     if (isInitialLoad) {
       bottomRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
-    } else if (newMessages && !isFetchingNextPage) {
-      const lastMessage = messages[messages.length - 1];
+    } else if (newMessages && addedAtBottom) {
       const isMyNewMessage = lastMessage?.isMine || lastMessage?.senderId === meId;
-
       // Auto-scroll to bottom if already near bottom, OR if the user just sent a message
       if (atBottom || isMyNewMessage) {
         bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -109,6 +144,7 @@ export function MessageList({
     }
     
     prevLength.current = messages.length;
+    prevLastMsgId.current = lastMessage?.id || null;
   }, [messages.length, messages, isFetchingNextPage]);
 
   // Observer for top element to fetch next page

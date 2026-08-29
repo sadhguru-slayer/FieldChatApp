@@ -48,7 +48,7 @@ export function SearchDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="top-[18%] max-w-lg translate-y-0 gap-0 p-0 overflow-hidden rounded-2xl border border-border/60 bg-surface/95 backdrop-blur-2xl text-foreground select-none shadow-2xl">
+      <DialogContent className="max-w-lg gap-0 p-0 overflow-hidden rounded-2xl border border-border/50 bg-sidebar/95 backdrop-blur-2xl text-foreground select-none shadow-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>Search Fieldchat</DialogTitle>
         </DialogHeader>

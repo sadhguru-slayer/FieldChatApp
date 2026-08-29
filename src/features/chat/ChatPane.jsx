@@ -20,6 +20,7 @@ import { Avatar } from "@/components/Avatar";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { useAppStore } from "@/store/useAppStore";
+import { useAnimatePresence } from "@/hooks/useAnimatePresence";
 import { formatLastSeen } from "@/lib/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,10 @@ const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "🙏", "😮"];
 // Zinc monochrome design. Positions left-of-bubble for incoming, right for mine.
 // Flips vertically if too close to the bottom.
 function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
-  if (!message || !anchor) return null;
+  const isOpen = Boolean(message && anchor);
+  const { shouldRender, isClosing } = useAnimatePresence(isOpen, 150);
+
+  if (!shouldRender || !message || !anchor) return null;
 
   const MENU_W = 192;
   const MENU_H = 260;
@@ -74,13 +78,16 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
   return (
     <>
       <div
-        className="fixed inset-0 z-[9998]"
+        className={cn("fixed inset-0 z-[9998]", isClosing ? "fc-fade-out" : "fc-fade-in")}
         onClick={onClose}
         onContextMenu={(e) => { e.preventDefault(); onClose(); }}
       />
 
       <div
-        className="fixed z-[9999] overflow-hidden rounded-xl fc-scale-in bg-surface border border-border text-foreground shadow-2xl"
+        className={cn(
+          "fixed z-[9999] overflow-hidden rounded-xl bg-surface border border-border text-foreground shadow-2xl",
+          isClosing ? "fc-scale-out" : "fc-scale-in"
+        )}
         style={{ top, left, width: MENU_W }}
       >
         <div className="flex items-center justify-between px-2.5 py-2 border-b border-border/40">
@@ -122,6 +129,7 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
 // ─── Header Three-Dot Action Menu ─────────────────────────────────────────────
 function ConversationHeaderMenu({ isGroup, onToggleDetails, onAddMember, onLeaveGroup }) {
   const [open, setOpen] = useState(false);
+  const { shouldRender, isClosing } = useAnimatePresence(open, 150);
 
   return (
     <div className="relative">
@@ -134,10 +142,18 @@ function ConversationHeaderMenu({ isGroup, onToggleDetails, onAddMember, onLeave
         <MoreVertical className="size-4.5" />
       </button>
 
-      {open && (
+      {shouldRender && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-11 z-50 w-48 rounded-2xl border border-border/50 bg-sidebar/95 backdrop-blur-xl p-1.5 shadow-2xl fc-scale-in ring-1 ring-white/5">
+          <div
+            className={cn("fixed inset-0 z-40", isClosing ? "fc-fade-out" : "fc-fade-in")}
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className={cn(
+              "absolute right-0 top-11 z-50 w-48 rounded-2xl border border-border/50 bg-sidebar/95 backdrop-blur-xl p-1.5 shadow-2xl ring-1 ring-white/5",
+              isClosing ? "fc-scale-out" : "fc-scale-in"
+            )}
+          >
             {isGroup ? (
               <>
                 <button
@@ -676,6 +692,7 @@ export function ChatPane() {
 
       {/* ── Message Stream ───────────────────────────────────────────────── */}
       <MessageList
+        key={activeId}
         messages={messages}
         loading={isLoading}
         fetchNextPage={fetchNextPage}
