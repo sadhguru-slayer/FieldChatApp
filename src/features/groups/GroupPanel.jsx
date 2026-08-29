@@ -167,12 +167,15 @@ export function GroupPanel() {
             <div className="space-y-2 rounded-lg border border-border bg-background p-2 max-h-64 overflow-y-auto scroll-slim">
               {groupMembers.map((u) => {
                 const isMe = String(u.id) === String(me?.id);
+                // Use display_name if available, otherwise fall back to name
+                const displayName = u.display_name || u.name || "Unknown";
+                
                 return (
                   <div key={u.id} className="flex items-center justify-between p-1.5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <Avatar src={u.avatar} name={u.name} size="sm" />
+                      <Avatar src={u.avatar} name={displayName} size="sm" />
                       <div className="min-w-0">
-                        <p className="text-xs font-medium truncate">{u.name} {isMe && "(You)"}</p>
+                        <p className="text-xs font-medium truncate">{displayName} {isMe && "(You)"}</p>
                         <p className="text-[10px] text-muted-foreground">{u.role}</p>
                       </div>
                     </div>
@@ -259,6 +262,9 @@ export function GroupPanel() {
               ) : (
                 addableUsers.map((u) => {
                   const checked = selectedUserIds.includes(u.id);
+                  // Use display_name if available, otherwise fall back to name
+                  const displayName = u.display_name || u.name || "Unknown";
+                  
                   return (
                     <button
                       key={u.id}
@@ -273,8 +279,8 @@ export function GroupPanel() {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <Avatar src={u.avatar} name={u.name} size="sm" />
-                        <span>{u.name}</span>
+                        <Avatar src={u.avatar} name={displayName} size="sm" />
+                        <span>{displayName}</span>
                       </div>
                       {checked && <span className="text-primary text-xs">✓</span>}
                     </button>
@@ -295,4 +301,3 @@ export function GroupPanel() {
     </aside>
   );
 }
-
