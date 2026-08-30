@@ -139,6 +139,7 @@ async function dispatchGroupedNotification(tag, buffer) {
   notificationBuffers.delete(tag);
 
   let existingCount = 0;
+  let existingMessages = [];
   let reg = null;
 
   if (typeof window !== "undefined" && "serviceWorker" in navigator) {
@@ -148,6 +149,7 @@ async function dispatchGroupedNotification(tag, buffer) {
         const existing = await reg.getNotifications({ tag });
         if (existing && existing.length > 0) {
           existingCount = existing[0].data?.unreadCount || 1;
+          existingMessages = existing[0].data?.messages || [];
         }
       }
     } catch (e) {
@@ -156,6 +158,20 @@ async function dispatchGroupedNotification(tag, buffer) {
   }
 
   const totalUnreadCount = existingCount + buffer.count;
+
+  // Compile the new list of messages
+  const newMessages = [...existingMessages];
+  const senderName = buffer.username || buffer.title?.replace('New message from ', '') || 'Someone';
+  if (buffer.body) {
+    newMessages.push(`${senderName}: ${buffer.body}`);
+  }
+  if (newMessages.length > 5) {
+    newMessages.shift();
+  }
+
+  const displayBody = newMessages.length > 1
+    ? newMessages.join('\n')
+    : buffer.body;
 
   // 1. Dispatch custom in-app toast notification
   dispatchGroupedToast(
@@ -172,12 +188,13 @@ async function dispatchGroupedNotification(tag, buffer) {
   if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
     let baseTitle = buffer.title;
     baseTitle = baseTitle.replace(/\s*\(\d+\s*new messages?\)/i, "");
+    const cleanedTitle = baseTitle.replace('New message from ', '');
     const displayTitle = totalUnreadCount > 1 
-      ? `${baseTitle} (${totalUnreadCount} new messages)` 
+      ? `${cleanedTitle} (${totalUnreadCount} messages)` 
       : baseTitle;
 
     const options = {
-      body: buffer.body,
+      body: displayBody,
       icon: buffer.avatar || "/Logo.png",
       badge: "/Logo.png",
       tag: tag,
@@ -185,6 +202,7 @@ async function dispatchGroupedNotification(tag, buffer) {
       data: {
         conversation_id: buffer.conversationId,
         unreadCount: totalUnreadCount,
+        messages: newMessages,
       },
       vibrate: [100, 50, 100],
     };
@@ -214,6 +232,7 @@ function queueGroupedNotification(notif, targetConvId, notifData) {
     buffer.body = notif.body || buffer.body;
     buffer.avatar = notifData?.avatar || buffer.avatar;
     buffer.action = action || buffer.action;
+    buffer.username = notifData?.username || buffer.username;
 
     buffer.timeoutId = setTimeout(() => {
       dispatchGroupedNotification(tag, buffer);
@@ -224,6 +243,7 @@ function queueGroupedNotification(notif, targetConvId, notifData) {
       title: notif.title || "Fieldchat Notification",
       body: notif.body || "",
       avatar: notifData?.avatar || null,
+      username: notifData?.username || null,
       conversationId: targetConvId,
       action: action,
       timeoutId: null

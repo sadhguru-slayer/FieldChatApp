@@ -25,26 +25,42 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     (async () => {
       let unreadCount = 1;
+      let messages = [];
       try {
         const existingNotifs = await self.registration.getNotifications({ tag });
         if (existingNotifs && existingNotifs.length > 0) {
           const existing = existingNotifs[0];
           const prevCount = existing.data?.unreadCount || 1;
           unreadCount = prevCount + 1;
+          messages = existing.data?.messages || [];
         }
       } catch (e) {
         console.warn('Error reading existing notifications:', e);
       }
 
+      const senderName = notifData.username || data.title?.replace('New message from ', '') || 'Someone';
+      const messageBody = data.body || data.message || '';
+      if (messageBody) {
+        messages.push(`${senderName}: ${messageBody}`);
+      }
+
+      if (messages.length > 5) {
+        messages.shift();
+      }
+
       let baseTitle = data.title || 'Fieldchat Notification';
       baseTitle = baseTitle.replace(/\s*\(\d+\s*new messages?\)/i, '');
-
+      const cleanedTitle = baseTitle.replace('New message from ', '');
       const displayTitle = unreadCount > 1 
-        ? `${baseTitle} (${unreadCount} new messages)` 
+        ? `${cleanedTitle} (${unreadCount} messages)` 
         : baseTitle;
 
+      const displayBody = messages.length > 1
+        ? messages.join('\n')
+        : messageBody;
+
       const options = {
-        body: data.body || data.message || '',
+        body: displayBody,
         icon: notifData.avatar || data.avatar || data.icon || '/Logo.png',
         badge: '/Logo.png',
         tag: tag,
@@ -52,6 +68,7 @@ self.addEventListener('push', (event) => {
         data: {
           ...notifData,
           unreadCount: unreadCount,
+          messages: messages,
           conversation_id: conversationId,
         },
         vibrate: [100, 50, 100],
