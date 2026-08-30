@@ -10,7 +10,16 @@ const EMOJIS = [
 
 import { sendTyping } from "@/services/ws";
 
-export function Composer({ onSend, onEdit, disabled }) {
+const isMobileDevice = () => {
+  if (typeof window === "undefined") return false;
+  return (
+    "ontouchstart" in window ||
+    navigator.maxTouchPoints > 0 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  );
+};
+
+export function Composer({ onSend, onEdit }) {
   const queryClient = useQueryClient();
   const activeId = useAppStore((s) => s.activeId);
   const reply = useAppStore((s) => s.reply);
@@ -82,16 +91,24 @@ export function Composer({ onSend, onEdit, disabled }) {
     setEmojiOpen(false);
     lastTypingTimeRef.current = 0;
 
-    // Preserve textarea focus after sending on mobile & desktop (like Telegram/WhatsApp)
+    // Immediately keep focus on input so keyboard stays open on both mobile & PC
     requestAnimationFrame(() => {
       ref.current?.focus();
     });
   };
 
   const onKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      submit();
+    if (e.key === "Enter") {
+      const isMobile = isMobileDevice();
+      if (isMobile) {
+        // Mobile: Enter key creates a new line (default behavior). Sending is via Send button.
+        return;
+      }
+      // PC: Enter = send, Shift + Enter = new line
+      if (!e.shiftKey) {
+        e.preventDefault();
+        submit();
+      }
     }
     if (e.key === "Escape") {
       setReply(null);
@@ -100,7 +117,7 @@ export function Composer({ onSend, onEdit, disabled }) {
     }
   };
 
-  const canSend = text.trim().length > 0 && !disabled;
+  const canSend = text.trim().length > 0;
 
   // Which context is active?
   const context = editing
@@ -195,12 +212,11 @@ export function Composer({ onSend, onEdit, disabled }) {
           <Paperclip className="size-5" />
         </button>
 
-        {/* Textarea */}
+        {/* Textarea — NEVER disabled so keyboard never collapses */}
         <textarea
           ref={ref}
           rows={1}
           value={text}
-          disabled={disabled}
           onChange={handleChange}
           onKeyDown={onKeyDown}
           onFocus={() => {
