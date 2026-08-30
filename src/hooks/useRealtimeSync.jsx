@@ -5,7 +5,7 @@ import { UserPlus, UserMinus, MessageSquare, Bell, X } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { wsClient } from "@/services/ws";
 import { Avatar } from "@/components/Avatar";
-import { markNotificationAsRead } from "@/services/api";
+import { markNotificationAsRead, getMyUserId } from "@/services/api";
 import { cn } from "@/lib/utils";
 
 let lastPopPlayedAt = 0;
@@ -332,6 +332,16 @@ export function useRealtimeSync(authed) {
 
     wsClient.connect();
 
+    // Invalidate and refetch queries on connection/reconnection to sync missed messages
+    const unsubOpen = wsClient.on("open", () => {
+      console.log("[WS] Connected/reconnected. Refetching active conversation to sync missed messages...");
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      const activeId = useAppStore.getState().activeId;
+      if (activeId) {
+        queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
+      }
+    });
+
     // Handle incoming real-time events from backend
     const unsub = wsClient.on("*", (payload) => {
       if (!payload || !payload.event) return;
@@ -407,8 +417,8 @@ export function useRealtimeSync(authed) {
       }
 
       if (payload.event === "typing" && payload.conversation_id && payload.sender_id) {
-        const me = queryClient.getQueryData(["me"]);
-        if (me && String(payload.sender_id) === String(me.id)) return;
+        const myUserId = getMyUserId();
+        if (myUserId && String(payload.sender_id) === String(myUserId)) return;
 
         useAppStore.getState().setTypingUser(
           String(payload.conversation_id),
@@ -443,8 +453,7 @@ export function useRealtimeSync(authed) {
       if (payload.event.startsWith("message.")) {
         const convId = String(payload.conversation_id);
         const activeId = useAppStore.getState().activeId;
-        const me = queryClient.getQueryData(["me"]);
-        const meId = me?.id;
+        const meId = getMyUserId();
 
         // If it's a SYSTEM message (e.g. member added/removed), refetch group list and members
         if (payload.event === "message.created" && payload.type === "SYSTEM") {
@@ -705,6 +714,7 @@ export function useRealtimeSync(authed) {
     return () => {
       clearInterval(timer);
       unsub();
+      unsubOpen();
     };
   }, [authed, queryClient]);
 

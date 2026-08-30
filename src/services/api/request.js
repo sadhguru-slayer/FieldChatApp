@@ -115,3 +115,40 @@ export async function request(path, options = {}) {
 
   return response.json();
 }
+
+export async function ensureValidAccessToken() {
+  const token = localStorage.getItem("access_token");
+  if (!token) return null;
+
+  try {
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return token;
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const parsed = JSON.parse(atob(base64));
+    const exp = parsed.exp;
+    
+    // If token is expired or expiring in less than 30 seconds, refresh it proactively
+    if (exp && Date.now() / 1000 >= exp - 30) {
+      console.log("[Auth] Token is expired or expiring soon. Refreshing proactively...");
+      const refreshToken = localStorage.getItem("refresh_token");
+      if (refreshToken) {
+        const refreshRes = await fetch(
+          `${API_URL}/api/tokens/refresh_token?token=${encodeURIComponent(refreshToken)}`,
+          { method: "POST" }
+        );
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          localStorage.setItem("access_token", data.access_token);
+          console.log("[Auth] Token refreshed successfully before connection.");
+          return data.access_token;
+        } else {
+          console.warn("[Auth] Proactive token refresh failed.");
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[Auth] Error checking token expiration status:", e);
+  }
+
+  return token;
+}

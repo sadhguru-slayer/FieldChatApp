@@ -20,6 +20,8 @@ const getWsUrl = () => {
   return baseUrl.replace(/^http/i, "ws");
 };
 
+import { ensureValidAccessToken } from "../api/request";
+
 class WebSocketClient {
   constructor() {
     this.ws = null;
@@ -28,10 +30,26 @@ class WebSocketClient {
     this.isConnected = false;
     this.isConnecting = false;
     this.pendingQueue = [];
+
+    // Reconnect immediately when window/tab is focused or network is restored
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", () => {
+        if (!this.isConnected && !this.isConnecting && localStorage.getItem("access_token")) {
+          console.log("[WS] Window focused, ensuring connection is active...");
+          this.connect();
+        }
+      });
+      window.addEventListener("online", () => {
+        if (!this.isConnected && !this.isConnecting && localStorage.getItem("access_token")) {
+          console.log("[WS] Internet restored, reconnecting...");
+          this.connect();
+        }
+      });
+    }
   }
 
-  connect() {
-    const token = localStorage.getItem("access_token");
+  async connect() {
+    let token = localStorage.getItem("access_token");
     if (!token) {
       console.warn("[WS] Cannot connect: missing access_token in localStorage");
       return;
@@ -42,6 +60,17 @@ class WebSocketClient {
     }
 
     this.isConnecting = true;
+
+    // Refresh access token if expired before opening connection
+    try {
+      const freshToken = await ensureValidAccessToken();
+      if (freshToken) {
+        token = freshToken;
+      }
+    } catch (err) {
+      console.warn("[WS] Failed to verify/refresh token before connecting:", err);
+    }
+
     const wsBaseUrl = getWsUrl();
     const url = `${wsBaseUrl}/ws?token=${encodeURIComponent(token)}`;
     console.log("[WS] Connecting to", url);
@@ -91,8 +120,8 @@ class WebSocketClient {
       this.isConnecting = false;
       this.emit("close", e);
 
-      // Auto-reconnect after 3 seconds if not closed cleanly
-      if (e.code !== 1000 && e.code !== 1008) {
+      // Auto-reconnect after 3 seconds on any non-clean disconnect
+      if (e.code !== 1000) {
         this.scheduleReconnect();
       }
     };
