@@ -416,7 +416,9 @@ export function ChatPane() {
     queryFn: ({ pageParam = null }) => getMessages({ conversationId: activeId, pageParam }),
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled: !!activeId,
-    staleTime: 15000,
+    staleTime: 5000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   useEffect(() => {

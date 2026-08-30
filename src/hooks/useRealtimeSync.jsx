@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UserPlus, UserMinus, MessageSquare, Bell, X } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
-import { wsClient } from "@/services/ws";
+import { wsClient, joinConversation } from "@/services/ws";
 import { Avatar } from "@/components/Avatar";
 import { markNotificationAsRead, getMyUserId } from "@/services/api";
 import { cn } from "@/lib/utils";
@@ -270,6 +270,36 @@ export function useRealtimeSync(authed) {
       }
     }
   }, [authed]);
+
+  // Handle App resume / visibility change (e.g. mobile app opened from background/homescreen after idle time)
+  useEffect(() => {
+    if (!authed) return;
+
+    const handleAppResume = () => {
+      if (document.visibilityState === "visible") {
+        console.log("[Sync] App resumed from background/idle. Resyncing conversations and active messages...");
+        if (!wsClient.isConnected) {
+          wsClient.connect();
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+
+        const activeId = useAppStore.getState().activeId;
+        if (activeId) {
+          joinConversation(activeId);
+          queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleAppResume);
+    window.addEventListener("focus", handleAppResume);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleAppResume);
+      window.removeEventListener("focus", handleAppResume);
+    };
+  }, [authed, queryClient]);
 
   // Handle notification click messages from service worker (especially on mobile)
   useEffect(() => {

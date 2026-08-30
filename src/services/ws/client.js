@@ -45,18 +45,20 @@ class WebSocketClient {
       this.startHeartbeat();
     }
 
-    // Window event listeners to handle reconnection
+    // Window & Document event listeners to handle reconnection on mobile resume / focus / online
     if (typeof window !== "undefined") {
-      window.addEventListener("focus", () => {
+      const handleAppResume = () => {
         if (!this.isConnected && !this.isConnecting && localStorage.getItem("access_token")) {
-          console.log("[WS Client] Window focused, ensuring connection is active...");
+          console.log("[WS Client] App resumed / focused, ensuring connection is active...");
           this.connect();
         }
-      });
-      window.addEventListener("online", () => {
-        if (!this.isConnected && !this.isConnecting && localStorage.getItem("access_token")) {
-          console.log("[WS Client] Network online, ensuring connection is active...");
-          this.connect();
+      };
+
+      window.addEventListener("focus", handleAppResume);
+      window.addEventListener("online", handleAppResume);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          handleAppResume();
         }
       });
       window.addEventListener("beforeunload", () => {
