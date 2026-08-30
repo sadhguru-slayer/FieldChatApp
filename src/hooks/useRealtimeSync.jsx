@@ -626,10 +626,12 @@ export function useRealtimeSync(authed) {
 
                 const reactIdx = reactions.findIndex((r) => r.emoji === emoji);
                 if (reactIdx !== -1) {
+                  const r = reactions[reactIdx];
+                  const alreadyCounted = isMe && r.reactedByMe;
                   reactions[reactIdx] = {
-                    ...reactions[reactIdx],
-                    count: reactions[reactIdx].count + 1,
-                    reactedByMe: reactions[reactIdx].reactedByMe || isMe,
+                    ...r,
+                    count: alreadyCounted ? r.count : r.count + 1,
+                    reactedByMe: r.reactedByMe || isMe,
                   };
                 } else {
                   reactions.push({
@@ -648,11 +650,13 @@ export function useRealtimeSync(authed) {
 
                 const reactIdx = reactions.findIndex((r) => r.emoji === emoji);
                 if (reactIdx !== -1) {
-                  const count = reactions[reactIdx].count - 1;
-                  const reactedByMe = isMe ? false : reactions[reactIdx].reactedByMe;
+                  const r = reactions[reactIdx];
+                  const alreadyDiscounted = isMe && !r.reactedByMe;
+                  const count = alreadyDiscounted ? r.count : r.count - 1;
+                  const reactedByMe = isMe ? false : r.reactedByMe;
                   if (count > 0) {
                     reactions[reactIdx] = {
-                      ...reactions[reactIdx],
+                      ...r,
                       count,
                       reactedByMe,
                     };

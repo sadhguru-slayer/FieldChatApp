@@ -31,6 +31,7 @@ export function Composer({ onSend, onEdit }) {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const ref = useRef(null);
   const lastTypingTimeRef = useRef(0);
+  const isSubmittingRef = useRef(false);
 
   const handleChange = (e) => {
     setText(e.target.value);
@@ -67,7 +68,9 @@ export function Composer({ onSend, onEdit }) {
 
   const submit = () => {
     const value = text.trim();
-    if (!value) return;
+    if (!value || isSubmittingRef.current) return;
+
+    isSubmittingRef.current = true;
 
     if (editing) {
       onEdit(editing, value);
@@ -92,6 +95,11 @@ export function Composer({ onSend, onEdit }) {
     setEditing(null);
     setEmojiOpen(false);
     lastTypingTimeRef.current = 0;
+
+    // Release lock in next tick to allow next send
+    setTimeout(() => {
+      isSubmittingRef.current = false;
+    }, 100);
 
     // Restore focus without causing the mobile viewport to scroll.
     requestAnimationFrame(() => {
