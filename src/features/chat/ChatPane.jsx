@@ -51,15 +51,19 @@ function useVisualViewportHeight() {
 
     const handler = () => {
       setHeight(`${window.visualViewport.height}px`);
+      // Immediately reset any automatic page scroll caused by focusing inputs on iOS/Android
+      window.scrollTo(0, 0);
     };
 
     window.visualViewport.addEventListener("resize", handler);
     window.visualViewport.addEventListener("scroll", handler);
+    window.addEventListener("scroll", handler);
     handler();
 
     return () => {
       window.visualViewport.removeEventListener("resize", handler);
       window.visualViewport.removeEventListener("scroll", handler);
+      window.removeEventListener("scroll", handler);
     };
   }, []);
 
@@ -653,8 +657,13 @@ export function ChatPane() {
   } else if (typingNames.length > 1) {
     typingText = `${typingNames.slice(0, 2).join(", ")} are typing...`;
   }
+  const viewportHeight = useVisualViewportHeight();
+
   return (
-    <main className="flex h-full flex-1 flex-col bg-background overflow-hidden relative">
+    <main
+      className="flex flex-col bg-background overflow-hidden w-full relative"
+      style={{ height: viewportHeight }}
+    >
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="relative z-30 flex h-14 items-center justify-between border-b border-border/30 px-3 select-none bg-sidebar/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-1 min-w-0">
