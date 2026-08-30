@@ -68,32 +68,34 @@ export function Composer({ onSend, onEdit }) {
   const submit = () => {
     const value = text.trim();
     if (!value) return;
+
     if (editing) {
       onEdit(editing, value);
     } else {
-      // Optimistic instant sound cues on enter/send click
       const settings = queryClient.getQueryData(["settings"]);
       const soundEnabled = settings?.sound_enabled ?? true;
+
       if (soundEnabled) {
         try {
           const audio = new Audio("/pop.mp3");
           audio.volume = 0.4;
-          audio.play().catch((err) => console.debug("[Audio] Play prevented:", err));
-        } catch (err) {
-          console.warn("[Audio] Error playing pop sound:", err);
-        }
+          audio.play().catch(() => {});
+        } catch {}
       }
+
       onSend(value, reply?.id ?? null);
     }
+
+    // Clear the composer without replacing/unmounting the textarea.
     setText("");
     setReply(null);
     setEditing(null);
     setEmojiOpen(false);
     lastTypingTimeRef.current = 0;
 
-    // Immediately keep focus on input so keyboard stays open on both mobile & PC
+    // Restore focus without causing the mobile viewport to scroll.
     requestAnimationFrame(() => {
-      ref.current?.focus();
+      ref.current?.focus({ preventScroll: true });
     });
   };
 
@@ -130,8 +132,7 @@ export function Composer({ onSend, onEdit }) {
     e.preventDefault();
   };
 
-  const handleSendPress = (e) => {
-    e.preventDefault();
+  const handleSendPress = () => {
     if (canSend) {
       submit();
     }
@@ -227,10 +228,7 @@ export function Composer({ onSend, onEdit }) {
           onChange={handleChange}
           onKeyDown={onKeyDown}
           onFocus={() => {
-            if (activeId) {
-              const el = document.getElementById("message-list-bottom");
-              el?.scrollIntoView({ behavior: "smooth" });
-            }
+            // Keep focus/keyboard stable on mobile.
           }}
           placeholder={editing ? "Edit message..." : reply ? `Reply...` : "Message..."}
           className="scroll-slim max-h-28 md:max-h-36 flex-1 resize-none bg-transparent py-2 text-[15px] md:text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60"
@@ -239,8 +237,6 @@ export function Composer({ onSend, onEdit }) {
         {/* Send */}
         <button
           type="button"
-          onMouseDown={handleSendPress}
-          onTouchStart={handleSendPress}
           onClick={handleSendPress}
           disabled={!canSend}
           aria-label="Send"
