@@ -21,7 +21,7 @@ function normalizeConversation(c, defaultType) {
         c.title || c.name || c.id
       )}`,
     role: c.role || "MEMBER",
-    unread: 0,
+    unread: Number(c.unread_count ?? 0),
     updatedAt,
     // For DMs: the other participant's user ID (needed for presence lookup)
     otherUserId: isGroup ? null : (c.other_user_id ? String(c.other_user_id) : null),

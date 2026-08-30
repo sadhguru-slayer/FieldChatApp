@@ -30,6 +30,213 @@ function playPopSound(queryClient) {
   }
 }
 
+// Module-level cache for buffering rapid notifications to prevent race conditions & spamming
+const notificationBuffers = new Map();
+const activeToastIds = new Map();
+
+function fallbackNativeNotification(title, options, conversationId) {
+  try {
+    const nativeNotif = new Notification(title, options);
+    nativeNotif.onclick = () => {
+      window.focus();
+      if (conversationId) {
+        useAppStore.getState().setActiveId(conversationId);
+        useAppStore.getState().setActiveScreen("chat");
+        useAppStore.getState().setMobileView("chat");
+      }
+    };
+  } catch (err) {
+    console.warn("[Notifications] Fallback native notification failed:", err);
+  }
+}
+
+function dispatchGroupedToast(tag, title, body, avatar, conversationId, unreadCount, action) {
+  if (activeToastIds.has(tag)) {
+    const prevId = activeToastIds.get(tag);
+    toast.dismiss(prevId);
+  }
+
+  const isAdded = action === "ADDED_TO_GROUP";
+  const isRemoved = action === "REMOVED_FROM_GROUP";
+
+  let baseTitle = title;
+  baseTitle = baseTitle.replace(/\s*\(\d+\s*new messages?\)/i, "");
+  const displayTitle = unreadCount > 1 
+    ? `${baseTitle} (${unreadCount} new messages)` 
+    : baseTitle;
+
+  const newToastId = toast.custom((t) => {
+    return (
+      <div
+        onClick={() => {
+          toast.dismiss(t);
+          if (conversationId) {
+            useAppStore.getState().setActiveId(conversationId);
+            useAppStore.getState().setActiveScreen("chat");
+            useAppStore.getState().setMobileView("chat");
+          }
+        }}
+        className="group relative flex items-center gap-3 w-full max-w-sm p-3.5 rounded-2xl bg-zinc-900/95 border border-zinc-800/90 shadow-2xl backdrop-blur-xl text-foreground cursor-pointer hover:bg-zinc-800/80 transition-all duration-200 select-none ring-1 ring-white/5"
+      >
+        <div className="relative shrink-0">
+          <Avatar
+            src={avatar}
+            name={title}
+            size="md"
+          />
+          <div
+            className={cn(
+              "absolute -bottom-1 -right-1 grid size-4.5 place-items-center rounded-full border border-zinc-900 text-[9px] shadow-xs",
+              isAdded
+                ? "bg-emerald-500 text-zinc-950 font-bold"
+                : isRemoved
+                ? "bg-rose-500 text-white"
+                : "bg-indigo-500 text-white"
+            )}
+          >
+            {isAdded ? (
+              <UserPlus className="size-2.5" />
+            ) : isRemoved ? (
+              <UserMinus className="size-2.5" />
+            ) : (
+              <MessageSquare className="size-2.5" />
+            )}
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1 pr-3">
+          <div className="flex items-center justify-between gap-1 mb-0.5">
+            <span className="text-xs font-semibold text-zinc-100 truncate tracking-tight">
+              {displayTitle}
+            </span>
+            <span className="text-[10px] text-zinc-400 font-medium shrink-0">
+              Just now
+            </span>
+          </div>
+          <p className="text-[11.5px] text-zinc-300/90 font-normal truncate leading-snug">
+            {body}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toast.dismiss(t);
+          }}
+          className="absolute top-2.5 right-2.5 grid size-5 place-items-center rounded-full text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
+        >
+          <X className="size-3" />
+        </button>
+      </div>
+    );
+  }, { unstyled: true });
+
+  activeToastIds.set(tag, newToastId);
+}
+
+async function dispatchGroupedNotification(tag, buffer) {
+  notificationBuffers.delete(tag);
+
+  let existingCount = 0;
+  let reg = null;
+
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    try {
+      reg = await navigator.serviceWorker.ready;
+      if (reg && reg.getNotifications) {
+        const existing = await reg.getNotifications({ tag });
+        if (existing && existing.length > 0) {
+          existingCount = existing[0].data?.unreadCount || 1;
+        }
+      }
+    } catch (e) {
+      console.warn("[Notifications] Error fetching existing SW notifications:", e);
+    }
+  }
+
+  const totalUnreadCount = existingCount + buffer.count;
+
+  // 1. Dispatch custom in-app toast notification
+  dispatchGroupedToast(
+    tag,
+    buffer.title,
+    buffer.body,
+    buffer.avatar,
+    buffer.conversationId,
+    totalUnreadCount,
+    buffer.action
+  );
+
+  // 2. Dispatch native OS notification if permission is granted
+  if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+    let baseTitle = buffer.title;
+    baseTitle = baseTitle.replace(/\s*\(\d+\s*new messages?\)/i, "");
+    const displayTitle = totalUnreadCount > 1 
+      ? `${baseTitle} (${totalUnreadCount} new messages)` 
+      : baseTitle;
+
+    const options = {
+      body: buffer.body,
+      icon: buffer.avatar || "/Logo.png",
+      badge: "/Logo.png",
+      tag: tag,
+      renotify: true,
+      data: {
+        conversation_id: buffer.conversationId,
+        unreadCount: totalUnreadCount,
+      },
+      vibrate: [100, 50, 100],
+    };
+
+    if (reg && reg.showNotification) {
+      try {
+        await reg.showNotification(displayTitle, options);
+      } catch (err) {
+        console.warn("[Notifications] SW showNotification failed, falling back:", err);
+        fallbackNativeNotification(displayTitle, options, buffer.conversationId);
+      }
+    } else {
+      fallbackNativeNotification(displayTitle, options, buffer.conversationId);
+    }
+  }
+}
+
+function queueGroupedNotification(notif, targetConvId, notifData) {
+  const tag = targetConvId ? `chat-${targetConvId}` : (notif.id ? `notif-${notif.id}` : "general");
+  const action = notifData?.action;
+
+  if (notificationBuffers.has(tag)) {
+    const buffer = notificationBuffers.get(tag);
+    clearTimeout(buffer.timeoutId);
+
+    buffer.count += 1;
+    buffer.body = notif.body || buffer.body;
+    buffer.avatar = notifData?.avatar || buffer.avatar;
+    buffer.action = action || buffer.action;
+
+    buffer.timeoutId = setTimeout(() => {
+      dispatchGroupedNotification(tag, buffer);
+    }, 800); // 800ms debounce
+  } else {
+    const buffer = {
+      count: 1,
+      title: notif.title || "Fieldchat Notification",
+      body: notif.body || "",
+      avatar: notifData?.avatar || null,
+      conversationId: targetConvId,
+      action: action,
+      timeoutId: null
+    };
+
+    buffer.timeoutId = setTimeout(() => {
+      dispatchGroupedNotification(tag, buffer);
+    }, 800);
+
+    notificationBuffers.set(tag, buffer);
+  }
+}
+
 export function useRealtimeSync(authed) {
   const queryClient = useQueryClient();
 
@@ -64,6 +271,38 @@ export function useRealtimeSync(authed) {
       navigator.serviceWorker.removeEventListener('message', handleSWMessage);
     };
   }, []);
+
+  // Automatically clear active tray notification when switching to/opening a conversation
+  const activeId = useAppStore((s) => s.activeId);
+  useEffect(() => {
+    if (!activeId) return;
+    const tag = `chat-${activeId}`;
+
+    // Clear any pending debounced notification timeouts
+    if (notificationBuffers.has(tag)) {
+      const buffer = notificationBuffers.get(tag);
+      if (buffer.timeoutId) {
+        clearTimeout(buffer.timeoutId);
+      }
+      notificationBuffers.delete(tag);
+    }
+
+    // Dismiss any active in-app toast for this conversation
+    if (activeToastIds.has(tag)) {
+      toast.dismiss(activeToastIds.get(tag));
+      activeToastIds.delete(tag);
+    }
+
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.ready.then((reg) => {
+        if (reg && reg.getNotifications) {
+          reg.getNotifications({ tag }).then((notifications) => {
+            notifications.forEach((n) => n.close());
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
+  }, [activeId]);
 
   useEffect(() => {
     if (!authed) {
@@ -133,124 +372,9 @@ export function useRealtimeSync(authed) {
           });
         }
 
-        // Trigger native HTML5 Desktop/Mobile Notification
-        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-          if (document.hidden || !targetConvId || String(activeId) !== String(targetConvId)) {
-            if ("serviceWorker" in navigator) {
-              navigator.serviceWorker.ready.then((registration) => {
-                registration.showNotification(notif.title, {
-                  body: notif.body,
-                  icon: notif.data?.avatar || undefined,
-                  tag: notif.id,
-                  data: {
-                    conversation_id: targetConvId,
-                  },
-                });
-              }).catch(() => {
-                const nativeNotif = new Notification(notif.title, {
-                  body: notif.body,
-                  icon: notif.data?.avatar || undefined,
-                  tag: notif.id,
-                });
-                nativeNotif.onclick = () => {
-                  window.focus();
-                  if (targetConvId) {
-                    useAppStore.getState().setActiveId(targetConvId);
-                    useAppStore.getState().setActiveScreen("chat");
-                    useAppStore.getState().setMobileView("chat");
-                  }
-                };
-              });
-            } else {
-              const nativeNotif = new Notification(notif.title, {
-                body: notif.body,
-                icon: notif.data?.avatar || undefined,
-                tag: notif.id,
-              });
-              nativeNotif.onclick = () => {
-                window.focus();
-                if (targetConvId) {
-                  useAppStore.getState().setActiveId(targetConvId);
-                  useAppStore.getState().setActiveScreen("chat");
-                  useAppStore.getState().setMobileView("chat");
-                }
-              };
-            }
-          }
-        }
-
-        // 3. Toast pop-up if user is not currently viewing the active conversation
+        // Trigger Grouped Notification (handles both native OS & in-app toasts with debounce)
         if (!targetConvId || String(activeId) !== String(targetConvId)) {
-          toast.custom((t) => {
-            const action = notif.data?.action;
-            const isAdded = action === "ADDED_TO_GROUP";
-            const isRemoved = action === "REMOVED_FROM_GROUP";
-
-            return (
-              <div
-                onClick={() => {
-                  toast.dismiss(t);
-                  if (targetConvId) {
-                    useAppStore.getState().setActiveId(targetConvId);
-                    useAppStore.getState().setActiveScreen("chat");
-                    useAppStore.getState().setMobileView("chat");
-                  }
-                }}
-                className="group relative flex items-center gap-3 w-full max-w-sm p-3.5 rounded-2xl bg-zinc-900/95 border border-zinc-800/90 shadow-2xl backdrop-blur-xl text-foreground cursor-pointer hover:bg-zinc-800/80 transition-all duration-200 select-none ring-1 ring-white/5"
-              >
-                <div className="relative shrink-0">
-                  <Avatar
-                    src={notif.data?.avatar}
-                    name={notif.data?.username || notif.title}
-                    size="md"
-                  />
-                  <div
-                    className={cn(
-                      "absolute -bottom-1 -right-1 grid size-4.5 place-items-center rounded-full border border-zinc-900 text-[9px] shadow-xs",
-                      isAdded
-                        ? "bg-emerald-500 text-zinc-950 font-bold"
-                        : isRemoved
-                        ? "bg-rose-500 text-white"
-                        : "bg-indigo-500 text-white"
-                    )}
-                  >
-                    {isAdded ? (
-                      <UserPlus className="size-2.5" />
-                    ) : isRemoved ? (
-                      <UserMinus className="size-2.5" />
-                    ) : (
-                      <MessageSquare className="size-2.5" />
-                    )}
-                  </div>
-                </div>
-
-                <div className="min-w-0 flex-1 pr-3">
-                  <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <span className="text-xs font-semibold text-zinc-100 truncate tracking-tight">
-                      {notif.title}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 font-medium shrink-0">
-                      Just now
-                    </span>
-                  </div>
-                  <p className="text-[11.5px] text-zinc-300/90 font-normal truncate leading-snug">
-                    {notif.body}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toast.dismiss(t);
-                  }}
-                  className="absolute top-2.5 right-2.5 grid size-5 place-items-center rounded-full text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            );
-          }, { unstyled: true });
+          queueGroupedNotification(notif, targetConvId, notifData);
         }
       }
 
@@ -563,4 +687,14 @@ export function useRealtimeSync(authed) {
       unsub();
     };
   }, [authed, queryClient]);
+
+  // Automatically refetch conversations list in background when navigating back to chat list
+  const mobileView = useAppStore((s) => s.mobileView);
+  const activeScreen = useAppStore((s) => s.activeScreen);
+
+  useEffect(() => {
+    if (authed && activeScreen === "chat" && mobileView === "list") {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    }
+  }, [authed, activeScreen, mobileView, queryClient]);
 }

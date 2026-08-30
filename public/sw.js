@@ -18,17 +18,48 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = data.title || 'Fieldchat Notification';
-  const options = {
-    body: data.body || data.message || '',
-    icon: data.avatar || data.icon || '/Logo.png',
-    badge: '/Logo.png',
-    tag: data.id || data.tag || 'general-notification',
-    data: data.data || data,
-    vibrate: [100, 50, 100],
-  };
+  const notifData = data.data || data;
+  const conversationId = notifData.conversation_id || data.conversation_id;
+  const tag = conversationId ? `chat-${conversationId}` : (data.id || data.tag || 'general-notification');
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    (async () => {
+      let unreadCount = 1;
+      try {
+        const existingNotifs = await self.registration.getNotifications({ tag });
+        if (existingNotifs && existingNotifs.length > 0) {
+          const existing = existingNotifs[0];
+          const prevCount = existing.data?.unreadCount || 1;
+          unreadCount = prevCount + 1;
+        }
+      } catch (e) {
+        console.warn('Error reading existing notifications:', e);
+      }
+
+      let baseTitle = data.title || 'Fieldchat Notification';
+      baseTitle = baseTitle.replace(/\s*\(\d+\s*new messages?\)/i, '');
+
+      const displayTitle = unreadCount > 1 
+        ? `${baseTitle} (${unreadCount} new messages)` 
+        : baseTitle;
+
+      const options = {
+        body: data.body || data.message || '',
+        icon: notifData.avatar || data.avatar || data.icon || '/Logo.png',
+        badge: '/Logo.png',
+        tag: tag,
+        renotify: true,
+        data: {
+          ...notifData,
+          unreadCount: unreadCount,
+          conversation_id: conversationId,
+        },
+        vibrate: [100, 50, 100],
+      };
+
+      return self.registration.showNotification(displayTitle, options);
+    })()
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {

@@ -65,50 +65,11 @@ class WebSocketClient {
       }
     };
 
-async function triggerWebPushNotification(notif) {
-  if (typeof window === "undefined" || !("Notification" in window) || !notif) return;
-
-  try {
-    if (Notification.permission === "default") {
-      await Notification.requestPermission();
-    }
-
-    if (Notification.permission === "granted") {
-      const title = notif.title || "Fieldchat Notification";
-      const options = {
-        body: notif.body || "",
-        icon: notif.data?.avatar || "/Logo.png",
-        badge: "/Logo.png",
-        tag: notif.id || `notif-${Date.now()}`,
-        data: {
-          conversation_id: notif.data?.conversation_id,
-          action: notif.data?.action,
-        },
-        vibrate: [100, 50, 100],
-      };
-
-      if ("serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.ready;
-        if (reg && reg.showNotification) {
-          await reg.showNotification(title, options);
-          return;
-        }
-      }
-      new Notification(title, options);
-    }
-  } catch (e) {
-    console.warn("[WebPush] Failed to trigger notification:", e);
-  }
-}
-
     this.ws.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
         if (payload.event === "notification") {
-          console.log("[WS] Received message:", payload);
-          if (payload.notification) {
-            triggerWebPushNotification(payload.notification);
-          }
+          console.log("[WS] Received notification payload:", payload);
         }
         if (payload.event) {
           this.emit(payload.event, payload);

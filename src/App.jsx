@@ -16,7 +16,7 @@ import { SettingsScreen } from "@/features/settings/SettingsScreen";
 import { ProfileScreen } from "@/features/profile/ProfileScreen";
 import { DevicesScreen } from "@/features/devices/DevicesScreen";
 import { cn } from "@/lib/utils";
-import { getMe } from "@/services/api";
+import { getMe, subscribeToWebPush } from "@/services/api";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAnimatePresence } from "@/hooks/useAnimatePresence";
@@ -55,6 +55,12 @@ function ChatApp() {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (authed) {
+      subscribeToWebPush();
+    }
+  }, [authed]);
 
   // Unlock browser audio engine on very first user click, keydown, or touch
   useEffect(() => {
