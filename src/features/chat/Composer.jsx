@@ -130,6 +130,13 @@ export function Composer({ onSend, onEdit }) {
     e.preventDefault();
   };
 
+  const handleSendPress = (e) => {
+    e.preventDefault();
+    if (canSend) {
+      submit();
+    }
+  };
+
   return (
     <div
       className="border-t border-border/40 bg-surface px-2.5 py-2 md:px-4 shrink-0 select-none"
@@ -232,9 +239,9 @@ export function Composer({ onSend, onEdit }) {
         {/* Send */}
         <button
           type="button"
-          onMouseDown={preventFocusLoss}
-          onTouchStart={preventFocusLoss}
-          onClick={submit}
+          onMouseDown={handleSendPress}
+          onTouchStart={handleSendPress}
+          onClick={handleSendPress}
           disabled={!canSend}
           aria-label="Send"
           className={cn(

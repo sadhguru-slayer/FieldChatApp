@@ -43,6 +43,29 @@ import {
 } from "@/services/api";
 import { cn } from "@/lib/utils";
 
+function useVisualViewportHeight() {
+  const [height, setHeight] = useState("100%");
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+
+    const handler = () => {
+      setHeight(`${window.visualViewport.height}px`);
+    };
+
+    window.visualViewport.addEventListener("resize", handler);
+    window.visualViewport.addEventListener("scroll", handler);
+    handler();
+
+    return () => {
+      window.visualViewport.removeEventListener("resize", handler);
+      window.visualViewport.removeEventListener("scroll", handler);
+    };
+  }, []);
+
+  return height;
+}
+
 // ─── Quick reactions ──────────────────────────────────────────────────────────
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "🙏", "😮"];
 
@@ -630,9 +653,13 @@ export function ChatPane() {
   } else if (typingNames.length > 1) {
     typingText = `${typingNames.slice(0, 2).join(", ")} are typing...`;
   }
+  const viewportHeight = useVisualViewportHeight();
 
   return (
-    <main className="flex h-full flex-1 flex-col bg-background">
+    <main
+      className="flex flex-col bg-background overflow-hidden w-full relative"
+      style={{ height: viewportHeight }}
+    >
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="relative z-30 flex h-14 items-center justify-between border-b border-border/30 px-3 select-none bg-sidebar/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-1 min-w-0">
