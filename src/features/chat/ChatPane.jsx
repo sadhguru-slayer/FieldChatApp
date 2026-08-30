@@ -345,6 +345,7 @@ import { ReactionsDetailModal } from "./ReactionsDetailModal";
 
 // ─── ChatPane ─────────────────────────────────────────────────────────────────
 export function ChatPane() {
+  const viewportHeight = useVisualViewportHeight();
   const activeId = useAppStore((s) => s.activeId);
   const togglePanel = useAppStore((s) => s.togglePanel);
   const setMobileView = useAppStore((s) => s.setMobileView);
@@ -657,7 +658,6 @@ export function ChatPane() {
   } else if (typingNames.length > 1) {
     typingText = `${typingNames.slice(0, 2).join(", ")} are typing...`;
   }
-  const viewportHeight = useVisualViewportHeight();
 
   return (
     <main
