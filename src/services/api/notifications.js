@@ -76,8 +76,29 @@ export async function subscribeToWebPush() {
 
     let subscription = await registration.pushManager.getSubscription();
 
+    if (subscription && subscription.options && subscription.options.applicationServerKey) {
+      const existingKeyBytes = new Uint8Array(subscription.options.applicationServerKey);
+      let keyMismatch = false;
+      if (existingKeyBytes.length !== applicationServerKey.length) {
+        keyMismatch = true;
+      } else {
+        for (let i = 0; i < existingKeyBytes.length; i++) {
+          if (existingKeyBytes[i] !== applicationServerKey[i]) {
+            keyMismatch = true;
+            break;
+          }
+        }
+      }
+
+      if (keyMismatch) {
+        console.warn("VAPID public key mismatch detected. Unsubscribing old browser subscription...");
+        await subscription.unsubscribe();
+        subscription = null;
+      }
+    }
+
     if (!subscription) {
-      console.log("No existing subscription. Subscribing with applicationServerKey...");
+      console.log("No existing subscription or key rotated. Subscribing with applicationServerKey...");
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey
