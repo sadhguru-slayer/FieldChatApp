@@ -18,6 +18,7 @@ import { DevicesScreen } from "@/features/devices/DevicesScreen";
 import { cn } from "@/lib/utils";
 import { getMe, subscribeToWebPush } from "@/services/api";
 import { useQuery } from "@tanstack/react-query";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 
 import { useAnimatePresence } from "@/hooks/useAnimatePresence";
 
@@ -57,8 +58,10 @@ function ChatApp() {
   }, [hydrate]);
 
   useEffect(() => {
-    if (authed) {
-      subscribeToWebPush();
+    if (authed && typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "granted") {
+        subscribeToWebPush();
+      }
     }
   }, [authed]);
 
@@ -233,6 +236,9 @@ function ChatApp() {
 
       {/* ── Persistent Floating Mobile Bottom Navigation ──────────────── */}
       <MobileBottomNav />
+
+      {/* ── Custom Premium Push Notifications Prompt Banner ────────────── */}
+      <NotificationPrompt />
 
       {/* ── Dialog Modals ──────────────────────────────────────────────── */}
       <CreateGroupDialog />
