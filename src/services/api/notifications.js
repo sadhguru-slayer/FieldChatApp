@@ -76,18 +76,13 @@ export async function subscribeToWebPush() {
 
     let subscription = await registration.pushManager.getSubscription();
 
-    // Development/debugging: Always unsubscribe and get a clean new one
-    if (subscription) {
-      console.log("Development mode: Unsubscribing existing push subscription...");
-      await subscription.unsubscribe();
-      subscription = null;
+    if (!subscription) {
+      console.log("No existing subscription. Subscribing with applicationServerKey...");
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey
+      });
     }
-
-    console.log("Subscribing with applicationServerKey...");
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: applicationServerKey
-    });
 
     const subJson = subscription.toJSON();
     console.log("Push endpoint:", subJson.endpoint);
@@ -104,7 +99,7 @@ export async function subscribeToWebPush() {
         }
       })
     });
-    console.log("Successfully subscribed to Web Push");
+    console.log("Successfully synced Web Push subscription with backend");
   } catch (err) {
     console.error("Failed to subscribe to Web Push:", err);
   }
