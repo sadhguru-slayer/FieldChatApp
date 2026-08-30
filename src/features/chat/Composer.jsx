@@ -47,12 +47,13 @@ export function Composer({ onSend, onEdit, disabled }) {
     if (reply) ref.current?.focus();
   }, [reply]);
 
-  // Auto-resize textarea
+  // Auto-resize textarea smoothly without collapsing layout
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = "0px";
-    el.style.height = Math.min(el.scrollHeight, 152) + "px";
+    el.style.height = "auto";
+    const newHeight = Math.min(el.scrollHeight, 140);
+    el.style.height = `${newHeight}px`;
   }, [text]);
 
   const submit = () => {
@@ -80,6 +81,11 @@ export function Composer({ onSend, onEdit, disabled }) {
     setEditing(null);
     setEmojiOpen(false);
     lastTypingTimeRef.current = 0;
+
+    // Preserve textarea focus after sending on mobile & desktop (like Telegram/WhatsApp)
+    requestAnimationFrame(() => {
+      ref.current?.focus();
+    });
   };
 
   const onKeyDown = (e) => {
@@ -103,9 +109,13 @@ export function Composer({ onSend, onEdit, disabled }) {
     ? { label: reply.senderName ? `Reply to ${reply.senderName}` : "Replying", preview: reply.text, clear: () => setReply(null) }
     : null;
 
+  const preventFocusLoss = (e) => {
+    e.preventDefault();
+  };
+
   return (
     <div
-      className="border-t border-border/40 bg-surface px-2.5 py-2 md:px-4 shrink-0"
+      className="border-t border-border/40 bg-surface px-2.5 py-2 md:px-4 shrink-0 select-none"
       style={{
         paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))",
       }}
@@ -123,6 +133,8 @@ export function Composer({ onSend, onEdit, disabled }) {
           </div>
           <button
             type="button"
+            onMouseDown={preventFocusLoss}
+            onTouchStart={preventFocusLoss}
             onClick={context.clear}
             aria-label="Cancel"
             className="shrink-0 text-base leading-none text-muted-foreground transition-colors hover:text-foreground opacity-60 hover:opacity-100"
@@ -139,6 +151,8 @@ export function Composer({ onSend, onEdit, disabled }) {
             <button
               key={e}
               type="button"
+              onMouseDown={preventFocusLoss}
+              onTouchStart={preventFocusLoss}
               onClick={() => {
                 setText((t) => t + e);
                 ref.current?.focus();
@@ -152,29 +166,33 @@ export function Composer({ onSend, onEdit, disabled }) {
       )}
 
       {/* Input row */}
-      <div className="flex items-end gap-1 rounded-2xl border border-border/50 bg-elevated/60 px-2 py-1 transition-all focus-within:border-border focus-within:ring-1 focus-within:ring-ring">
+      <div className="flex items-end gap-1.5 rounded-2xl border border-border/50 bg-elevated/60 px-2 py-1 transition-all focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/30">
         {/* Emoji */}
         <button
           type="button"
           aria-label="Emoji"
+          onMouseDown={preventFocusLoss}
+          onTouchStart={preventFocusLoss}
           onClick={() => setEmojiOpen((v) => !v)}
           className={cn(
-            "grid size-8 shrink-0 place-items-center rounded-lg transition-colors mb-0.5",
+            "grid size-9 shrink-0 place-items-center rounded-xl transition-colors mb-0.5 no-tap-highlight",
             emojiOpen
-              ? "text-accent bg-accent/10"
-              : "text-muted-foreground hover:text-foreground hover:bg-surface"
+              ? "text-accent bg-accent/15"
+              : "text-muted-foreground hover:text-foreground hover:bg-surface/60"
           )}
         >
-          <Smile className="size-[18px]" />
+          <Smile className="size-5" />
         </button>
 
         {/* Attach */}
         <button
           type="button"
           aria-label="Attach"
-          className="grid size-8 shrink-0 place-items-center rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-surface mb-0.5"
+          onMouseDown={preventFocusLoss}
+          onTouchStart={preventFocusLoss}
+          className="grid size-9 shrink-0 place-items-center rounded-xl transition-colors text-muted-foreground hover:text-foreground hover:bg-surface/60 mb-0.5 no-tap-highlight"
         >
-          <Paperclip className="size-[18px]" />
+          <Paperclip className="size-5" />
         </button>
 
         {/* Textarea */}
@@ -185,24 +203,32 @@ export function Composer({ onSend, onEdit, disabled }) {
           disabled={disabled}
           onChange={handleChange}
           onKeyDown={onKeyDown}
+          onFocus={() => {
+            if (activeId) {
+              const el = document.getElementById("message-list-bottom");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }
+          }}
           placeholder={editing ? "Edit message..." : reply ? `Reply...` : "Message..."}
-          className="scroll-slim max-h-28 md:max-h-36 flex-1 resize-none bg-transparent py-1.5 text-[15px] md:text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70"
+          className="scroll-slim max-h-28 md:max-h-36 flex-1 resize-none bg-transparent py-2 text-[15px] md:text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60"
         />
 
         {/* Send */}
         <button
           type="button"
+          onMouseDown={preventFocusLoss}
+          onTouchStart={preventFocusLoss}
           onClick={submit}
           disabled={!canSend}
           aria-label="Send"
           className={cn(
-            "grid size-8 shrink-0 place-items-center rounded-xl text-accent-foreground transition-all disabled:opacity-30 active:scale-95 mb-0.5 shadow-xs",
+            "grid size-9 shrink-0 place-items-center rounded-xl text-accent-foreground transition-all disabled:opacity-30 active:scale-95 mb-0.5 shadow-xs no-tap-highlight",
             canSend
               ? "bg-accent hover:opacity-90 shadow-accent/25"
-              : "bg-muted text-muted-foreground"
+              : "bg-muted/50 text-muted-foreground"
           )}
         >
-          <SendHorizonal className="size-[17px]" />
+          <SendHorizonal className="size-5" />
         </button>
       </div>
     </div>
