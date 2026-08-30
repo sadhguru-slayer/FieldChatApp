@@ -324,7 +324,7 @@ export function Sidebar({ onOpenSettings }) {
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ["conversations"],
     queryFn: getConversations,
-    staleTime: Infinity,
+    staleTime: 15000,
   });
 
   const filtered = conversations.filter((c) => {

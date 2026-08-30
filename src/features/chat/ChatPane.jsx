@@ -339,6 +339,7 @@ import {
   removeReaction as wsRemoveReaction,
   markDelivered,
   markRead,
+  wsClient,
 } from "@/services/ws";
 
 import { ReactionsDetailModal } from "./ReactionsDetailModal";
@@ -377,11 +378,23 @@ export function ChatPane() {
   useEffect(() => {
     if (activeId) {
       joinConversation(activeId);
+      // Invalidate the message query for this conversation to pull any messages we missed while it wasn't active
+      qc.invalidateQueries({ queryKey: ["messages", activeId] });
+
+      // Register listener to re-join the active conversation on WebSocket reconnect (e.g. after idle/sleep)
+      const unsub = wsClient.on("open", () => {
+        console.log("[WS] Connection re-established. Re-joining conversation:", activeId);
+        joinConversation(activeId);
+        // Invalidate message list to sync any missed messages while offline
+        qc.invalidateQueries({ queryKey: ["messages", activeId] });
+      });
+
       return () => {
         leaveConversation(activeId);
+        unsub();
       };
     }
-  }, [activeId]);
+  }, [activeId, qc]);
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe });
   const { data: conversations = [] } = useQuery({
@@ -403,7 +416,7 @@ export function ChatPane() {
     queryFn: ({ pageParam = null }) => getMessages({ conversationId: activeId, pageParam }),
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled: !!activeId,
-    staleTime: Infinity,
+    staleTime: 15000,
   });
 
   useEffect(() => {
