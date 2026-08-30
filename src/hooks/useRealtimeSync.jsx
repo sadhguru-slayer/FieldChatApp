@@ -681,8 +681,8 @@ export function useRealtimeSync(authed) {
                 edited: false,
                 type: "CHAT",
                 isMine,
-                delivered: true,
-                read: false,
+                delivered: !isMine,
+                read: !isMine && convId === String(activeId),
                 deletedForEveryone: false,
                 replyTo: payload.reply_to ? {
                   id: payload.reply_to.message_id,
