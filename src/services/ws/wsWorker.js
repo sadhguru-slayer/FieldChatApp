@@ -43,6 +43,10 @@ self.onconnect = function(e) {
 
     // Refresh heartbeat on any message
     portLastHeartbeat.set(port, Date.now());
+    if (!ports.has(port)) {
+      console.log("[Worker] Port was previously removed (timed out), re-adding port to active set.");
+      ports.add(port);
+    }
 
     switch (data.type) {
       case "CONNECT":

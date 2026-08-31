@@ -278,9 +278,7 @@ export function useRealtimeSync(authed) {
     const handleAppResume = () => {
       if (document.visibilityState === "visible") {
         console.log("[Sync] App resumed from background/idle. Resyncing conversations and active messages...");
-        if (!wsClient.isConnected) {
-          wsClient.connect();
-        }
+        wsClient.ensureConnected();
 
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
 
@@ -535,6 +533,8 @@ export function useRealtimeSync(authed) {
                 text: payload.message || "",
                 deletedForEveryone: false,
                 createdAt: payload.timestamp,
+                mediaUrl: payload.media_url || null,
+                mediaName: payload.media_name || null,
               } : null,
             };
             return [newConv, ...old];
@@ -556,6 +556,8 @@ export function useRealtimeSync(authed) {
                 text: payload.message || "",
                 deletedForEveryone: false,
                 createdAt: payload.timestamp,
+                mediaUrl: payload.media_url || null,
+                mediaName: payload.media_name || null,
               };
               if (!isMe && String(activeId) !== convId) {
                 unread += 1;
@@ -566,6 +568,8 @@ export function useRealtimeSync(authed) {
                   ...lastMessage,
                   text: "",
                   deletedForEveryone: true,
+                  mediaUrl: null,
+                  mediaName: null,
                 };
               }
             } else if (payload.event === "message.edited") {
@@ -627,6 +631,8 @@ export function useRealtimeSync(authed) {
                   ...items[existingIdx],
                   text: "",
                   deletedForEveryone: true,
+                  mediaUrl: null,
+                  mediaName: null,
                 };
               } else if (payload.event === "message.deleted_for_me") {
                 items.splice(existingIdx, 1);
@@ -718,6 +724,8 @@ export function useRealtimeSync(authed) {
                 delivered: !isMine,
                 read: !isMine && convId === String(activeId),
                 deletedForEveryone: false,
+                mediaUrl: payload.media_url || null,
+                mediaName: payload.media_name || null,
                 replyTo: payload.reply_to ? {
                   id: payload.reply_to.message_id,
                   senderId: payload.reply_to.sender_id,

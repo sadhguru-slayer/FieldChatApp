@@ -50,13 +50,15 @@ export function sendTyping(conversationId) {
 /**
  * Create a new message via WebSocket
  */
-export function createMessage(conversationId, content, replyToMessageId = null) {
-  if (!conversationId || !content) return false;
+export function createMessage(conversationId, content, replyToMessageId = null, fileUrl = null, fileName = null) {
+  if (!conversationId || (!content && !fileUrl)) return false;
   return wsClient.send({
     event: MessageEvent.MESSAGE_CREATED,
     conversation_id: String(conversationId),
     content: content,
     reply_to_message_id: replyToMessageId ? String(replyToMessageId) : null,
+    media_url: fileUrl,
+    media_name: fileName,
   });
 }
 

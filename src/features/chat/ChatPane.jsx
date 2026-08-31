@@ -468,10 +468,10 @@ export function ChatPane() {
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const sendMut = useMutation({
-    mutationFn: async ({ text, replyToId }) => {
-      const sent = wsCreateMessage(activeId, text, replyToId);
+    mutationFn: async ({ text, replyToId, fileUrl, fileName }) => {
+      const sent = wsCreateMessage(activeId, text, replyToId, fileUrl, fileName);
       if (!sent) {
-        return sendMessage({ conversationId: activeId, text, replyToId });
+        return sendMessage({ conversationId: activeId, text, replyToId, fileUrl, fileName });
       }
     },
     onSuccess: (res) => {
@@ -768,7 +768,7 @@ export function ChatPane() {
 
       {/* ── Composer ─────────────────────────────────────────────────────── */}
       <Composer
-        onSend={(text, replyToId) => sendMut.mutate({ text, replyToId })}
+        onSend={(text, replyToId, fileUrl, fileName) => sendMut.mutate({ text, replyToId, fileUrl, fileName })}
         onEdit={(editing, newText) => editMut.mutate({ msg: editing, newText })}
         disabled={sendMut.isPending}
       />

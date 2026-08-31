@@ -45,6 +45,8 @@ function normalizeConversation(c, defaultType) {
           text: latest.content || latest.message || "",
           createdAt: latest.timestamp,
           deletedForEveryone: !!latest.is_deleted_for_everyone,
+          mediaUrl: latest.media_url || null,
+          mediaName: latest.media_name || null,
         }
       : null,
   };

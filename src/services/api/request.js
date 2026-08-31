@@ -36,9 +36,24 @@ export function getDeviceId() {
 }
 
 export async function request(path, options = {}) {
+  // Ensure WebSocket is connected on any API request
+  if (typeof window !== "undefined" && localStorage.getItem("access_token")) {
+    import("../ws/client")
+      .then(({ wsClient }) => {
+        if (wsClient) {
+          wsClient.ensureConnected();
+        }
+      })
+      .catch((err) => {
+        console.warn("[Request] Failed to check/reconnect WS:", err);
+      });
+  }
+
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  const isFormData = options.body instanceof URLSearchParams;
+  const isFormData =
+    options.body instanceof URLSearchParams ||
+    (typeof FormData !== "undefined" && options.body instanceof FormData);
 
   const headers = {
     ...(options.body && !isFormData ? { "Content-Type": "application/json" } : {}),

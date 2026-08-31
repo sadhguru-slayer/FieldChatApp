@@ -50,6 +50,9 @@ function normalizeEvents(events) {
 
       deletedForEveryone: isDeletedForEveryone,
 
+      mediaUrl: data.media_url || null,
+      mediaName: data.media_name || null,
+
       replyTo: data.reply_to
         ? {
             id: data.reply_to.message_id,
@@ -101,12 +104,14 @@ export const getMessages = async ({ conversationId, pageParam = null }) => {
 };
 
 /** POST /api/messages/create-message */
-export const sendMessage = async ({ conversationId, text, replyToId = null }) => {
+export const sendMessage = async ({ conversationId, text, replyToId = null, fileUrl = null, fileName = null }) => {
   const params = new URLSearchParams({
     conversation_id: conversationId,
-    content: text,
+    content: text || "",
   });
   if (replyToId) params.set("reply_to_message_id", replyToId);
+  if (fileUrl) params.set("media_url", fileUrl);
+  if (fileName) params.set("media_name", fileName);
   return request(`/api/messages/create-message?${params}`, { method: "POST" });
 };
 
@@ -157,4 +162,18 @@ export const removeReaction = async ({ conversationId, messageId }) => {
     message_id: messageId,
   });
   return request(`/api/messages/remove-reaction?${params}`, { method: "DELETE" });
+};
+
+/** DELETE /api/messages/clear-chat */
+export const clearChat = async (conversationId) => {
+  return request(`/api/messages/clear-chat?conversation_id=${conversationId}`, {
+    method: "DELETE",
+  });
+};
+
+/** POST /api/messages/conversations/{conversationId}/read-all */
+export const markAllAsRead = async (conversationId) => {
+  return request(`/api/messages/conversations/${conversationId}/read-all`, {
+    method: "POST",
+  });
 };

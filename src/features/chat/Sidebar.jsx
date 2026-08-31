@@ -19,10 +19,26 @@ import {
 import { Avatar } from "@/components/Avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppStore } from "@/store/useAppStore";
-import { getConversations, getMe } from "@/services/api";
+import { getConversations, getMe, markAllAsRead, clearChat } from "@/services/api";
 import { formatListTime, formatLastSeen } from "@/lib/format";
 import { NotificationPopover } from "./NotificationPopover";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 import { useAnimatePresence } from "@/hooks/useAnimatePresence";
 
@@ -217,7 +233,7 @@ function FloatingActionButton({ onNewDm, onNewGroup }) {
 }
 
 // ─── Conversation Item ─────────────────────────────────────────────────────────
-function ConvItem({ c, isActive, onClick, presence }) {
+function ConvItem({ c, isActive, onClick, presence, onMarkAsRead, onClearChat }) {
   const isDm = c.type === "dm";
   const wsPresence = isDm && c.otherUserId ? presence[String(c.otherUserId)] : undefined;
   const isOnline = isDm
@@ -233,70 +249,102 @@ function ConvItem({ c, isActive, onClick, presence }) {
     if (!lastMsg) return isDm ? "Say hello!" : "Group created";
     if (lastMsg.deletedForEveryone) return "🚫 Message removed";
     const name = lastMsg.senderName || lastMsg.display_name || lastMsg.username;
-    const text = lastMsg.text || "";
+    let text = lastMsg.text || "";
+    if (!text && (lastMsg.mediaUrl || lastMsg.mediaName)) {
+      const isImg = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(lastMsg.mediaName || lastMsg.mediaUrl || "");
+      text = isImg ? "📷 Photo" : "📁 Attachment";
+    }
     if (c.type === "group") return name ? `${name}: ${text}` : text;
     return name === "You" ? `You: ${text}` : (text || "New conversation");
   })();
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "relative flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all duration-150 mb-0.5 group no-tap-highlight",
-        isActive
-          ? "bg-accent/10 border border-accent/20 shadow-xs"
-          : "hover:bg-surface/80 active:bg-elevated border border-transparent"
-      )}
-    >
-      {/* Active indicator */}
-      {isActive && (
-        <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full bg-accent" />
-      )}
-
-      {/* Avatar */}
-      <div className="relative shrink-0">
-        <Avatar src={c.avatar} name={c.title} size="md" />
-        {isDm && (
-          <span className={cn(
-            "absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-sidebar transition-colors duration-300",
-            isOnline ? "bg-emerald-500" : "bg-zinc-600"
-          )} />
+    <div className="relative group/item w-full">
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "relative flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all duration-150 mb-0.5 no-tap-highlight pr-10",
+          isActive
+            ? "bg-accent/10 border border-accent/20 shadow-xs"
+            : "hover:bg-surface/80 active:bg-elevated border border-transparent"
         )}
-      </div>
+      >
+        {/* Active indicator */}
+        {isActive && (
+          <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full bg-accent" />
+        )}
 
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-1 mb-0.5">
-          <span className={cn(
-            "truncate text-[13.5px] tracking-tight",
-            isActive ? "font-semibold text-foreground" : "font-medium text-foreground/90"
-          )}>
-            {c.title}
-          </span>
-          {c.updatedAt > 0 && (
+        {/* Avatar */}
+        <div className="relative shrink-0">
+          <Avatar src={c.avatar} name={c.title} size="md" />
+          {isDm && (
             <span className={cn(
-              "shrink-0 text-[11px] font-normal",
-              c.unread > 0 ? "text-accent font-semibold" : "text-muted-foreground/70"
-            )}>
-              {formatListTime(c.updatedAt)}
-            </span>
+              "absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-sidebar transition-colors duration-300",
+              isOnline ? "bg-emerald-500" : "bg-zinc-600"
+            )} />
           )}
         </div>
-        <p className="line-clamp-1 text-[12px] text-muted-foreground font-normal">
-          {isDm && !isOnline && lastSeenText ? (
-            <span className="text-[11px] text-muted-foreground/60">{lastSeenText}</span>
-          ) : preview}
-        </p>
-      </div>
 
-      {/* Unread badge */}
-      {c.unread > 0 && (
-        <span className="grid min-w-5 h-5 place-items-center rounded-full bg-accent px-1.5 text-[10.5px] font-bold text-accent-foreground shrink-0 shadow-sm shadow-accent/30">
-          {c.unread > 99 ? "99+" : c.unread}
-        </span>
-      )}
-    </button>
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-1 mb-0.5">
+            <span className={cn(
+              "truncate text-[13.5px] tracking-tight pr-4",
+              isActive ? "font-semibold text-foreground" : "font-medium text-foreground/90"
+            )}>
+              {c.title}
+            </span>
+            {c.updatedAt > 0 && (
+              <span className={cn(
+                "shrink-0 text-[11px] font-normal",
+                c.unread > 0 ? "text-accent font-semibold" : "text-muted-foreground/70"
+              )}>
+                {formatListTime(c.updatedAt)}
+              </span>
+            )}
+          </div>
+          <p className="line-clamp-1 text-[12px] text-muted-foreground font-normal">
+            {isDm && !isOnline && lastSeenText ? (
+              <span className="text-[11px] text-muted-foreground/60">{lastSeenText}</span>
+            ) : preview}
+          </p>
+        </div>
+
+        {/* Unread badge */}
+        {c.unread > 0 && (
+          <span className="grid min-w-5 h-5 place-items-center rounded-full bg-accent px-1.5 text-[10.5px] font-bold text-accent-foreground shrink-0 shadow-sm shadow-accent/30 absolute right-3 bottom-2.5">
+            {c.unread > 99 ? "99+" : c.unread}
+          </span>
+        )}
+      </button>
+
+      {/* Action Trigger overlay on hover */}
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 opacity-100 md:opacity-0 md:group-hover/item:opacity-100 transition-opacity duration-150">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              className="grid size-7 place-items-center rounded-lg hover:bg-elevated text-muted-foreground hover:text-foreground transition-all"
+            >
+              <MoreVertical className="size-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkAsRead(); }}>
+              Mark as read
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onClearChat(); }}
+              className="text-destructive focus:bg-destructive/15 focus:text-destructive"
+            >
+              Clear chat
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   );
 }
 
@@ -318,8 +366,48 @@ export function Sidebar({ onOpenSettings }) {
   const presence = useAppStore((s) => s.presence);
   
   const [scrolled, setScrolled] = useState(false);
+  const [clearChatConvId, setClearChatConvId] = useState(null);
 
   const queryClient = useQueryClient();
+
+  const handleMarkAsRead = async (conversationId) => {
+    try {
+      await markAllAsRead(conversationId);
+      queryClient.setQueryData(["conversations"], (old) => {
+        if (!old) return old;
+        return old.map((conv) => {
+          if (String(conv.id) === String(conversationId)) {
+            return { ...conv, unread: 0 };
+          }
+          return conv;
+        });
+      });
+    } catch (err) {
+      console.error("Failed to mark all as read:", err);
+    }
+  };
+
+  const handleClearChat = async () => {
+    if (!clearChatConvId) return;
+    try {
+      await clearChat(clearChatConvId);
+      queryClient.setQueryData(["conversations"], (old) => {
+        if (!old) return old;
+        return old.map((conv) => {
+          if (String(conv.id) === String(clearChatConvId)) {
+            return { ...conv, lastMessage: null, unread: 0 };
+          }
+          return conv;
+        });
+      });
+      queryClient.invalidateQueries({ queryKey: ["messages", String(clearChatConvId)] });
+    } catch (err) {
+      console.error("Failed to clear chat:", err);
+    } finally {
+      setClearChatConvId(null);
+    }
+  };
+
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe });
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ["conversations"],
@@ -508,6 +596,8 @@ export function Sidebar({ onOpenSettings }) {
                   isActive={activeId === String(c.id)}
                   onClick={() => selectConv(c.id)}
                   presence={presence}
+                  onMarkAsRead={() => handleMarkAsRead(c.id)}
+                  onClearChat={() => setClearChatConvId(c.id)}
                 />
               ))}
               {/* Bottom padding for FAB + mobile bottom nav */}
@@ -521,6 +611,24 @@ export function Sidebar({ onOpenSettings }) {
           onNewGroup={() => setCreateGroupOpen(true)}
         />
       </div>
+
+      {/* Clear Chat Confirmation Modal */}
+      <AlertDialog open={!!clearChatConvId} onOpenChange={(open) => !open && setClearChatConvId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Chat History?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete all messages in this conversation? This action is permanent and cannot be undone. Any media files sent in this chat will also be deleted from storage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearChat} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Clear Chat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </aside>
   );
 }

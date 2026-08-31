@@ -39,6 +39,7 @@ class WebSocketClient {
     this.localWs = null;
     this.reconnectTimer = null;
     this.heartbeatTimer = null;
+    this.lastMessageTime = Date.now();
 
     // Start Worker Heartbeat
     if (this.useSharedWorker) {
@@ -48,10 +49,8 @@ class WebSocketClient {
     // Window & Document event listeners to handle reconnection on mobile resume / focus / online
     if (typeof window !== "undefined") {
       const handleAppResume = () => {
-        if (!this.isConnected && !this.isConnecting && localStorage.getItem("access_token")) {
-          console.log("[WS Client] App resumed / focused, ensuring connection is active...");
-          this.connect();
-        }
+        console.log("[WS Client] App resumed / focused, ensuring connection is active...");
+        this.ensureConnected();
       };
 
       window.addEventListener("focus", handleAppResume);
@@ -80,6 +79,22 @@ class WebSocketClient {
     }, 5000);
   }
 
+  ensureConnected() {
+    if (typeof window === "undefined" || !localStorage.getItem("access_token")) {
+      return;
+    }
+    const now = Date.now();
+    const timeSinceLastMessage = now - this.lastMessageTime;
+    const isIdleOrDead = timeSinceLastMessage > 12000;
+
+    if (isIdleOrDead || (!this.isConnected && !this.isConnecting)) {
+      console.log(`[WS Client] Connection check: isIdleOrDead=${isIdleOrDead} (${timeSinceLastMessage}ms since last msg), isConnected=${this.isConnected}, isConnecting=${this.isConnecting}. Triggering reconnect...`);
+      this.isConnected = false;
+      this.isConnecting = false;
+      this.connect();
+    }
+  }
+
   notifyTabClosing() {
     if (this.worker) {
       try {
@@ -100,9 +115,12 @@ class WebSocketClient {
         const data = event.data;
         if (!data) return;
 
+        this.lastMessageTime = Date.now();
+
         switch (data.type) {
           case "OPEN":
             console.log("[WS Client] Connection established via SharedWorker");
+            this.lastMessageTime = Date.now();
             this.isConnected = true;
             this.isConnecting = false;
             this.emit("open");
@@ -191,6 +209,10 @@ class WebSocketClient {
 
   connectLocal(token, wsUrl) {
     if (this.localWs && (this.localWs.readyState === WebSocket.OPEN || this.localWs.readyState === WebSocket.CONNECTING)) {
+      if (this.localWs.readyState === WebSocket.OPEN) {
+        this.isConnected = true;
+        this.isConnecting = false;
+      }
       return;
     }
 
@@ -201,6 +223,7 @@ class WebSocketClient {
 
     this.localWs.onopen = () => {
       console.log("[WS Client] Local WebSocket connection established");
+      this.lastMessageTime = Date.now();
       this.isConnected = true;
       this.isConnecting = false;
       this.emit("open");
@@ -208,6 +231,7 @@ class WebSocketClient {
     };
 
     this.localWs.onmessage = (event) => {
+      this.lastMessageTime = Date.now();
       try {
         const payload = JSON.parse(event.data);
         if (payload.event === "notification") {

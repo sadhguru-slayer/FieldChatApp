@@ -6,6 +6,7 @@ import {
   Pencil,
   Reply,
   Trash2,
+  Paperclip,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { formatTime } from "@/lib/format";
@@ -88,6 +89,59 @@ function SystemMessage({ text }) {
       <span className="rounded-full bg-elevated/60 px-3.5 py-1 text-[11px] font-medium text-muted-foreground border border-border/40 select-none shadow-2xs">
         {text}
       </span>
+    </div>
+  );
+}
+
+// ─── Media Attachment Rendering ──────────────────────────────────────────────
+function getFullMediaUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  
+  const storageUrl = import.meta.env.VITE_STORAGE_URL;
+  if (storageUrl) {
+    return `${storageUrl.replace(/\/$/, "")}${url}`;
+  }
+  
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    return `${protocol}//${hostname}:9000${url}`;
+  }
+  return `http://localhost:9000${url}`;
+}
+
+function MediaAttachment({ mediaUrl, mediaName, mine }) {
+  const isImage = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(mediaName || mediaUrl || "");
+  if (isImage) return null; // Handled directly in bubble code for premium look
+  const fullUrl = getFullMediaUrl(mediaUrl);
+
+  return (
+    <div className="mb-1.5">
+      <a
+        href={fullUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className={cn(
+          "flex items-center gap-2.5 rounded-xl border p-2.5 transition-all hover:bg-white/5",
+          mine
+            ? "bg-black/15 border-white/10 text-white"
+            : "bg-surface border-border text-foreground"
+        )}
+      >
+        <div className={cn("grid size-9 place-items-center rounded-lg shrink-0", mine ? "bg-white/10" : "bg-elevated")}>
+          <Paperclip className="size-4.5" />
+        </div>
+        <div className="min-w-0 flex-1 pr-2">
+          <p className="text-[11.5px] font-semibold truncate leading-tight">
+            {mediaName || "Attachment"}
+          </p>
+          <p className="text-[9.5px] opacity-75 mt-0.5">
+            Click to view / download
+          </p>
+        </div>
+      </a>
     </div>
   );
 }
@@ -222,43 +276,145 @@ function MessageRowBase({
           )}
 
           {/* ── Bubble ── */}
-          <div
-            onClick={handleBubbleClick}
-            className={cn(
-              "relative px-3.5 py-2 text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150",
-              mine
-                ? "bg-accent/80 text-white font-normal"
-                : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
-              getBubbleRadiusClass(),
-              isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
-            )}
-          >
-            {m.replyTo && (
-              <ReplyPreview
-                replyTo={m.replyTo}
-                mine={mine}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onJumpTo(m.replyTo.id);
-                }}
-              />
-            )}
+          {(() => {
+            const isImageMedia = m.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "");
+            const isMediaOnly = isImageMedia && !m.text && !m.replyTo;
+            const isMediaWithText = isImageMedia && m.text;
 
-            <span className="break-words whitespace-pre-wrap">{m.text}</span>
+            if (isMediaOnly) {
+              return (
+                <div
+                  onClick={handleBubbleClick}
+                  className={cn(
+                    "relative overflow-hidden cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 rounded-2xl max-w-[280px] sm:max-w-xs",
+                    getBubbleRadiusClass(),
+                    isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
+                  )}
+                >
+                  <img
+                    src={getFullMediaUrl(m.mediaUrl)}
+                    alt={m.mediaName || "Image attachment"}
+                    loading="lazy"
+                    className="max-h-[340px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                    }}
+                  />
+                  {/* Overlay meta */}
+                  <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 text-white/90 text-[10px] flex items-center gap-1 backdrop-blur-xs font-mono select-none">
+                    {m.edited && <span className="italic opacity-70 text-[9px]">edited</span>}
+                    {formatTime(m.createdAt)}
+                    {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} />}
+                  </div>
+                </div>
+              );
+            }
 
-            {/* Inline meta — time + ticks */}
-            <span
-              className={cn(
-                "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono",
-                mine ? "text-accent-foreground/80 font-medium" : "text-muted-foreground/75"
-              )}
-            >
-              {m.edited && <span className="italic opacity-70">edited</span>}
-              {formatTime(m.createdAt)}
-              {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} />}
-            </span>
-            <span className="block clear-both h-0" />
-          </div>
+            if (isMediaWithText) {
+              return (
+                <div
+                  onClick={handleBubbleClick}
+                  className={cn(
+                    "relative text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150 p-0 overflow-hidden max-w-[280px] sm:max-w-xs",
+                    mine
+                      ? "bg-accent/80 text-white font-normal"
+                      : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
+                    getBubbleRadiusClass(),
+                    isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
+                  )}
+                >
+                  <div className="relative w-full overflow-hidden">
+                    <img
+                      src={getFullMediaUrl(m.mediaUrl)}
+                      alt={m.mediaName || "Image attachment"}
+                      loading="lazy"
+                      className="max-h-[260px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                      }}
+                    />
+                  </div>
+                  <div className="px-3.5 pb-2.5 pt-2 text-[13px] leading-[17px]">
+                    {m.replyTo && (
+                      <ReplyPreview
+                        replyTo={m.replyTo}
+                        mine={mine}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onJumpTo(m.replyTo.id);
+                        }}
+                      />
+                    )}
+                    <span className="break-words whitespace-pre-wrap">{m.text}</span>
+                    
+                    {/* Inline meta */}
+                    <span
+                      className={cn(
+                        "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono",
+                        mine ? "text-accent-foreground/80 font-medium" : "text-muted-foreground/75"
+                      )}
+                    >
+                      {m.edited && <span className="italic opacity-70">edited</span>}
+                      {formatTime(m.createdAt)}
+                      {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} />}
+                    </span>
+                    <span className="block clear-both h-0" />
+                  </div>
+                </div>
+              );
+            }
+
+            // Standard layout for text or file attachment
+            return (
+              <div
+                onClick={handleBubbleClick}
+                className={cn(
+                  "relative px-3.5 py-2 text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150 max-w-[280px] sm:max-w-xs",
+                  mine
+                    ? "bg-accent/80 text-white font-normal"
+                    : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
+                  getBubbleRadiusClass(),
+                  isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
+                )}
+              >
+                {m.replyTo && (
+                  <ReplyPreview
+                    replyTo={m.replyTo}
+                    mine={mine}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onJumpTo(m.replyTo.id);
+                    }}
+                  />
+                )}
+
+                {m.mediaUrl && (
+                  <MediaAttachment
+                    mediaUrl={m.mediaUrl}
+                    mediaName={m.mediaName}
+                    mine={mine}
+                  />
+                )}
+
+                {m.text && <span className="break-words whitespace-pre-wrap">{m.text}</span>}
+
+                {/* Inline meta — time + ticks */}
+                <span
+                  className={cn(
+                    "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono",
+                    mine ? "text-accent-foreground/80 font-medium" : "text-muted-foreground/75"
+                  )}
+                >
+                  {m.edited && <span className="italic opacity-70">edited</span>}
+                  {formatTime(m.createdAt)}
+                  {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} />}
+                </span>
+                <span className="block clear-both h-0" />
+              </div>
+            );
+          })()}
 
           {/* Action button — right for incoming */}
           {!mine && (
