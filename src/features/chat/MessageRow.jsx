@@ -8,6 +8,7 @@ import {
   Trash2,
   Paperclip,
   Play,
+  CornerUpLeft,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { formatTime } from "@/lib/format";
@@ -39,26 +40,31 @@ function Ticks({ delivered, read, mine }) {
 // ─── Reply Preview Bar ───────────────────────────────────────────────────────
 function ReplyPreview({ replyTo, mine, onClick }) {
   if (!replyTo) return null;
-  
-  // Use display_name if available, otherwise fall back to senderName
+
   const displayName = replyTo.display_name || replyTo.senderName || "Unknown";
-  
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "mb-1.5 block w-full rounded-lg border-l-2 px-2.5 py-1 text-left text-[11px] transition-opacity hover:opacity-85",
-        mine
-          ? "border-white/60 bg-black/20 text-white/90"
-          : "border-accent bg-background/50 text-foreground/80"
+        "mb-1.5 flex w-full items-stretch overflow-hidden rounded-lg text-left text-[11px] transition-all active:opacity-75",
+        mine ? "bg-black/25" : "bg-black/20"
       )}
     >
-      <span className={cn("block font-semibold text-[10.5px]", mine ? "text-white" : "text-accent")}>
-        {displayName}
-      </span>
-      <span className="line-clamp-1 opacity-80">
-        {replyTo.isDeleted ? "Message unavailable" : replyTo.text}
+      <span
+        className={cn(
+          "w-[3px] shrink-0 rounded-l-lg",
+          mine ? "bg-white/80" : "bg-accent"
+        )}
+      />
+      <span className="flex flex-col px-2.5 py-1.5 min-w-0">
+        <span className={cn("block font-bold text-[10.5px] leading-tight truncate", mine ? "text-white" : "text-accent")}>
+          {displayName}
+        </span>
+        <span className="mt-0.5 line-clamp-1 text-[11px] leading-snug opacity-70">
+          {replyTo.isDeleted ? <span className="italic">Message unavailable</span> : replyTo.text}
+        </span>
       </span>
     </button>
   );
@@ -174,7 +180,9 @@ function MessageRowBase({
   const touchStartY = useRef(0);
   const touchCurrentX = useRef(0);
   const rowRef = useRef(null);
-  const lastTapTime = useRef(0);
+  const [swipeHint, setSwipeHint] = useState(false);
+
+  const SWIPE_THRESHOLD = 80;
 
   const startPress = (e) => {
     if (isMultiSelectMode) return;
@@ -182,23 +190,14 @@ function MessageRowBase({
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     touchCurrentX.current = e.touches[0].clientX;
-    
-    const now = Date.now();
-    if (now - lastTapTime.current < 300) {
-      if (pressTimer.current) clearTimeout(pressTimer.current);
-      onReply(m);
-      lastTapTime.current = 0;
-      return;
-    }
-    lastTapTime.current = now;
 
     pressTimer.current = setTimeout(() => {
       isLongPressRef.current = true;
       const anchor = { x: touchStartX.current, y: touchStartY.current };
-      onOpenActions(m, { 
-        currentTarget: { 
-          getBoundingClientRect: () => ({ left: anchor.x - 40, right: anchor.x + 40, bottom: anchor.y, top: anchor.y }) 
-        } 
+      onOpenActions(m, {
+        currentTarget: {
+          getBoundingClientRect: () => ({ left: anchor.x - 40, right: anchor.x + 40, bottom: anchor.y, top: anchor.y })
+        }
       });
     }, 450);
   };
@@ -207,16 +206,20 @@ function MessageRowBase({
     if (isMultiSelectMode) return;
     touchCurrentX.current = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
-    
     const diffX = touchCurrentX.current - touchStartX.current;
     const diffY = currentY - touchStartY.current;
-    
+
     if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
       if (pressTimer.current) clearTimeout(pressTimer.current);
     }
 
-    if (rowRef.current && Math.abs(diffX) < 100 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
-      rowRef.current.style.transform = `translateX(${diffX * 0.4}px)`;
+    const isHoriz = Math.abs(diffX) > Math.abs(diffY) * 1.5;
+    const absX = Math.abs(diffX);
+
+    if (rowRef.current && absX < 95 && isHoriz) {
+      rowRef.current.style.transition = "none";
+      rowRef.current.style.transform = `translateX(${diffX * 0.45}px)`;
+      setSwipeHint(absX > SWIPE_THRESHOLD * 0.55);
     }
   };
 
@@ -224,18 +227,16 @@ function MessageRowBase({
     if (isMultiSelectMode) return;
     if (pressTimer.current) clearTimeout(pressTimer.current);
     const diffX = touchCurrentX.current - touchStartX.current;
-    
-    if (rowRef.current) {
-      rowRef.current.style.transform = `translateX(0px)`;
-      rowRef.current.style.transition = `transform 0.2s ease-out`;
-      setTimeout(() => {
-        if (rowRef.current) rowRef.current.style.transition = '';
-      }, 200);
-    }
 
-    if (Math.abs(diffX) > 40) {
+    if (rowRef.current) {
+      rowRef.current.style.transition = "transform 0.22s cubic-bezier(0.25,0.46,0.45,0.94)";
+      rowRef.current.style.transform = "translateX(0px)";
+      setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = ""; }, 220);
+    }
+    setSwipeHint(false);
+
+    if (Math.abs(diffX) > SWIPE_THRESHOLD) {
       onReply(m);
-      lastTapTime.current = 0;
     }
   };
 
@@ -303,15 +304,25 @@ function MessageRowBase({
       id={`msg-${m.id}`}
       ref={rowRef}
       className={cn(
-        "group/msg flex gap-2 px-3 py-0.5 md:px-4 items-stretch cursor-pointer md:cursor-default",
+        "group/msg relative flex gap-2 px-3 py-0.5 md:px-4 items-stretch cursor-pointer md:cursor-default",
         mine ? "justify-end" : "justify-start"
       )}
       onClick={handleRowClick}
-      onDoubleClick={isMultiSelectMode ? undefined : () => onReply(m)}
       onTouchStart={startPress}
       onTouchEnd={endTouch}
       onTouchMove={moveTouch}
     >
+      {/* ── Swipe-to-reply visual hint ── */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full size-7 bg-zinc-700/80 text-white transition-all duration-150 z-10",
+          mine ? "-left-1" : "-right-1",
+          swipeHint ? "opacity-100 scale-100" : "opacity-0 scale-75"
+        )}
+      >
+        <CornerUpLeft className="size-3.5" />
+      </span>
       {/* ── Multi-select check ── */}
       {isMultiSelectMode && (
         <div 
@@ -524,12 +535,12 @@ function MessageRowBase({
               <div
                 onClick={handleBubbleClick}
                 className={cn(
-                  "relative px-3.5 py-2 text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150 max-w-[280px] sm:max-w-xs",
+                  "relative px-3.5 py-2.5 text-[13px] leading-[1.45] cursor-pointer select-none md:select-text shadow-md transition-all duration-150 max-w-[280px] sm:max-w-xs",
                   mine
-                    ? "bg-accent/80 text-white font-normal"
-                    : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
+                    ? "bg-accent/85 text-white"
+                    : "bg-zinc-800/60 text-zinc-100 border border-zinc-700/40",
                   getBubbleRadiusClass(),
-                  (isActionActive || isSelected) && "ring-1.5 ring-accent/60 shadow-xs"
+                  (isActionActive || isSelected) && "ring-2 ring-accent/50"
                 )}
               >
                 {m.replyTo && (
@@ -556,8 +567,8 @@ function MessageRowBase({
                 {/* Inline meta — time + ticks */}
                 <span
                   className={cn(
-                    "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono",
-                    mine ? "text-accent-foreground/80 font-medium" : "text-muted-foreground/75"
+                    "ml-3 inline-flex translate-y-[3px] items-center gap-1 text-[10px] tabular-nums float-right mt-0.5 font-mono",
+                    mine ? "text-white/65" : "text-zinc-400"
                   )}
                 >
                   {m.edited && <span className="italic opacity-70">edited</span>}

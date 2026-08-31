@@ -276,17 +276,27 @@ export function useRealtimeSync(authed) {
     if (!authed) return;
 
     let lastResumeTime = 0;
+    let hiddenAt = null; // Track when the tab/app was hidden
+
     const handleAppResume = () => {
       if (document.visibilityState === "visible") {
         const now = Date.now();
-        if (now - lastResumeTime < 1000) {
-          return; // Ignore duplicate events fired in close succession
-        }
+        if (now - lastResumeTime < 1000) return; // Ignore duplicate events
         lastResumeTime = now;
 
-        console.log("[Sync] App resumed from background/idle. Resyncing conversations and active messages...");
-        wsClient.ensureConnected();
+        // PWA background recovery: if backgrounded for > 30 min, reload the whole page
+        // This fixes iOS Safari PWA "blank screen" after long background time
+        const backgroundedFor = hiddenAt ? now - hiddenAt : 0;
+        hiddenAt = null;
 
+        if (backgroundedFor > 30 * 60 * 1000) {
+          console.log(`[PWA] App was backgrounded for ${Math.round(backgroundedFor / 60000)}m. Reloading to recover state...`);
+          window.location.reload();
+          return;
+        }
+
+        console.log("[Sync] App resumed. Resyncing conversations and active messages...");
+        wsClient.ensureConnected();
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
 
         const activeId = useAppStore.getState().activeId;
@@ -294,6 +304,8 @@ export function useRealtimeSync(authed) {
           joinConversation(activeId);
           queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
         }
+      } else if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now(); // Record when we went to background
       }
     };
 
@@ -305,6 +317,32 @@ export function useRealtimeSync(authed) {
       window.removeEventListener("focus", handleAppResume);
     };
   }, [authed, queryClient]);
+
+  // Idle-session reload after 4 hours of no interaction (like WhatsApp Web)
+  // Clears stale WS/query state that accumulates in long-running PWA sessions
+  useEffect(() => {
+    if (!authed) return;
+
+    const IDLE_MS = 4 * 60 * 60 * 1000; // 4 hours
+    let idleTimer = null;
+
+    const resetTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        console.log("[Idle] Session idle 4h+ — reloading to refresh state.");
+        window.location.reload();
+      }, IDLE_MS);
+    };
+
+    const events = ["pointerdown", "touchstart", "keydown", "scroll", "click"];
+    events.forEach((ev) => window.addEventListener(ev, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      events.forEach((ev) => window.removeEventListener(ev, resetTimer));
+    };
+  }, [authed]);
 
   // Handle notification click messages from service worker (especially on mobile)
   useEffect(() => {
