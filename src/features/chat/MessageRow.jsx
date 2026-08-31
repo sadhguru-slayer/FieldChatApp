@@ -170,6 +170,96 @@ function MessageRowBase({
 }) {
   const pressTimer = useRef(null);
   const isLongPressRef = useRef(false);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchCurrentX = useRef(0);
+  const rowRef = useRef(null);
+  const lastTapTime = useRef(0);
+
+  const startPress = (e) => {
+    if (isMultiSelectMode) return;
+    isLongPressRef.current = false;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchCurrentX.current = e.touches[0].clientX;
+    
+    const now = Date.now();
+    if (now - lastTapTime.current < 300) {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+      onReply(m);
+      lastTapTime.current = 0;
+      return;
+    }
+    lastTapTime.current = now;
+
+    pressTimer.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      const anchor = { x: touchStartX.current, y: touchStartY.current };
+      onOpenActions(m, { 
+        currentTarget: { 
+          getBoundingClientRect: () => ({ left: anchor.x - 40, right: anchor.x + 40, bottom: anchor.y, top: anchor.y }) 
+        } 
+      });
+    }, 450);
+  };
+
+  const moveTouch = (e) => {
+    if (isMultiSelectMode) return;
+    touchCurrentX.current = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    
+    const diffX = touchCurrentX.current - touchStartX.current;
+    const diffY = currentY - touchStartY.current;
+    
+    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+    }
+
+    if (rowRef.current && Math.abs(diffX) < 100 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      rowRef.current.style.transform = `translateX(${diffX * 0.4}px)`;
+    }
+  };
+
+  const endTouch = (e) => {
+    if (isMultiSelectMode) return;
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+    const diffX = touchCurrentX.current - touchStartX.current;
+    
+    if (rowRef.current) {
+      rowRef.current.style.transform = `translateX(0px)`;
+      rowRef.current.style.transition = `transform 0.2s ease-out`;
+      setTimeout(() => {
+        if (rowRef.current) rowRef.current.style.transition = '';
+      }, 200);
+    }
+
+    if (Math.abs(diffX) > 40) {
+      onReply(m);
+      lastTapTime.current = 0;
+    }
+  };
+
+  const handleRowClick = (e) => {
+    if (isMultiSelectMode) return;
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return;
+    }
+    if (onToggleAction) {
+      onToggleAction(m.id);
+    }
+  };
+
+  const handleBubbleClick = (e) => {
+    e.stopPropagation();
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return;
+    }
+    if (onToggleAction) {
+      onToggleAction(m.id);
+    }
+  };
 
   const getBubbleRadiusClass = () => {
     if (mine) {
@@ -204,43 +294,22 @@ function MessageRowBase({
     );
   }
 
-  const startPress = (e) => {
-    isLongPressRef.current = false;
-    pressTimer.current = setTimeout(() => {
-      isLongPressRef.current = true;
-      onOpenActions(m, e);
-    }, 450);
-  };
-
-  const cancelPress = () => {
-    if (pressTimer.current) clearTimeout(pressTimer.current);
-  };
-
-  const handleBubbleClick = (e) => {
-    e.stopPropagation();
-    if (isLongPressRef.current) {
-      isLongPressRef.current = false;
-      return;
-    }
-    if (onToggleAction) {
-      onToggleAction(m.id);
-    }
-  };
-
   // Use display_name if available, otherwise fall back to senderName
   const senderDisplayName = m.display_name || m.senderName || "?";
 
   return (
     <div
       id={`msg-${m.id}`}
+      ref={rowRef}
       className={cn(
-        "group/msg flex gap-2 px-3 py-0.5 md:px-4 items-stretch",
+        "group/msg flex gap-2 px-3 py-0.5 md:px-4 items-stretch cursor-pointer md:cursor-default",
         mine ? "justify-end" : "justify-start"
       )}
+      onClick={handleRowClick}
       onDoubleClick={isMultiSelectMode ? undefined : () => onReply(m)}
-      onTouchStart={isMultiSelectMode ? undefined : startPress}
-      onTouchEnd={isMultiSelectMode ? undefined : cancelPress}
-      onTouchMove={isMultiSelectMode ? undefined : cancelPress}
+      onTouchStart={startPress}
+      onTouchEnd={endTouch}
+      onTouchMove={moveTouch}
     >
       {/* ── Multi-select check ── */}
       {isMultiSelectMode && (
