@@ -177,3 +177,29 @@ export const markAllAsRead = async (conversationId) => {
     method: "POST",
   });
 };
+
+/** POST /api/messages/bulk-forward */
+export const bulkForwardMessages = async ({ messageIds, targetConversationIds }) => {
+  return request("/api/messages/bulk-forward", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message_ids: messageIds,
+      target_conversation_ids: targetConversationIds,
+    }),
+  });
+};
+
+/** POST /api/messages/bulk-delete */
+export const bulkDeleteMessages = async ({ messageIds, conversationId, deleteType }) => {
+  return request("/api/messages/bulk-delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message_ids: messageIds,
+      conversation_id: conversationId,
+      delete_type: deleteType,
+    }),
+  });
+};
+

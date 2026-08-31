@@ -32,6 +32,8 @@ import { Button } from "@/components/ui/button";
 import {
   deleteMessageForEveryone,
   deleteMessageForMe,
+  bulkForwardMessages,
+  bulkDeleteMessages,
   editMessage,
   getConversations,
   getMe,
@@ -103,6 +105,8 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
     { id: "reply", label: "Reply", Icon: Reply },
     { id: "copy", label: "Copy text", Icon: Copy },
     ...(mine ? [{ id: "edit", label: "Edit message", Icon: Pencil }] : []),
+    { id: "forward", label: "Forward", Icon: Forward },
+    ...(message.mediaUrl ? [{ id: "download", label: "Download", Icon: Download }] : []),
     { id: "select", label: "Select message", Icon: Check },
     { id: "delete-me", label: "Delete for me", Icon: Trash2, danger: true },
     ...(mine ? [{ id: "delete-all", label: "Unsend for everyone", Icon: Trash2, danger: true }] : []),
@@ -319,7 +323,13 @@ function AddMemberModal({ activeId, open, onOpenChange }) {
 
 // ─── Forward Messages Dialog ──────────────────────────────────────────────────
 function ForwardDialog({ open, onOpenChange, conversations, onForward }) {
-  const [selectedConvId, setSelectedConvId] = useState(null);
+  const [selectedConvIds, setSelectedConvIds] = useState([]);
+
+  const toggleConv = (id) => {
+    setSelectedConvIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -333,15 +343,15 @@ function ForwardDialog({ open, onOpenChange, conversations, onForward }) {
               <p className="text-center text-xs text-muted-foreground py-4">No conversations to forward to.</p>
             ) : (
               conversations.map((c) => {
-                const isSelected = String(selectedConvId) === String(c.id);
+                const isSelected = selectedConvIds.includes(c.id);
                 return (
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => setSelectedConvId(c.id)}
+                    onClick={() => toggleConv(c.id)}
                     className={cn(
                       "flex w-full items-center justify-between rounded-xl p-2.5 text-left text-xs transition-colors border",
-                      isSelected ? "bg-accent/15 border-accent/30 font-medium" : "border-transparent hover:bg-elevated/50"
+                      isSelected ? "bg-accent/15 border-accent/30 font-medium text-accent" : "border-transparent hover:bg-elevated/50"
                     )}
                   >
                     <div className="flex items-center gap-2.5">
@@ -356,14 +366,14 @@ function ForwardDialog({ open, onOpenChange, conversations, onForward }) {
           </div>
           <Button
             onClick={() => {
-              onForward(selectedConvId);
+              onForward(selectedConvIds);
               onOpenChange(false);
-              setSelectedConvId(null);
+              setSelectedConvIds([]);
             }}
-            disabled={!selectedConvId}
+            disabled={selectedConvIds.length === 0}
             className="w-full text-xs font-semibold"
           >
-            Forward
+            Forward {selectedConvIds.length > 0 ? `(${selectedConvIds.length})` : ""}
           </Button>
         </div>
       </DialogContent>
@@ -375,12 +385,46 @@ function getFullMediaUrl(url) {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   
-  const base = window.location.origin;
-  if (url.startsWith("/")) {
-    return `${base}${url}`;
+  const storageUrl = import.meta.env.VITE_STORAGE_URL;
+  if (storageUrl) {
+    return `${storageUrl.replace(/\/$/, "")}${url}`;
   }
-  return `${base}/${url}`;
+  
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    return `${protocol}//${hostname}:9000${url}`;
+  }
+  return `http://localhost:9000${url}`;
 }
+
+const triggerFileDownload = async (mediaUrl, mediaName) => {
+  try {
+    const url = getFullMediaUrl(mediaUrl);
+    const response = await fetch(url, { mode: "cors" });
+    if (!response.ok) throw new Error("Fetch failed");
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = mediaName || "download";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    console.error("Direct download failed, falling back to new tab:", err);
+    const url = getFullMediaUrl(mediaUrl);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = mediaName || "download";
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+};
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function NothingSelected() {
@@ -464,6 +508,7 @@ export function ChatPane() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedMsgIds, setSelectedMsgIds] = useState(new Set());
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+  const [singleForwardMsg, setSingleForwardMsg] = useState(null);
 
   const clearMultiSelect = () => {
     setIsMultiSelectMode(false);
@@ -723,78 +768,38 @@ export function ChatPane() {
     });
   };
 
-  const handleForward = async (targetConvId) => {
-    const list = Array.from(selectedMsgIds);
-    if (!list.length || !targetConvId) return;
-
-    const selectedMsgs = messages.filter((m) => selectedMsgIds.has(m.id));
-    selectedMsgs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
+  const handleForwardMessages = async (messageIds, targetConvIds) => {
+    if (!messageIds.length || !targetConvIds.length) return;
     try {
-      for (const msg of selectedMsgs) {
-        const sent = wsCreateMessage(
-          targetConvId,
-          msg.text,
-          null,
-          msg.mediaUrl,
-          msg.mediaName
-        );
-        if (!sent) {
-          await sendMessage({
-            conversationId: targetConvId,
-            text: msg.text,
-            replyToId: null,
-            fileUrl: msg.mediaUrl,
-            fileName: msg.mediaName,
-          });
-        }
-      }
-      qc.invalidateQueries({ queryKey: ["messages", targetConvId] });
+      await bulkForwardMessages({
+        messageIds,
+        targetConversationIds: targetConvIds,
+      });
+      targetConvIds.forEach((id) => {
+        qc.invalidateQueries({ queryKey: ["messages", String(id)] });
+      });
       qc.invalidateQueries({ queryKey: ["conversations"] });
-      toast.success(`${selectedMsgs.length} message(s) forwarded`);
+      toast.success(`${messageIds.length} message(s) forwarded`);
       clearMultiSelect();
+      setSingleForwardMsg(null);
     } catch (err) {
-      toast.error(err.message || "Failed to forward some messages");
+      toast.error(err.message || "Failed to forward message(s)");
     }
   };
 
-  const handleMultiDeleteMe = async () => {
-    const list = Array.from(selectedMsgIds);
-    if (!list.length) return;
+  const handleDeleteMessages = async (messageIds, deleteType) => {
+    if (!messageIds.length) return;
     try {
-      await Promise.all(
-        list.map(async (msgId) => {
-          const sent = wsDeleteMe(activeId, msgId);
-          if (!sent) {
-            await deleteMessageForMe({ conversationId: activeId, messageId: msgId });
-          }
-        })
-      );
+      await bulkDeleteMessages({
+        messageIds,
+        conversationId: activeId,
+        deleteType,
+      });
       qc.invalidateQueries({ queryKey: ["messages", activeId] });
-      toast.success(`${list.length} message(s) deleted`);
+      toast.success(deleteType === "for_everyone" ? "Message(s) removed" : "Message(s) deleted");
       clearMultiSelect();
     } catch (err) {
-      toast.error(err.message || "Failed to delete some messages");
-    }
-  };
-
-  const handleMultiDeleteEveryone = async () => {
-    const list = Array.from(selectedMsgIds);
-    if (!list.length) return;
-    try {
-      await Promise.all(
-        list.map(async (msgId) => {
-          const sent = wsDeleteEveryone(activeId, msgId);
-          if (!sent) {
-            await deleteMessageForEveryone({ conversationId: activeId, messageId: msgId });
-          }
-        })
-      );
-      qc.invalidateQueries({ queryKey: ["messages", activeId] });
-      toast.success(`${list.length} message(s) removed`);
-      clearMultiSelect();
-    } catch (err) {
-      toast.error(err.message || "Failed to unsend some messages");
+      toast.error(err.message || "Failed to delete message(s)");
     }
   };
 
@@ -805,14 +810,7 @@ export function ChatPane() {
 
     mediaMsgs.forEach((msg, idx) => {
       setTimeout(() => {
-        const url = getFullMediaUrl(msg.mediaUrl);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = msg.mediaName || "download";
-        a.target = "_blank";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        triggerFileDownload(msg.mediaUrl, msg.mediaName);
       }, idx * 250);
     });
     toast.success(`Downloading ${mediaMsgs.length} media file(s)...`);
@@ -827,13 +825,18 @@ export function ChatPane() {
     } else if (action === "copy") {
       navigator.clipboard.writeText(msg.text);
       toast.success("Copied");
+    } else if (action === "forward") {
+      setSingleForwardMsg(msg);
+    } else if (action === "download") {
+      toast.success("Downloading media file...");
+      triggerFileDownload(msg.mediaUrl, msg.mediaName);
     } else if (action === "select") {
       setIsMultiSelectMode(true);
       setSelectedMsgIds(new Set([msg.id]));
     } else if (action === "delete-me") {
-      deleteMeM.mutate(msg);
+      handleDeleteMessages([msg.id], "for_me");
     } else if (action === "delete-all") {
-      deleteAllM.mutate(msg);
+      handleDeleteMessages([msg.id], "for_everyone");
     } else if (action === "react") {
       const emoji = extra;
       const existingByMe = msg.reactions?.find((r) => r.reactedByMe);
@@ -1042,7 +1045,7 @@ export function ChatPane() {
                   </button>
                   <button
                     type="button"
-                    onClick={handleMultiDeleteMe}
+                    onClick={() => handleDeleteMessages(Array.from(selectedMsgIds), "for_me")}
                     className="flex items-center gap-1.5 rounded-xl bg-destructive/10 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/20 transition-colors border border-destructive/20"
                   >
                     <Trash2 className="size-3.5" />
@@ -1051,7 +1054,7 @@ export function ChatPane() {
                   {allMine && (
                     <button
                       type="button"
-                      onClick={handleMultiDeleteEveryone}
+                      onClick={() => handleDeleteMessages(Array.from(selectedMsgIds), "for_everyone")}
                       className="flex items-center gap-1.5 rounded-xl bg-rose-500/10 px-3 py-1.5 text-xs text-rose-500 hover:bg-rose-500/20 transition-colors border border-rose-500/20"
                     >
                       <Trash2 className="size-3.5" />
@@ -1101,10 +1104,18 @@ export function ChatPane() {
 
       {/* ── Forward Messages Dialog ───────────────────────────────────────── */}
       <ForwardDialog
-        open={forwardDialogOpen}
-        onOpenChange={setForwardDialogOpen}
+        open={forwardDialogOpen || !!singleForwardMsg}
+        onOpenChange={(open) => {
+          if (!open) {
+            setForwardDialogOpen(false);
+            setSingleForwardMsg(null);
+          }
+        }}
         conversations={conversations}
-        onForward={handleForward}
+        onForward={(targetConvIds) => {
+          const msgIds = singleForwardMsg ? [singleForwardMsg.id] : Array.from(selectedMsgIds);
+          handleForwardMessages(msgIds, targetConvIds);
+        }}
       />
 
       {/* ── Fullscreen Media Lightbox ── */}
