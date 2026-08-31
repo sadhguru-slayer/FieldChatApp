@@ -91,6 +91,7 @@ export function MessageList({
   onOpenActions,
   onReact,
   onOpenReactionsDetail,
+  onMediaClick,
 }) {
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
@@ -240,6 +241,7 @@ export function MessageList({
                 onReact={onReact}
                 onOpenReactionsDetail={onOpenReactionsDetail}
                 onJumpTo={jumpTo}
+                onMediaClick={onMediaClick}
               />
             </div>
           </Fragment>

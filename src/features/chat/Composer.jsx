@@ -385,16 +385,6 @@ export function Composer({ onSend, onEdit }) {
 
       {/* Input row */}
       <div className="flex items-end gap-1.5 rounded-2xl border border-border/50 bg-elevated/60 px-2 py-1 transition-all focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/30">
-        {/* Hidden File Input */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-          accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-          multiple
-        />
-
         {/* Emoji */}
         <button
           type="button"
@@ -412,15 +402,18 @@ export function Composer({ onSend, onEdit }) {
           <Smile className="size-5" />
         </button>
 
-        {/* Attach */}
-        <button
-          type="button"
-          aria-label="Attach"
-          onClick={() => fileInputRef.current?.click()}
-          className="grid size-9 shrink-0 place-items-center rounded-xl transition-colors text-muted-foreground hover:text-foreground hover:bg-surface/60 mb-0.5 no-tap-highlight"
-        >
+        {/* Attach (Label wrapper with overlayed invisible input for bulletproof mobile support) */}
+        <label className="relative grid size-9 shrink-0 place-items-center rounded-xl transition-colors text-muted-foreground hover:text-foreground hover:bg-surface/60 mb-0.5 cursor-pointer no-tap-highlight">
           <Paperclip className="size-5" />
-        </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+            multiple
+          />
+        </label>
 
         {/* Textarea — NEVER disabled so keyboard never collapses */}
         <textarea

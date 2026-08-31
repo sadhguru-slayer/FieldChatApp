@@ -162,6 +162,7 @@ function MessageRowBase({
   onReact,
   onOpenReactionsDetail,
   onJumpTo,
+  onMediaClick,
 }) {
   const pressTimer = useRef(null);
   const isLongPressRef = useRef(false);
@@ -298,7 +299,11 @@ function MessageRowBase({
                     className="max-h-[340px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation();
-                      window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                      if (onMediaClick) {
+                        onMediaClick(m);
+                      } else {
+                        window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                      }
                     }}
                   />
                   {/* Overlay meta */}
@@ -332,7 +337,11 @@ function MessageRowBase({
                       className="max-h-[260px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
-                        window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                        if (onMediaClick) {
+                          onMediaClick(m);
+                        } else {
+                          window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                        }
                       }}
                     />
                   </div>

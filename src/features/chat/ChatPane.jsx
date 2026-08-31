@@ -19,6 +19,7 @@ import {
 import { Avatar } from "@/components/Avatar";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
+import { FullscreenLightbox } from "./FullscreenLightbox";
 import { useAppStore } from "@/store/useAppStore";
 import { useAnimatePresence } from "@/hooks/useAnimatePresence";
 import { formatLastSeen } from "@/lib/format";
@@ -388,6 +389,7 @@ export function ChatPane() {
 
   const [ctxMenu, setCtxMenu] = useState(null);
   const [reactionsDetailMsg, setReactionsDetailMsg] = useState(null);
+  const [selectedMediaMessage, setSelectedMediaMessage] = useState(null);
 
   const leaveGroupMut = useMutation({
     mutationFn: () => leaveGroupApi({ conversationId: activeId }),
@@ -781,6 +783,7 @@ export function ChatPane() {
         onOpenActions={openContextMenu}
         onReact={(msg, emoji) => handleAction("react", msg, emoji)}
         onOpenReactionsDetail={(msg) => setReactionsDetailMsg(msg)}
+        onMediaClick={(msg) => setSelectedMediaMessage(msg)}
       />
 
       {/* Sleek typing indicator bottom bar */}
@@ -829,6 +832,16 @@ export function ChatPane() {
         open={groupAddMemberOpen}
         onOpenChange={setGroupAddMemberOpen}
       />
+
+      {/* ── Fullscreen Media Lightbox ── */}
+      {selectedMediaMessage && (
+        <FullscreenLightbox
+          message={selectedMediaMessage}
+          messages={messages}
+          onClose={() => setSelectedMediaMessage(null)}
+          onSelect={(msg) => setSelectedMediaMessage(msg)}
+        />
+      )}
     </main>
   );
 }
