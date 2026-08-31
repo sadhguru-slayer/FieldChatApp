@@ -471,7 +471,13 @@ export function Sidebar({ onOpenSettings }) {
       </div>
 
       {/* ── Mobile Header ────────────────────────────────────────────────── */}
-      <div className="md:hidden flex items-center justify-between border-b border-border/30 px-4 py-3.5 bg-sidebar shrink-0">
+      <div
+        className="md:hidden flex items-center justify-between border-b border-border/30 px-4 bg-sidebar shrink-0"
+        style={{
+          paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))",
+          paddingBottom: "0.75rem",
+        }}
+      >
         {/* Brand */}
         <div className="flex items-center gap-2">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-full overflow-hidden border border-border/20">

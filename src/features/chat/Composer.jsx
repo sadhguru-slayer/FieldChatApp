@@ -415,18 +415,18 @@ export function Composer({ onSend, onEdit }) {
           />
         </label>
 
-        {/* Textarea — NEVER disabled so keyboard never collapses */}
         <textarea
           ref={ref}
           rows={1}
           value={text}
           onChange={handleChange}
           onKeyDown={onKeyDown}
-          onFocus={() => {
-            // Keep focus/keyboard stable on mobile.
-          }}
+          enterKeyHint="send"
+          autoCapitalize="sentences"
+          autoCorrect="on"
+          spellCheck="true"
           placeholder={editing ? "Edit message..." : reply ? `Reply...` : "Message..."}
-          className="scroll-slim max-h-28 md:max-h-36 flex-1 resize-none bg-transparent py-2 text-[15px] md:text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60"
+          className="scroll-slim max-h-28 md:max-h-36 flex-1 resize-none bg-transparent py-2 text-[16px] md:text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60"
         />
 
         {/* Send */}

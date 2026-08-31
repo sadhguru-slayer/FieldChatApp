@@ -125,6 +125,9 @@
     margin: 0;
     padding: 0;
     overflow: hidden;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
@@ -136,6 +139,20 @@
     overscroll-behavior-y: none;
   }
 
+  /* Prevent auto-zoom on iOS inputs */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  @media (min-width: 768px) {
+    input,
+    textarea,
+    select {
+      font-size: inherit !important;
+    }
+  }
+
   ::selection {
     background: var(--color-primary);
     color: var(--color-primary-foreground);
@@ -145,6 +162,8 @@
 .scroll-slim {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .no-tap-highlight {

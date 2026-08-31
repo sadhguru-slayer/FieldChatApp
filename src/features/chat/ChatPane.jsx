@@ -985,7 +985,14 @@ export function ChatPane() {
       style={{ height: viewportHeight }}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header className="relative z-30 flex h-14 items-center justify-between border-b border-border/30 px-3 select-none bg-sidebar/80 backdrop-blur-md shrink-0">
+      <header
+        className="relative z-30 flex items-center justify-between border-b border-border/30 px-3 select-none bg-sidebar/80 backdrop-blur-md shrink-0"
+        style={{
+          paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
+          paddingBottom: "0.5rem",
+          minHeight: "3.5rem",
+        }}
+      >
         <div className="flex items-center gap-1 min-w-0">
 
           {/* Mobile Back Button — larger touch target */}
