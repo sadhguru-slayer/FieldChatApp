@@ -68,7 +68,7 @@ export async function request(path, options = {}) {
   });
 
   // Handle 401 Unauthorized for access token expiration
-  if (response.status === 401 && !options._retry) {
+  if (response.status === 401 && path !== "/api/auth/login" && !options._retry) {
     const refreshToken = localStorage.getItem("refresh_token");
     if (refreshToken) {
       if (!isRefreshing) {

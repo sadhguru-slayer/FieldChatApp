@@ -15,6 +15,10 @@ import {
   LogOut,
   User,
   Menu,
+  Download,
+  Forward,
+  X,
+  Check,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { MessageList } from "./MessageList";
@@ -99,6 +103,7 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
     { id: "reply", label: "Reply", Icon: Reply },
     { id: "copy", label: "Copy text", Icon: Copy },
     ...(mine ? [{ id: "edit", label: "Edit message", Icon: Pencil }] : []),
+    { id: "select", label: "Select message", Icon: Check },
     { id: "delete-me", label: "Delete for me", Icon: Trash2, danger: true },
     ...(mine ? [{ id: "delete-all", label: "Unsend for everyone", Icon: Trash2, danger: true }] : []),
   ];
@@ -312,6 +317,71 @@ function AddMemberModal({ activeId, open, onOpenChange }) {
   );
 }
 
+// ─── Forward Messages Dialog ──────────────────────────────────────────────────
+function ForwardDialog({ open, onOpenChange, conversations, onForward }) {
+  const [selectedConvId, setSelectedConvId] = useState(null);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md bg-sidebar border-border/40 text-foreground">
+        <DialogHeader>
+          <DialogTitle className="text-sm font-bold">Forward Message(s)</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-2">
+          <div className="max-h-60 overflow-y-auto space-y-1.5 scroll-slim">
+            {conversations.length === 0 ? (
+              <p className="text-center text-xs text-muted-foreground py-4">No conversations to forward to.</p>
+            ) : (
+              conversations.map((c) => {
+                const isSelected = String(selectedConvId) === String(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedConvId(c.id)}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-xl p-2.5 text-left text-xs transition-colors border",
+                      isSelected ? "bg-accent/15 border-accent/30 font-medium" : "border-transparent hover:bg-elevated/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Avatar src={c.avatar} name={c.title} size="sm" />
+                      <span>{c.title}</span>
+                    </div>
+                    {isSelected && <span className="text-accent text-xs font-bold">✓</span>}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <Button
+            onClick={() => {
+              onForward(selectedConvId);
+              onOpenChange(false);
+              setSelectedConvId(null);
+            }}
+            disabled={!selectedConvId}
+            className="w-full text-xs font-semibold"
+          >
+            Forward
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function getFullMediaUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  
+  const base = window.location.origin;
+  if (url.startsWith("/")) {
+    return `${base}${url}`;
+  }
+  return `${base}/${url}`;
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function NothingSelected() {
   return (
@@ -390,6 +460,34 @@ export function ChatPane() {
   const [ctxMenu, setCtxMenu] = useState(null);
   const [reactionsDetailMsg, setReactionsDetailMsg] = useState(null);
   const [selectedMediaMessage, setSelectedMediaMessage] = useState(null);
+
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedMsgIds, setSelectedMsgIds] = useState(new Set());
+  const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+
+  const clearMultiSelect = () => {
+    setIsMultiSelectMode(false);
+    setSelectedMsgIds(new Set());
+  };
+
+  const handleToggleSelect = (msgId) => {
+    setSelectedMsgIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) {
+        next.delete(msgId);
+        if (next.size === 0) {
+          setIsMultiSelectMode(false);
+        }
+      } else {
+        if (next.size >= 20) {
+          toast.error("You can select up to 20 messages maximum.");
+          return prev;
+        }
+        next.add(msgId);
+      }
+      return next;
+    });
+  };
 
   const leaveGroupMut = useMutation({
     mutationFn: () => leaveGroupApi({ conversationId: activeId }),
@@ -625,6 +723,102 @@ export function ChatPane() {
     });
   };
 
+  const handleForward = async (targetConvId) => {
+    const list = Array.from(selectedMsgIds);
+    if (!list.length || !targetConvId) return;
+
+    const selectedMsgs = messages.filter((m) => selectedMsgIds.has(m.id));
+    selectedMsgs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    try {
+      for (const msg of selectedMsgs) {
+        const sent = wsCreateMessage(
+          targetConvId,
+          msg.text,
+          null,
+          msg.mediaUrl,
+          msg.mediaName
+        );
+        if (!sent) {
+          await sendMessage({
+            conversationId: targetConvId,
+            text: msg.text,
+            replyToId: null,
+            fileUrl: msg.mediaUrl,
+            fileName: msg.mediaName,
+          });
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["messages", targetConvId] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success(`${selectedMsgs.length} message(s) forwarded`);
+      clearMultiSelect();
+    } catch (err) {
+      toast.error(err.message || "Failed to forward some messages");
+    }
+  };
+
+  const handleMultiDeleteMe = async () => {
+    const list = Array.from(selectedMsgIds);
+    if (!list.length) return;
+    try {
+      await Promise.all(
+        list.map(async (msgId) => {
+          const sent = wsDeleteMe(activeId, msgId);
+          if (!sent) {
+            await deleteMessageForMe({ conversationId: activeId, messageId: msgId });
+          }
+        })
+      );
+      qc.invalidateQueries({ queryKey: ["messages", activeId] });
+      toast.success(`${list.length} message(s) deleted`);
+      clearMultiSelect();
+    } catch (err) {
+      toast.error(err.message || "Failed to delete some messages");
+    }
+  };
+
+  const handleMultiDeleteEveryone = async () => {
+    const list = Array.from(selectedMsgIds);
+    if (!list.length) return;
+    try {
+      await Promise.all(
+        list.map(async (msgId) => {
+          const sent = wsDeleteEveryone(activeId, msgId);
+          if (!sent) {
+            await deleteMessageForEveryone({ conversationId: activeId, messageId: msgId });
+          }
+        })
+      );
+      qc.invalidateQueries({ queryKey: ["messages", activeId] });
+      toast.success(`${list.length} message(s) removed`);
+      clearMultiSelect();
+    } catch (err) {
+      toast.error(err.message || "Failed to unsend some messages");
+    }
+  };
+
+  const handleDownloadAll = () => {
+    const selectedMsgs = messages.filter((m) => selectedMsgIds.has(m.id));
+    const mediaMsgs = selectedMsgs.filter((m) => m.mediaUrl);
+    if (!mediaMsgs.length) return;
+
+    mediaMsgs.forEach((msg, idx) => {
+      setTimeout(() => {
+        const url = getFullMediaUrl(msg.mediaUrl);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = msg.mediaName || "download";
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, idx * 250);
+    });
+    toast.success(`Downloading ${mediaMsgs.length} media file(s)...`);
+    clearMultiSelect();
+  };
+
   const handleAction = (action, msg, extra) => {
     if (action === "reply") {
       setReply({ ...msg, senderName: msg.senderName || (msg.isMine ? "You" : "Unknown") });
@@ -633,6 +827,9 @@ export function ChatPane() {
     } else if (action === "copy") {
       navigator.clipboard.writeText(msg.text);
       toast.success("Copied");
+    } else if (action === "select") {
+      setIsMultiSelectMode(true);
+      setSelectedMsgIds(new Set([msg.id]));
     } else if (action === "delete-me") {
       deleteMeM.mutate(msg);
     } else if (action === "delete-all") {
@@ -784,6 +981,9 @@ export function ChatPane() {
         onReact={(msg, emoji) => handleAction("react", msg, emoji)}
         onOpenReactionsDetail={(msg) => setReactionsDetailMsg(msg)}
         onMediaClick={(msg) => setSelectedMediaMessage(msg)}
+        isMultiSelectMode={isMultiSelectMode}
+        selectedMsgIds={selectedMsgIds}
+        onToggleSelect={handleToggleSelect}
       />
 
       {/* Sleek typing indicator bottom bar */}
@@ -798,12 +998,78 @@ export function ChatPane() {
         </div>
       )}
 
-      {/* ── Composer ─────────────────────────────────────────────────────── */}
-      <Composer
-        onSend={(text, replyToId, fileUrl, fileName) => sendMut.mutate({ text, replyToId, fileUrl, fileName })}
-        onEdit={(editing, newText) => editMut.mutate({ msg: editing, newText })}
-        disabled={sendMut.isPending}
-      />
+      {/* ── Composer / Multi-Select Action Bar ────────────────────────────── */}
+      {isMultiSelectMode ? (
+        <div className="flex h-16 items-center justify-between border-t border-border/30 bg-sidebar/95 backdrop-blur-md px-4 py-3 select-none shrink-0 fc-fade-in">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={clearMultiSelect}
+              className="p-1 rounded-xl text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors"
+            >
+              <X className="size-4.5" />
+            </button>
+            <span className="text-xs font-semibold text-foreground/90">
+              {selectedMsgIds.size} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {(() => {
+              const selectedMsgs = messages.filter((m) => selectedMsgIds.has(m.id));
+              const allMedia = selectedMsgs.length > 0 && selectedMsgs.every((m) => !!m.mediaUrl);
+              const allMine = selectedMsgs.length > 0 && selectedMsgs.every((m) => m.isMine || m.senderId === me?.id);
+
+              return (
+                <>
+                  {allMedia && (
+                    <button
+                      type="button"
+                      onClick={handleDownloadAll}
+                      className="flex items-center gap-1.5 rounded-xl bg-elevated px-3 py-1.5 text-xs text-foreground/90 hover:bg-zinc-800 transition-colors border border-border/40"
+                    >
+                      <Download className="size-3.5" />
+                      <span className="hidden sm:inline">Download All</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setForwardDialogOpen(true)}
+                    disabled={selectedMsgIds.size > 20}
+                    className="flex items-center gap-1.5 rounded-xl bg-elevated px-3 py-1.5 text-xs text-foreground/90 hover:bg-zinc-800 transition-colors border border-border/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Forward className="size-3.5" />
+                    <span>Forward</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleMultiDeleteMe}
+                    className="flex items-center gap-1.5 rounded-xl bg-destructive/10 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/20 transition-colors border border-destructive/20"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="hidden sm:inline">Delete for me</span>
+                  </button>
+                  {allMine && (
+                    <button
+                      type="button"
+                      onClick={handleMultiDeleteEveryone}
+                      className="flex items-center gap-1.5 rounded-xl bg-rose-500/10 px-3 py-1.5 text-xs text-rose-500 hover:bg-rose-500/20 transition-colors border border-rose-500/20"
+                    >
+                      <Trash2 className="size-3.5" />
+                      <span className="hidden sm:inline">Delete for everyone</span>
+                    </button>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      ) : (
+        <Composer
+          onSend={(text, replyToId, fileUrl, fileName) => sendMut.mutate({ text, replyToId, fileUrl, fileName })}
+          onEdit={(editing, newText) => editMut.mutate({ msg: editing, newText })}
+          disabled={sendMut.isPending}
+        />
+      )}
 
       {/* ── Context Menu ─────────────────────────────────────────────────── */}
       {ctxMenu && (
@@ -831,6 +1097,14 @@ export function ChatPane() {
         activeId={activeId}
         open={groupAddMemberOpen}
         onOpenChange={setGroupAddMemberOpen}
+      />
+
+      {/* ── Forward Messages Dialog ───────────────────────────────────────── */}
+      <ForwardDialog
+        open={forwardDialogOpen}
+        onOpenChange={setForwardDialogOpen}
+        conversations={conversations}
+        onForward={handleForward}
       />
 
       {/* ── Fullscreen Media Lightbox ── */}

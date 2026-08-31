@@ -381,6 +381,11 @@ export function useRealtimeSync(authed) {
     const unsub = wsClient.on("*", (payload) => {
       if (!payload || !payload.event) return;
 
+      if (payload.event === "error") {
+        toast.error(payload.message || "An error occurred.");
+        return;
+      }
+
       if (payload.event === "notification" && payload.notification) {
         const notif = payload.notification;
         const activeId = useAppStore.getState().activeId;

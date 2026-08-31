@@ -165,6 +165,8 @@ function MessageRowBase({
   onOpenReactionsDetail,
   onJumpTo,
   onMediaClick,
+  isMultiSelectMode = false,
+  isSelected = false,
 }) {
   const pressTimer = useRef(null);
   const isLongPressRef = useRef(false);
@@ -232,14 +234,36 @@ function MessageRowBase({
     <div
       id={`msg-${m.id}`}
       className={cn(
-        "group/msg flex gap-2 px-3 py-0.5 md:px-4",
+        "group/msg flex gap-2 px-3 py-0.5 md:px-4 items-stretch",
         mine ? "justify-end" : "justify-start"
       )}
-      onDoubleClick={() => onReply(m)}
-      onTouchStart={startPress}
-      onTouchEnd={cancelPress}
-      onTouchMove={cancelPress}
+      onDoubleClick={isMultiSelectMode ? undefined : () => onReply(m)}
+      onTouchStart={isMultiSelectMode ? undefined : startPress}
+      onTouchEnd={isMultiSelectMode ? undefined : cancelPress}
+      onTouchMove={isMultiSelectMode ? undefined : cancelPress}
     >
+      {/* ── Multi-select check ── */}
+      {isMultiSelectMode && (
+        <div 
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onToggleAction) onToggleAction(m.id);
+          }}
+          className="mr-3 self-center flex items-center justify-center shrink-0 cursor-pointer select-none"
+        >
+          <div 
+            className={cn(
+              "size-5 rounded-full border flex items-center justify-center transition-all",
+              isSelected 
+                ? "bg-accent border-accent text-white" 
+                : "border-zinc-700 bg-zinc-900/60 hover:border-zinc-500"
+            )}
+          >
+            {isSelected && <Check className="size-3.5 stroke-[3]" />}
+          </div>
+        </div>
+      )}
+
       {/* ── Left avatar slot (groups, incoming) ── */}
       {!mine && isGroup && (
         <div className="w-7 shrink-0 self-end mb-[2px]">
@@ -261,7 +285,7 @@ function MessageRowBase({
 
         <div className="relative flex items-end gap-1">
           {/* Action button — left for my messages */}
-          {mine && (
+          {mine && !isMultiSelectMode && (
             <button
               type="button"
               aria-label="Actions"
@@ -293,7 +317,7 @@ function MessageRowBase({
                   className={cn(
                     "relative overflow-hidden cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 rounded-2xl max-w-[280px] sm:max-w-xs",
                     getBubbleRadiusClass(),
-                    isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
+                    (isActionActive || isSelected) && "ring-1.5 ring-accent/60 shadow-xs"
                   )}
                 >
                   {isVideoMedia ? (
@@ -353,7 +377,7 @@ function MessageRowBase({
                       ? "bg-accent/80 text-white font-normal"
                       : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
                     getBubbleRadiusClass(),
-                    isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
+                    (isActionActive || isSelected) && "ring-1.5 ring-accent/60 shadow-xs"
                   )}
                 >
                   <div className="relative w-full overflow-hidden">
@@ -435,7 +459,7 @@ function MessageRowBase({
                     ? "bg-accent/80 text-white font-normal"
                     : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
                   getBubbleRadiusClass(),
-                  isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
+                  (isActionActive || isSelected) && "ring-1.5 ring-accent/60 shadow-xs"
                 )}
               >
                 {m.replyTo && (
@@ -476,7 +500,7 @@ function MessageRowBase({
           })()}
 
           {/* Action button — right for incoming */}
-          {!mine && (
+          {!mine && !isMultiSelectMode && (
             <button
               type="button"
               aria-label="Actions"

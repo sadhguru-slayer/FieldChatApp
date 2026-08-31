@@ -92,6 +92,9 @@ export function MessageList({
   onReact,
   onOpenReactionsDetail,
   onMediaClick,
+  isMultiSelectMode = false,
+  selectedMsgIds = new Set(),
+  onToggleSelect,
 }) {
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
@@ -235,13 +238,15 @@ export function MessageList({
                 prevSameGroup={prevSameGroup}
                 nextSameGroup={nextSameGroup}
                 isActionActive={activeActionMsgId === m.id}
-                onToggleAction={handleToggleAction}
+                onToggleAction={isMultiSelectMode ? () => onToggleSelect(m.id) : handleToggleAction}
                 onReply={onReply}
                 onOpenActions={onOpenActions}
                 onReact={onReact}
                 onOpenReactionsDetail={onOpenReactionsDetail}
                 onJumpTo={jumpTo}
                 onMediaClick={onMediaClick}
+                isMultiSelectMode={isMultiSelectMode}
+                isSelected={selectedMsgIds.has(m.id)}
               />
             </div>
           </Fragment>
