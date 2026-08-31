@@ -101,9 +101,12 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
   if (top + MENU_H > window.innerHeight - 8) top = anchor.y - MENU_H - 6;
   top = Math.max(8, top);
 
+  const isImgMsg = message.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(message.mediaName || message.mediaUrl || "");
+
   const items = [
     { id: "reply", label: "Reply", Icon: Reply },
-    { id: "copy", label: "Copy text", Icon: Copy },
+    ...(message.text ? [{ id: "copy", label: "Copy text", Icon: Copy }] : []),
+    ...(isImgMsg ? [{ id: "copy-image", label: "Copy image", Icon: Copy }] : []),
     ...(mine ? [{ id: "edit", label: "Edit message", Icon: Pencil }] : []),
     { id: "forward", label: "Forward", Icon: Forward },
     ...(message.mediaUrl ? [{ id: "download", label: "Download", Icon: Download }] : []),
@@ -422,7 +425,59 @@ const triggerFileDownload = async (mediaUrl, mediaName) => {
     a.rel = "noopener noreferrer";
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+  }
+};
+
+const copyImageToClipboard = async (mediaUrl) => {
+  try {
+    const url = getFullMediaUrl(mediaUrl);
+    const response = await fetch(url, { mode: "cors" });
+    if (!response.ok) throw new Error("Fetch failed");
+    const blob = await response.blob();
+
+    if (blob.type === "image/png") {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob,
+        }),
+      ]);
+      toast.success("Image copied to clipboard");
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(async (pngBlob) => {
+        if (!pngBlob) {
+          toast.error("Failed to copy image");
+          return;
+        }
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "image/png": pngBlob,
+            }),
+          ]);
+          toast.success("Image copied to clipboard");
+        } catch (err) {
+          console.error("Clipboard write error:", err);
+          toast.error("Clipboard permission denied or unsupported");
+        }
+      }, "image/png");
+    };
+    img.onerror = () => {
+      toast.error("Failed to load image for copying");
+    };
+    img.src = url;
+  } catch (err) {
+    console.error("Failed to copy image to clipboard:", err);
+    toast.error("Failed to copy image");
   }
 };
 
@@ -825,6 +880,9 @@ export function ChatPane() {
     } else if (action === "copy") {
       navigator.clipboard.writeText(msg.text);
       toast.success("Copied");
+    } else if (action === "copy-image") {
+      toast.info("Copying image...");
+      copyImageToClipboard(msg.mediaUrl);
     } else if (action === "forward") {
       setSingleForwardMsg(msg);
     } else if (action === "download") {
