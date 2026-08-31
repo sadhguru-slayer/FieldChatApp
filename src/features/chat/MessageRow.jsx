@@ -7,6 +7,7 @@ import {
   Reply,
   Trash2,
   Paperclip,
+  Play,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { formatTime } from "@/lib/format";
@@ -113,7 +114,8 @@ function getFullMediaUrl(url) {
 
 function MediaAttachment({ mediaUrl, mediaName, mine }) {
   const isImage = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(mediaName || mediaUrl || "");
-  if (isImage) return null; // Handled directly in bubble code for premium look
+  const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(mediaName || mediaUrl || "");
+  if (isImage || isVideo) return null; // Handled directly in bubble code for premium look
   const fullUrl = getFullMediaUrl(mediaUrl);
 
   return (
@@ -279,8 +281,10 @@ function MessageRowBase({
           {/* ── Bubble ── */}
           {(() => {
             const isImageMedia = m.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "");
-            const isMediaOnly = isImageMedia && !m.text && !m.replyTo;
-            const isMediaWithText = isImageMedia && m.text;
+            const isVideoMedia = m.mediaUrl && /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
+            const isMedia = isImageMedia || isVideoMedia;
+            const isMediaOnly = isMedia && !m.text && !m.replyTo;
+            const isMediaWithText = isMedia && m.text;
 
             if (isMediaOnly) {
               return (
@@ -292,20 +296,43 @@ function MessageRowBase({
                     isActionActive && "ring-1.5 ring-accent/60 shadow-xs"
                   )}
                 >
-                  <img
-                    src={getFullMediaUrl(m.mediaUrl)}
-                    alt={m.mediaName || "Image attachment"}
-                    loading="lazy"
-                    className="max-h-[340px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onMediaClick) {
-                        onMediaClick(m);
-                      } else {
-                        window.open(getFullMediaUrl(m.mediaUrl), "_blank");
-                      }
-                    }}
-                  />
+                  {isVideoMedia ? (
+                    <div 
+                      className="relative w-full max-h-[340px] aspect-[4/3] min-w-[200px] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onMediaClick) onMediaClick(m);
+                        else window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                      }}
+                    >
+                      <video
+                        src={getFullMediaUrl(m.mediaUrl)}
+                        className="max-h-[340px] w-full object-cover"
+                        muted
+                        preload="metadata"
+                      />
+                      <div className="absolute inset-0 grid place-items-center bg-black/25 hover:bg-black/35 transition-colors">
+                        <span className="grid size-12 place-items-center rounded-full bg-black/60 text-white border border-white/10 shadow-lg backdrop-blur-xs transition-transform hover:scale-110 active:scale-95">
+                          <Play className="size-5 fill-white ml-0.5" />
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <img
+                      src={getFullMediaUrl(m.mediaUrl)}
+                      alt={m.mediaName || "Image attachment"}
+                      loading="lazy"
+                      className="max-h-[340px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onMediaClick) {
+                          onMediaClick(m);
+                        } else {
+                          window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                        }
+                      }}
+                    />
+                  )}
                   {/* Overlay meta */}
                   <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 text-white/90 text-[10px] flex items-center gap-1 backdrop-blur-xs font-mono select-none">
                     {m.edited && <span className="italic opacity-70 text-[9px]">edited</span>}
@@ -330,20 +357,43 @@ function MessageRowBase({
                   )}
                 >
                   <div className="relative w-full overflow-hidden">
-                    <img
-                      src={getFullMediaUrl(m.mediaUrl)}
-                      alt={m.mediaName || "Image attachment"}
-                      loading="lazy"
-                      className="max-h-[260px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onMediaClick) {
-                          onMediaClick(m);
-                        } else {
-                          window.open(getFullMediaUrl(m.mediaUrl), "_blank");
-                        }
-                      }}
-                    />
+                    {isVideoMedia ? (
+                      <div 
+                        className="relative w-full max-h-[260px] aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onMediaClick) onMediaClick(m);
+                          else window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                        }}
+                      >
+                        <video
+                          src={getFullMediaUrl(m.mediaUrl)}
+                          className="max-h-[260px] w-full object-cover"
+                          muted
+                          preload="metadata"
+                        />
+                        <div className="absolute inset-0 grid place-items-center bg-black/25 hover:bg-black/35 transition-colors">
+                          <span className="grid size-12 place-items-center rounded-full bg-black/60 text-white border border-white/10 shadow-lg backdrop-blur-xs transition-transform hover:scale-110 active:scale-95">
+                            <Play className="size-5 fill-white ml-0.5" />
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={getFullMediaUrl(m.mediaUrl)}
+                        alt={m.mediaName || "Image attachment"}
+                        loading="lazy"
+                        className="max-h-[260px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onMediaClick) {
+                            onMediaClick(m);
+                          } else {
+                            window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                          }
+                        }}
+                      />
+                    )}
                   </div>
                   <div className="px-3.5 pb-2.5 pt-2 text-[13px] leading-[17px]">
                     {m.replyTo && (

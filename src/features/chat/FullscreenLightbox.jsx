@@ -18,9 +18,9 @@ function getFullMediaUrl(url) {
 export function FullscreenLightbox({ message, messages = [], onClose, onSelect }) {
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // Filter messages to get only media items
+  // Filter messages to get only media items (images and videos)
   const mediaMessages = messages.filter((m) => {
-    return m.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "");
+    return m.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg|mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
   });
 
   const currentIndex = mediaMessages.findIndex((m) => m.id === message.id);
@@ -81,7 +81,8 @@ export function FullscreenLightbox({ message, messages = [], onClose, onSelect }
   const fullUrl = getFullMediaUrl(currentMsg.mediaUrl);
   const senderName = currentMsg.senderName || currentMsg.display_name || currentMsg.username || "Someone";
   const caption = currentMsg.text || "";
-  const filename = currentMsg.mediaName || "image.jpg";
+  const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(currentMsg.mediaName || currentMsg.mediaUrl || "");
+  const filename = currentMsg.mediaName || (isVideo ? "video.mp4" : "image.jpg");
 
   const handleZoomToggle = () => {
     setZoomLevel((z) => (z === 1 ? 2 : 1));
@@ -151,18 +152,30 @@ export function FullscreenLightbox({ message, messages = [], onClose, onSelect }
           </button>
         )}
 
-        {/* Image content */}
-        <div 
-          className="relative max-w-full max-h-[80vh] flex items-center justify-center transition-transform duration-250 ease-out"
-          style={{ transform: `scale(${zoomLevel})` }}
-          onClick={(e) => { e.stopPropagation(); handleZoomToggle(); }}
-        >
-          <img
+        {/* Media content (Image or Video) */}
+        {isVideo ? (
+          <video
+            key={currentMsg.id}
             src={fullUrl}
-            alt={filename}
-            className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl cursor-zoom-in"
+            controls
+            autoPlay
+            playsInline
+            className="max-w-full max-h-[75vh] md:max-h-[80vh] rounded-lg shadow-2xl outline-none z-10"
+            onClick={(e) => e.stopPropagation()}
           />
-        </div>
+        ) : (
+          <div 
+            className="relative max-w-full max-h-[80vh] flex items-center justify-center transition-transform duration-250 ease-out"
+            style={{ transform: `scale(${zoomLevel})` }}
+            onClick={(e) => { e.stopPropagation(); handleZoomToggle(); }}
+          >
+            <img
+              src={fullUrl}
+              alt={filename}
+              className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl cursor-zoom-in"
+            />
+          </div>
+        )}
 
         {/* Right Arrow (Desktop) */}
         {currentIndex < mediaMessages.length - 1 && (
