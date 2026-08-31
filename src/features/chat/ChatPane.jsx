@@ -56,21 +56,37 @@ function useVisualViewportHeight() {
   useEffect(() => {
     if (typeof window === "undefined" || !window.visualViewport) return;
 
+    const resetWindowScroll = () => {
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0;
+      }
+    };
+
     const handler = () => {
       setHeight(`${window.visualViewport.height}px`);
-      // Immediately reset any automatic page scroll caused by focusing inputs on iOS/Android
-      window.scrollTo(0, 0);
+      resetWindowScroll();
+      requestAnimationFrame(resetWindowScroll);
+      setTimeout(resetWindowScroll, 30);
+      setTimeout(resetWindowScroll, 100);
+    };
+
+    const handleWindowScroll = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) {
+        resetWindowScroll();
+      }
     };
 
     window.visualViewport.addEventListener("resize", handler);
     window.visualViewport.addEventListener("scroll", handler);
-    window.addEventListener("scroll", handler);
+    window.addEventListener("scroll", handleWindowScroll, { passive: true });
     handler();
 
     return () => {
       window.visualViewport.removeEventListener("resize", handler);
       window.visualViewport.removeEventListener("scroll", handler);
-      window.removeEventListener("scroll", handler);
+      window.removeEventListener("scroll", handleWindowScroll);
     };
   }, []);
 
