@@ -2,6 +2,7 @@
 // This worker keeps a single WebSocket connection open and shares it across all active tabs.
 
 const ports = new Set();
+const focusedPorts = new Set();
 let ws = null;
 let reconnectTimer = null;
 let currentToken = null;
@@ -20,6 +21,7 @@ setInterval(() => {
     if (now - last > 15000) {
       console.log("[Worker] Port timed out (heartbeat lost), removing port.");
       ports.delete(port);
+      focusedPorts.delete(port);
       portLastHeartbeat.delete(port);
       
       if (ports.size === 0) {
@@ -71,10 +73,26 @@ self.onconnect = function(e) {
       case "PORT_CLOSE":
         console.log("[Worker] Tab explicit close received.");
         ports.delete(port);
+        focusedPorts.delete(port);
         portLastHeartbeat.delete(port);
         if (ports.size === 0) {
           console.log("[Worker] No active ports remaining, closing connection.");
           disconnectWS();
+        }
+        break;
+
+      case "FOCUS_CHANGE":
+        const wasAnyFocused = focusedPorts.size > 0;
+        if (data.focused) {
+          focusedPorts.add(port);
+        } else {
+          focusedPorts.delete(port);
+        }
+        const isAnyFocused = focusedPorts.size > 0;
+        if (wasAnyFocused !== isAnyFocused && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            event: isAnyFocused ? "presence.focus" : "presence.unfocus"
+          }));
         }
         break;
 
@@ -114,6 +132,12 @@ function connectWS() {
     isConnected = true;
     isConnecting = false;
     broadcast({ type: "OPEN" });
+    
+    // Broadcast initial presence based on tab focus state
+    const isAnyFocused = focusedPorts.size > 0;
+    ws.send(JSON.stringify({
+      event: isAnyFocused ? "presence.focus" : "presence.unfocus"
+    }));
   };
 
   ws.onmessage = (event) => {

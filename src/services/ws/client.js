@@ -51,18 +51,41 @@ class WebSocketClient {
       const handleAppResume = () => {
         console.log("[WS Client] App resumed / focused, ensuring connection is active...");
         this.ensureConnected();
+        this.handleFocus(true);
+      };
+
+      const handleAppBlur = () => {
+        console.log("[WS Client] App blurred / unfocused");
+        this.handleFocus(false);
       };
 
       window.addEventListener("focus", handleAppResume);
+      window.addEventListener("blur", handleAppBlur);
       window.addEventListener("online", handleAppResume);
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
           handleAppResume();
+        } else {
+          handleAppBlur();
         }
       });
       window.addEventListener("beforeunload", () => {
         this.notifyTabClosing();
       });
+    }
+  }
+
+  handleFocus(focused) {
+    if (this.useSharedWorker && this.worker) {
+      try {
+        this.worker.port.postMessage({ type: "FOCUS_CHANGE", focused });
+      } catch (e) {}
+    } else if (this.localWs && this.localWs.readyState === WebSocket.OPEN) {
+      try {
+        this.localWs.send(JSON.stringify({
+          event: focused ? "presence.focus" : "presence.unfocus"
+        }));
+      } catch (e) {}
     }
   }
 
@@ -228,6 +251,10 @@ class WebSocketClient {
       this.isConnecting = false;
       this.emit("open");
       this.flushQueue();
+
+      // Send initial focus status
+      const hasFocus = typeof document !== "undefined" && document.hasFocus ? document.hasFocus() : true;
+      this.handleFocus(hasFocus);
     };
 
     this.localWs.onmessage = (event) => {

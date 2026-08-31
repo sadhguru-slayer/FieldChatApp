@@ -275,8 +275,15 @@ export function useRealtimeSync(authed) {
   useEffect(() => {
     if (!authed) return;
 
+    let lastResumeTime = 0;
     const handleAppResume = () => {
       if (document.visibilityState === "visible") {
+        const now = Date.now();
+        if (now - lastResumeTime < 1000) {
+          return; // Ignore duplicate events fired in close succession
+        }
+        lastResumeTime = now;
+
         console.log("[Sync] App resumed from background/idle. Resyncing conversations and active messages...");
         wsClient.ensureConnected();
 
@@ -401,11 +408,14 @@ export function useRealtimeSync(authed) {
           }
         }
 
+        const isTabFocused = typeof document !== "undefined" && document.visibilityState === "visible";
+
         const isCurrentlyViewingConv =
           Boolean(targetConvId) &&
           String(activeId) === String(targetConvId) &&
           activeScreen === "chat" &&
-          (typeof window === "undefined" || window.innerWidth >= 768 || mobileView === "chat");
+          (typeof window === "undefined" || window.innerWidth >= 768 || mobileView === "chat") &&
+          isTabFocused;
 
         // Do not treat incoming notifications as global alerts/toasts/push if user is actively viewing the conversation.
         // Auto-resolve / mark as read on the backend immediately without triggering UI popups or unread badges.
@@ -431,7 +441,7 @@ export function useRealtimeSync(authed) {
         }
 
         // Trigger Grouped Notification (handles both native OS & in-app toasts with debounce)
-        if (!targetConvId || String(activeId) !== String(targetConvId)) {
+        if (!targetConvId || String(activeId) !== String(targetConvId) || !isTabFocused) {
           queueGroupedNotification(notif, targetConvId, notifData);
         }
       }
@@ -497,7 +507,8 @@ export function useRealtimeSync(authed) {
             message_id: payload.message_id,
           });
 
-          if (convId === String(activeId)) {
+          const isTabFocused = typeof document !== "undefined" && document.visibilityState === "visible";
+          if (convId === String(activeId) && isTabFocused) {
             wsClient.send({
               event: "message.read",
               conversation_id: payload.conversation_id,

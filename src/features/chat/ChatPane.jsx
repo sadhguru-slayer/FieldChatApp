@@ -361,6 +361,31 @@ export function ChatPane() {
   const closePanel = useAppStore((s) => s.closePanel);
 
   const qc = useQueryClient();
+  const [isFocused, setIsFocused] = useState(
+    typeof document !== "undefined" ? document.visibilityState === "visible" : true
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleFocus = () => setIsFocused(true);
+    const handleBlur = () => setIsFocused(false);
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("blur", handleBlur);
+
+    const handleVisibilityChange = () => {
+      setIsFocused(document.visibilityState === "visible");
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("blur", handleBlur);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   const [ctxMenu, setCtxMenu] = useState(null);
   const [reactionsDetailMsg, setReactionsDetailMsg] = useState(null);
 
@@ -377,16 +402,18 @@ export function ChatPane() {
 
   useEffect(() => {
     if (activeId) {
-      joinConversation(activeId);
-      // Invalidate the message query for this conversation to pull any messages we missed while it wasn't active
-      qc.invalidateQueries({ queryKey: ["messages", activeId] });
+      if (isFocused) {
+        joinConversation(activeId);
+      } else {
+        leaveConversation(activeId);
+      }
 
       // Register listener to re-join the active conversation on WebSocket reconnect (e.g. after idle/sleep)
       const unsub = wsClient.on("open", () => {
-        console.log("[WS] Connection re-established. Re-joining conversation:", activeId);
-        joinConversation(activeId);
-        // Invalidate message list to sync any missed messages while offline
-        qc.invalidateQueries({ queryKey: ["messages", activeId] });
+        if (isFocused) {
+          console.log("[WS] Connection re-established. Re-joining conversation:", activeId);
+          joinConversation(activeId);
+        }
       });
 
       return () => {
@@ -394,7 +421,7 @@ export function ChatPane() {
         unsub();
       };
     }
-  }, [activeId, qc]);
+  }, [activeId, isFocused, qc]);
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe });
   const { data: conversations = [] } = useQuery({
@@ -417,12 +444,14 @@ export function ChatPane() {
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled: !!activeId,
     staleTime: 5000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     refetchOnMount: true,
   });
 
+
+
   useEffect(() => {
-    if (activeId && msgData?.pages?.length) {
+    if (activeId && isFocused && msgData?.pages?.length) {
       const allItems = msgData.pages.flatMap(p => p.items);
       allItems.forEach((msg) => {
         if (!msg.isMine && msg.id) {
@@ -435,17 +464,17 @@ export function ChatPane() {
         }
       });
     }
-  }, [activeId, msgData]);
+  }, [activeId, msgData, isFocused]);
 
   // Resolve/mark associated message notifications as read when viewing this conversation
   useEffect(() => {
-    if (activeId) {
+    if (activeId && isFocused) {
       const notifications = qc.getQueryData(["notifications"]);
       if (Array.isArray(notifications)) {
         let clearedAny = false;
         const updatedList = notifications.map((n) => {
           if (!n.is_read && n.type === "MESSAGE" && String(n.data?.conversation_id) === String(activeId)) {
-            markNotificationAsRead(n.id).catch(() => {});
+            markNotificationAsRead(n.id).catch(() => { });
             clearedAny = true;
             return { ...n, is_read: true };
           }
@@ -464,7 +493,7 @@ export function ChatPane() {
         }
       }
     }
-  }, [activeId, msgData, qc]);
+  }, [activeId, isFocused, qc]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const sendMut = useMutation({
@@ -548,51 +577,51 @@ export function ChatPane() {
   const updateOptimisticReactions = (msgId, emojiToSet) => {
     qc.setQueryData(["messages", activeId], (oldData) => {
       if (!oldData || !oldData.pages) return oldData;
-      
+
       const updatedPages = oldData.pages.map(page => {
         const updatedItems = page.items.map((m) => {
-        if (String(m.id) !== String(msgId)) return m;
+          if (String(m.id) !== String(msgId)) return m;
 
-        let currentReactions = m.reactions ? [...m.reactions] : [];
+          let currentReactions = m.reactions ? [...m.reactions] : [];
 
-        // Remove any reaction previously set by me
-        currentReactions = currentReactions
-          .map((r) => {
-            if (r.reactedByMe) {
-              const newCount = r.count - 1;
-              return newCount > 0 ? { ...r, count: newCount, reactedByMe: false } : null;
+          // Remove any reaction previously set by me
+          currentReactions = currentReactions
+            .map((r) => {
+              if (r.reactedByMe) {
+                const newCount = r.count - 1;
+                return newCount > 0 ? { ...r, count: newCount, reactedByMe: false } : null;
+              }
+              return r;
+            })
+            .filter(Boolean);
+
+          // If emojiToSet is provided, add or update that emoji for me
+          if (emojiToSet) {
+            const existingIdx = currentReactions.findIndex((r) => r.emoji === emojiToSet);
+            if (existingIdx >= 0) {
+              const existing = currentReactions[existingIdx];
+              currentReactions[existingIdx] = {
+                ...existing,
+                count: existing.count + 1,
+                reactedByMe: true,
+              };
+            } else {
+              currentReactions.push({
+                emoji: emojiToSet,
+                count: 1,
+                reactedByMe: true,
+              });
             }
-            return r;
-          })
-          .filter(Boolean);
-
-        // If emojiToSet is provided, add or update that emoji for me
-        if (emojiToSet) {
-          const existingIdx = currentReactions.findIndex((r) => r.emoji === emojiToSet);
-          if (existingIdx >= 0) {
-            const existing = currentReactions[existingIdx];
-            currentReactions[existingIdx] = {
-              ...existing,
-              count: existing.count + 1,
-              reactedByMe: true,
-            };
-          } else {
-            currentReactions.push({
-              emoji: emojiToSet,
-              count: 1,
-              reactedByMe: true,
-            });
           }
-        }
 
-        return { ...m, reactions: currentReactions };
+          return { ...m, reactions: currentReactions };
+        });
+        return { ...page, items: updatedItems };
       });
-      return { ...page, items: updatedItems };
-    });
 
-    return { ...oldData, pages: updatedPages };
-  });
-};
+      return { ...oldData, pages: updatedPages };
+    });
+  };
 
   const handleAction = (action, msg, extra) => {
     if (action === "reply") {
