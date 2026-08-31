@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Camera, Check, Sparkles, User, Calendar, ShieldCheck, Mail } from "lucide-react";
+import { ArrowLeft, Camera, Check, Sparkles, User, Calendar, ShieldCheck, Mail, Loader2 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/useAppStore";
 import { getMe, updateMe } from "@/services/api";
+import { uploadFileWithProgress } from "@/services/api/attachments";
 
 export function ProfileScreen({ onClose }) {
   const qc = useQueryClient();
@@ -17,6 +18,8 @@ export function ProfileScreen({ onClose }) {
   const [bio, setBio] = useState("");
   const [status, setStatus] = useState("");
   const [avatar, setAvatar] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (me) {
@@ -26,6 +29,41 @@ export function ProfileScreen({ onClose }) {
       setAvatar(me.avatar || "");
     }
   }, [me]);
+
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file only (PNG, JPG, WEBP, GIF).");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image file size must be less than 10MB.");
+      return;
+    }
+
+    // Instant optimistic preview
+    const objectUrl = URL.createObjectURL(file);
+    setAvatar(objectUrl);
+
+    setIsUploading(true);
+    try {
+      const res = await uploadFileWithProgress(file, () => {});
+      if (res && res.url) {
+        setAvatar(res.url);
+        toast.success("Avatar image uploaded");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to upload avatar image");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   const updateMut = useMutation({
     mutationFn: () =>
@@ -44,6 +82,7 @@ export function ProfileScreen({ onClose }) {
         customStatus: status,
         avatar,
       }));
+      qc.invalidateQueries({ queryKey: ["conversations"] });
       toast.success("Profile updated successfully");
     },
     onError: (err) => {
@@ -76,7 +115,7 @@ export function ProfileScreen({ onClose }) {
 
         <Button
           onClick={() => updateMut.mutate()}
-          disabled={updateMut.isPending}
+          disabled={updateMut.isPending || isUploading}
           className="h-8 gap-1.5 text-xs font-medium px-3.5 rounded-lg shadow-2xs"
         >
           <Check className="size-3.5" />
@@ -92,17 +131,28 @@ export function ProfileScreen({ onClose }) {
           <div className="relative flex flex-col items-center justify-center rounded-2xl border border-border/40 bg-surface/70 p-6 text-center shadow-2xs">
             <div className="relative mb-3">
               <Avatar src={avatar || me?.avatar} name={name || me?.name || "User"} size="xl" className="size-24 border-2 border-border/60" />
+              
               <button
                 type="button"
-                onClick={() => {
-                  const url = prompt("Enter Image URL for avatar:", avatar || me?.avatar);
-                  if (url !== null) setAvatar(url);
-                }}
-                className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform hover:scale-105"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform hover:scale-105 disabled:opacity-50 cursor-pointer"
                 title="Change Avatar"
               >
-                <Camera className="size-4" />
+                {isUploading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Camera className="size-4" />
+                )}
               </button>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarFileChange}
+                accept="image/png, image/jpeg, image/webp, image/gif"
+                className="hidden"
+              />
             </div>
 
             <h2 className="text-base font-bold text-foreground">{name || "Your Name"}</h2>

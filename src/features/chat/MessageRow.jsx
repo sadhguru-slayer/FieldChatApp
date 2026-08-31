@@ -13,6 +13,7 @@ import {
 import { Avatar } from "@/components/Avatar";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/store/useAppStore";
 
 // ─── Delivery Ticks ────────────────────────────────────────────────────────
 function Ticks({ delivered, read, mine }) {
@@ -181,6 +182,7 @@ function MessageRowBase({
   const touchCurrentX = useRef(0);
   const rowRef = useRef(null);
   const [swipeHint, setSwipeHint] = useState(false);
+  const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
 
   const SWIPE_THRESHOLD = 80;
 
@@ -345,11 +347,20 @@ function MessageRowBase({
         </div>
       )}
 
-      {/* ── Left avatar slot (groups, incoming) ── */}
+      {/* ── Avatar column ── */}
       {!mine && isGroup && (
         <div className="w-7 shrink-0 self-end mb-[2px]">
           {showAvatar ? (
-            <Avatar src={null} name={senderDisplayName} size="sm" />
+            <button
+              type="button"
+              className="hover:opacity-80 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (m.senderId) setProfileModalUserId(m.senderId);
+              }}
+            >
+              <Avatar src={null} name={senderDisplayName} size="sm" />
+            </button>
           ) : (
             <span className="block w-7" />
           )}
@@ -359,9 +370,16 @@ function MessageRowBase({
       {/* ── Bubble column ── */}
       <div className={cn("flex max-w-[80%] flex-col md:max-w-[65%]", mine && "items-end")}>
         {showName && !mine && isGroup && senderDisplayName && (
-          <span className="mb-0.5 ml-1 text-[10px] font-semibold text-zinc-400">
+          <button
+            type="button"
+            className="mb-0.5 ml-1 text-left text-[10px] font-semibold text-zinc-400 hover:text-zinc-200 transition-colors w-fit"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (m.senderId) setProfileModalUserId(m.senderId);
+            }}
+          >
             {senderDisplayName}
-          </span>
+          </button>
         )}
 
         <div className="relative flex items-end gap-1">

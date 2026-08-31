@@ -545,6 +545,7 @@ export function ChatPane() {
   const setGroupAddMemberOpen = useAppStore((s) => s.setGroupAddMemberOpen);
   const setActiveId = useAppStore((s) => s.setActiveId);
   const closePanel = useAppStore((s) => s.closePanel);
+  const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
 
   const qc = useQueryClient();
   const [isFocused, setIsFocused] = useState(
@@ -1008,7 +1009,13 @@ export function ChatPane() {
           {/* Avatar — clickable to open group/dm info */}
           <button
             type="button"
-            onClick={() => togglePanel("details")}
+            onClick={() => {
+              if (isGroup) {
+                togglePanel("details");
+              } else if (activeConv.otherUserId) {
+                setProfileModalUserId(activeConv.otherUserId);
+              }
+            }}
             className="flex items-center gap-2.5 min-w-0 hover:opacity-90 transition-opacity no-tap-highlight"
           >
             <Avatar src={activeConv.avatar} name={activeConv.title} size="md" />
@@ -1042,7 +1049,13 @@ export function ChatPane() {
         {/* Header Action Three-Dot Menu (⋮) */}
         <ConversationHeaderMenu
           isGroup={isGroup}
-          onToggleDetails={() => togglePanel("details")}
+          onToggleDetails={() => {
+            if (isGroup) {
+              togglePanel("details");
+            } else if (activeConv.otherUserId) {
+              setProfileModalUserId(activeConv.otherUserId);
+            }
+          }}
           onAddMember={() => setGroupAddMemberOpen(true)}
           onLeaveGroup={() => leaveGroupMut.mutate()}
         />

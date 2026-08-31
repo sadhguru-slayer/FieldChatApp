@@ -53,6 +53,29 @@ export const getMe = async () => {
   }
 };
 
+// GET /api/users/{user_id}/profile
+export const getUserProfile = async (userId) => {
+  try {
+    const profile = await request(`/api/users/${userId}/profile`);
+    return {
+      id: profile.user_id,
+      userId: profile.user_id,
+      name: profile.display_name || "User",
+      username: profile.username || profile.display_name?.toLowerCase().replace(/\s+/g, "") || "user",
+      email: profile.email || "",
+      bio: profile.bio || "",
+      avatar:
+        profile.avatar_url ||
+        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+          profile.display_name || "User"
+        )}`,
+      customStatus: profile.custom_status || "",
+    };
+  } catch (err) {
+    throw err;
+  }
+};
+
 
 // PATCH /api/users/me/profile
 export const updateMe = async (patch) =>

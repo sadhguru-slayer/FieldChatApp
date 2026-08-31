@@ -95,6 +95,10 @@ export const useAppStore = create((set, get) => ({
   setMenuOpen: (menuOpen) => set({ menuOpen }),
   toggleMenu: () => set((s) => ({ menuOpen: !s.menuOpen })),
 
+  // global user profile modal
+  profileModalUserId: null,
+  setProfileModalUserId: (userId) => set({ profileModalUserId: userId }),
+
   // mobile bottom tab: 'chats' | 'settings' | 'profile'
   mobileTab: "chats",
   setMobileTab: (mobileTab) => set({ mobileTab }),

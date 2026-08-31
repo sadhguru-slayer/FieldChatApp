@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { getMe, subscribeToWebPush } from "@/services/api";
 import { useQuery } from "@tanstack/react-query";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { UserProfileModal } from "@/features/profile/UserProfileModal";
 
 import { useAnimatePresence } from "@/hooks/useAnimatePresence";
 
@@ -48,6 +49,9 @@ function ChatApp() {
   const setActiveScreen = useAppStore((s) => s.setActiveScreen);
   const menuOpen = useAppStore((s) => s.menuOpen);
   const setMenuOpen = useAppStore((s) => s.setMenuOpen);
+  const profileModalUserId = useAppStore((s) => s.profileModalUserId);
+  const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
+  
   const [showLanding, setShowLanding] = useState(true);
   const [authMode, setAuthMode] = useState("login");
 
@@ -244,6 +248,14 @@ function ChatApp() {
       <CreateGroupDialog />
       <CreateDmDialog />
       <SearchDialog />
+      
+      <UserProfileModal 
+        userId={profileModalUserId} 
+        open={!!profileModalUserId} 
+        onOpenChange={(open) => {
+          if (!open) setProfileModalUserId(null);
+        }}
+      />
     </div>
   );
 }

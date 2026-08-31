@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { cn } from "@/lib/utils";
+import { cn, getFullMediaUrl } from "@/lib/utils";
 
 const SIZES = {
   sm: "size-7 text-[11px]",
@@ -16,6 +16,8 @@ export function Avatar({ src, name = "", size = "md", online = false, className 
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }, [name]);
 
+  const fullSrc = getFullMediaUrl(src);
+
   return (
     <div className={cn("relative inline-block shrink-0 select-none", className)}>
       <div
@@ -24,9 +26,9 @@ export function Avatar({ src, name = "", size = "md", online = false, className 
           SIZES[size],
         )}
       >
-        {src ? (
+        {fullSrc ? (
           <img
-            src={src}
+            src={fullSrc}
             alt={name}
             className="size-full object-cover"
             onError={(e) => {
@@ -34,7 +36,7 @@ export function Avatar({ src, name = "", size = "md", online = false, className 
             }}
           />
         ) : null}
-        <span className={src ? "sr-only" : ""}>{initials}</span>
+        <span className={fullSrc ? "sr-only" : ""}>{initials}</span>
       </div>
 
       {online && (

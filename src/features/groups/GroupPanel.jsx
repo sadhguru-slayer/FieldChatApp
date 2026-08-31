@@ -18,17 +18,23 @@ import {
   removeMember,
   updateGroup,
 } from "@/services/api";
+import { uploadFileWithProgress } from "@/services/api/attachments";
 
 export function GroupPanel() {
   const activeId = useAppStore((s) => s.activeId);
   const closePanel = useAppStore((s) => s.closePanel);
   const setActiveId = useAppStore((s) => s.setActiveId);
+  const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
 
   const qc = useQueryClient();
 
   const [editOpen, setEditOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [addMemberSearch, setAddMemberSearch] = useState("");
 
@@ -149,7 +155,9 @@ export function GroupPanel() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setName(activeConv.title);
+                  setName(activeConv.title || "");
+                  setDescription(activeConv.description || "");
+                  setAvatarUrl(activeConv.avatar || "");
                   setEditOpen(true);
                 }}
                 className="gap-2 text-[11.5px] h-8 rounded-xl border-border/40 bg-surface/30 hover:bg-elevated text-foreground"
@@ -188,15 +196,19 @@ export function GroupPanel() {
                 
                 return (
                   <div key={u.id} className="group flex items-center justify-between p-2 rounded-xl hover:bg-elevated/50 transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
+                    <button 
+                      type="button"
+                      className="flex items-center gap-3 min-w-0 text-left cursor-pointer"
+                      onClick={() => setProfileModalUserId(u.id)}
+                    >
                       <Avatar src={u.avatar} name={displayName} size="sm" />
                       <div className="min-w-0 flex flex-col justify-center">
-                        <p className="text-[13px] font-semibold truncate text-foreground/90">
+                        <p className="text-[13px] font-semibold truncate text-foreground/90 group-hover:text-foreground transition-colors">
                           {displayName} {isMe && <span className="text-muted-foreground font-normal">(You)</span>}
                         </p>
                         <p className="text-[10px] font-medium text-muted-foreground/80 tracking-wide uppercase mt-0.5">{u.role}</p>
                       </div>
-                    </div>
+                    </button>
 
                     {isOwnerOrAdmin && !isMe && u.role !== "OWNER" && (
                       <button
@@ -249,20 +261,75 @@ export function GroupPanel() {
           <DialogHeader>
             <DialogTitle>Edit Group Information</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 pt-2">
-            <Input
-              placeholder="Group name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="text-xs"
-            />
-            <Button
-              onClick={() => updateMut.mutate({ name })}
-              disabled={!name.trim() || updateMut.isPending}
-              className="w-full text-xs"
-            >
-              Save Changes
-            </Button>
+          <div className="space-y-4 pt-2">
+            <div className="flex flex-col items-center gap-3">
+              <Avatar src={avatarUrl} name={name} size="xl" />
+              <label className="text-[11px] font-medium text-accent hover:text-accent/80 cursor-pointer transition-colors">
+                {isUploading ? "Uploading image..." : "Change Avatar"}
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept="image/png, image/jpeg, image/webp, image/gif"
+                  disabled={isUploading}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!file.type.startsWith("image/")) {
+                      toast.error("Please select an image file only (PNG, JPG, WEBP, GIF).");
+                      return;
+                    }
+
+                    // Instant optimistic preview
+                    const objectUrl = URL.createObjectURL(file);
+                    setAvatarUrl(objectUrl);
+
+                    setIsUploading(true);
+                    try {
+                      const res = await uploadFileWithProgress(file, () => {});
+                      if (res && res.url) {
+                        setAvatarUrl(res.url);
+                        toast.success("Avatar image uploaded");
+                      }
+                    } catch (err) {
+                      toast.error("Failed to upload avatar image");
+                    } finally {
+                      setIsUploading(false);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Group Name</label>
+                <Input
+                  placeholder="Group name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Description</label>
+                <textarea
+                  placeholder="Group description (optional)"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-xs resize-none"
+                />
+              </div>
+
+              <Button
+                onClick={() => updateMut.mutate({ name, description, avatar_url: avatarUrl })}
+                disabled={!name.trim() || updateMut.isPending || isUploading}
+                className="w-full text-xs"
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
