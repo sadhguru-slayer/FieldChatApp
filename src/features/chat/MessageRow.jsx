@@ -240,6 +240,7 @@ function MessageRowBase({
   };
 
   const handleRowClick = (e) => {
+    e.stopPropagation();
     if (isMultiSelectMode) return;
     if (isLongPressRef.current) {
       isLongPressRef.current = false;
@@ -384,14 +385,14 @@ function MessageRowBase({
                 <div
                   onClick={handleBubbleClick}
                   className={cn(
-                    "relative overflow-hidden cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 rounded-2xl max-w-[280px] sm:max-w-xs",
+                    "relative overflow-hidden cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 rounded-2xl max-w-[230px] sm:max-w-[280px]",
                     getBubbleRadiusClass(),
                     (isActionActive || isSelected) && "ring-1.5 ring-accent/60 shadow-xs"
                   )}
                 >
                   {isVideoMedia ? (
                     <div 
-                      className="relative w-full max-h-[340px] aspect-[4/3] min-w-[200px] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
+                      className="relative w-full max-h-[220px] sm:max-h-[300px] md:max-h-[340px] aspect-[4/3] min-w-[180px] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onMediaClick) onMediaClick(m);
@@ -400,13 +401,13 @@ function MessageRowBase({
                     >
                       <video
                         src={getFullMediaUrl(m.mediaUrl)}
-                        className="max-h-[340px] w-full object-cover"
+                        className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full object-cover"
                         muted
                         preload="metadata"
                       />
                       <div className="absolute inset-0 grid place-items-center bg-black/25 hover:bg-black/35 transition-colors">
-                        <span className="grid size-12 place-items-center rounded-full bg-black/60 text-white border border-white/10 shadow-lg backdrop-blur-xs transition-transform hover:scale-110 active:scale-95">
-                          <Play className="size-5 fill-white ml-0.5" />
+                        <span className="grid size-11 place-items-center rounded-full bg-black/60 text-white border border-white/10 shadow-lg backdrop-blur-xs transition-transform hover:scale-110 active:scale-95">
+                          <Play className="size-4.5 fill-white ml-0.5" />
                         </span>
                       </div>
                     </div>
@@ -415,7 +416,7 @@ function MessageRowBase({
                       src={getFullMediaUrl(m.mediaUrl)}
                       alt={m.mediaName || "Image attachment"}
                       loading="lazy"
-                      className="max-h-[340px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                      className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onMediaClick) {
@@ -441,7 +442,7 @@ function MessageRowBase({
                 <div
                   onClick={handleBubbleClick}
                   className={cn(
-                    "relative text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150 p-0 overflow-hidden max-w-[280px] sm:max-w-xs",
+                    "relative text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150 p-0 overflow-hidden max-w-[230px] sm:max-w-[280px]",
                     mine
                       ? "bg-accent/80 text-white font-normal"
                       : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
@@ -452,7 +453,7 @@ function MessageRowBase({
                   <div className="relative w-full overflow-hidden">
                     {isVideoMedia ? (
                       <div 
-                        className="relative w-full max-h-[260px] aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
+                        className="relative w-full max-h-[180px] sm:max-h-[240px] md:max-h-[260px] aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (onMediaClick) onMediaClick(m);
@@ -461,13 +462,13 @@ function MessageRowBase({
                       >
                         <video
                           src={getFullMediaUrl(m.mediaUrl)}
-                          className="max-h-[260px] w-full object-cover"
+                          className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full object-cover"
                           muted
                           preload="metadata"
                         />
                         <div className="absolute inset-0 grid place-items-center bg-black/25 hover:bg-black/35 transition-colors">
-                          <span className="grid size-12 place-items-center rounded-full bg-black/60 text-white border border-white/10 shadow-lg backdrop-blur-xs transition-transform hover:scale-110 active:scale-95">
-                            <Play className="size-5 fill-white ml-0.5" />
+                          <span className="grid size-11 place-items-center rounded-full bg-black/60 text-white border border-white/10 shadow-lg backdrop-blur-xs transition-transform hover:scale-110 active:scale-95">
+                            <Play className="size-4.5 fill-white ml-0.5" />
                           </span>
                         </div>
                       </div>
@@ -476,7 +477,7 @@ function MessageRowBase({
                         src={getFullMediaUrl(m.mediaUrl)}
                         alt={m.mediaName || "Image attachment"}
                         loading="lazy"
-                        className="max-h-[260px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                        className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (onMediaClick) {
