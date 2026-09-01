@@ -284,17 +284,18 @@ export function useRealtimeSync(authed) {
         if (now - lastResumeTime < 1000) return; // Ignore duplicate events
         lastResumeTime = now;
 
-        // PWA background recovery: if backgrounded for > 30 min, reload the whole page
-        // This fixes iOS Safari PWA "blank screen" after long background time
         const backgroundedFor = hiddenAt ? now - hiddenAt : 0;
         hiddenAt = null;
 
-        if (backgroundedFor > 30 * 60 * 1000) {
-          console.log(`[PWA] App was backgrounded for ${Math.round(backgroundedFor / 60000)}m. Reloading to recover state...`);
+        // PWA background recovery: if backgrounded for > 2 min, reload the whole page
+        // This fixes iOS Safari PWA stale/blank screens after background time
+        if (backgroundedFor > 2 * 60 * 1000) {
+          console.log(`[PWA] App was backgrounded for ${Math.round(backgroundedFor / 1000)}s. Reloading to recover state...`);
           window.location.reload();
           return;
         }
 
+        // Always resync on resume regardless of how long we were hidden
         console.log("[Sync] App resumed. Resyncing conversations and active messages...");
         wsClient.ensureConnected();
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
@@ -316,6 +317,25 @@ export function useRealtimeSync(authed) {
       document.removeEventListener("visibilitychange", handleAppResume);
       window.removeEventListener("focus", handleAppResume);
     };
+  }, [authed, queryClient]);
+
+  // Periodic polling fallback — in case WS events are missed (especially on mobile/converted apps)
+  // Every 90 seconds, invalidate conversations so users always see fresh data
+  useEffect(() => {
+    if (!authed) return;
+
+    const POLL_INTERVAL = 90 * 1000; // 90 seconds
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      console.log("[Sync] Periodic resync — invalidating conversations...");
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      const activeId = useAppStore.getState().activeId;
+      if (activeId) {
+        queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
+      }
+    }, POLL_INTERVAL);
+
+    return () => clearInterval(pollTimer);
   }, [authed, queryClient]);
 
   // Idle-session reload after 4 hours of no interaction (like WhatsApp Web)

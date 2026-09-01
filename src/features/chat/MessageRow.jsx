@@ -105,12 +105,12 @@ function SystemMessage({ text }) {
 function getFullMediaUrl(url) {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  
+
   const storageUrl = import.meta.env.VITE_STORAGE_URL;
   if (storageUrl) {
     return `${storageUrl.replace(/\/$/, "")}${url}`;
   }
-  
+
   if (typeof window !== "undefined") {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
@@ -175,8 +175,6 @@ function MessageRowBase({
   isMultiSelectMode = false,
   isSelected = false,
 }) {
-  const pressTimer = useRef(null);
-  const isLongPressRef = useRef(false);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const touchCurrentX = useRef(0);
@@ -184,24 +182,13 @@ function MessageRowBase({
   const [swipeHint, setSwipeHint] = useState(false);
   const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
 
-  const SWIPE_THRESHOLD = 80;
+  const SWIPE_THRESHOLD = 150;
 
   const startPress = (e) => {
     if (isMultiSelectMode) return;
-    isLongPressRef.current = false;
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     touchCurrentX.current = e.touches[0].clientX;
-
-    pressTimer.current = setTimeout(() => {
-      isLongPressRef.current = true;
-      const anchor = { x: touchStartX.current, y: touchStartY.current };
-      onOpenActions(m, {
-        currentTarget: {
-          getBoundingClientRect: () => ({ left: anchor.x - 40, right: anchor.x + 40, bottom: anchor.y, top: anchor.y })
-        }
-      });
-    }, 450);
   };
 
   const moveTouch = (e) => {
@@ -211,14 +198,10 @@ function MessageRowBase({
     const diffX = touchCurrentX.current - touchStartX.current;
     const diffY = currentY - touchStartY.current;
 
-    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
-      if (pressTimer.current) clearTimeout(pressTimer.current);
-    }
-
     const isHoriz = Math.abs(diffX) > Math.abs(diffY) * 1.5;
     const absX = Math.abs(diffX);
 
-    if (rowRef.current && absX < 95 && isHoriz) {
+    if (rowRef.current && absX < 130 && isHoriz) {
       rowRef.current.style.transition = "none";
       rowRef.current.style.transform = `translateX(${diffX * 0.45}px)`;
       setSwipeHint(absX > SWIPE_THRESHOLD * 0.55);
@@ -227,7 +210,6 @@ function MessageRowBase({
 
   const endTouch = (e) => {
     if (isMultiSelectMode) return;
-    if (pressTimer.current) clearTimeout(pressTimer.current);
     const diffX = touchCurrentX.current - touchStartX.current;
 
     if (rowRef.current) {
@@ -245,10 +227,6 @@ function MessageRowBase({
   const handleRowClick = (e) => {
     e.stopPropagation();
     if (isMultiSelectMode) return;
-    if (isLongPressRef.current) {
-      isLongPressRef.current = false;
-      return;
-    }
     if (onToggleAction) {
       onToggleAction(m.id);
     }
@@ -256,13 +234,12 @@ function MessageRowBase({
 
   const handleBubbleClick = (e) => {
     e.stopPropagation();
-    if (isLongPressRef.current) {
-      isLongPressRef.current = false;
+    if (isMultiSelectMode) {
+      if (onToggleAction) onToggleAction(m.id);
       return;
     }
-    if (onToggleAction) {
-      onToggleAction(m.id);
-    }
+    // Single click/tap opens the context menu
+    onOpenActions(m, e);
   };
 
   const getBubbleRadiusClass = () => {
@@ -327,18 +304,18 @@ function MessageRowBase({
       </span>
       {/* ── Multi-select check ── */}
       {isMultiSelectMode && (
-        <div 
+        <div
           onClick={(e) => {
             e.stopPropagation();
             if (onToggleAction) onToggleAction(m.id);
           }}
           className="mr-3 self-center flex items-center justify-center shrink-0 cursor-pointer select-none"
         >
-          <div 
+          <div
             className={cn(
               "size-5 rounded-full border flex items-center justify-center transition-all",
-              isSelected 
-                ? "bg-accent border-accent text-white" 
+              isSelected
+                ? "bg-accent border-accent text-white"
                 : "border-zinc-700 bg-zinc-900/60 hover:border-zinc-500"
             )}
           >
@@ -420,7 +397,7 @@ function MessageRowBase({
                   )}
                 >
                   {isVideoMedia ? (
-                    <div 
+                    <div
                       className="relative w-full max-h-[220px] sm:max-h-[300px] md:max-h-[340px] aspect-[4/3] min-w-[180px] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -481,7 +458,7 @@ function MessageRowBase({
                 >
                   <div className="relative w-full overflow-hidden">
                     {isVideoMedia ? (
-                      <div 
+                      <div
                         className="relative w-full max-h-[180px] sm:max-h-[240px] md:max-h-[260px] aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -530,7 +507,7 @@ function MessageRowBase({
                       />
                     )}
                     <span className="break-words whitespace-pre-wrap">{m.text}</span>
-                    
+
                     {/* Inline meta */}
                     <span
                       className={cn(

@@ -940,17 +940,23 @@ export function ChatPane() {
   };
 
   const openContextMenu = (msg, e) => {
-    const rect = e?.currentTarget?.getBoundingClientRect?.();
     const isMine = msg.isMine || msg.senderId === me?.id;
+
+    // Support both touch and mouse events for mobile and desktop
+    const touch = e?.changedTouches?.[0] || e?.touches?.[0];
+    const clientX = touch?.clientX ?? e?.clientX;
+    const clientY = touch?.clientY ?? e?.clientY;
+
+    const rect = e?.currentTarget?.getBoundingClientRect?.();
     const anchor = rect
       ? {
-        x: isMine ? rect.left : rect.right,
-        y: rect.bottom,
-      }
+          x: isMine ? rect.left : rect.right,
+          y: rect.bottom,
+        }
       : {
-        x: e?.clientX ?? window.innerWidth / 2,
-        y: e?.clientY ?? window.innerHeight / 2,
-      };
+          x: clientX ?? window.innerWidth / 2,
+          y: clientY ?? window.innerHeight / 2,
+        };
     setCtxMenu({ message: msg, anchor, mine: isMine });
   };
 
