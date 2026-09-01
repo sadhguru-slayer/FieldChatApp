@@ -8,13 +8,26 @@ const getApiUrl = () => {
   return envUrl;
 };
 
-export function uploadFileWithProgress(file, onProgress) {
+export function uploadFileWithProgress(file, onProgress, options = {}) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const token = localStorage.getItem("access_token");
     const baseUrl = getApiUrl();
     
-    xhr.open("POST", `${baseUrl}/api/attachments/upload`);
+    let url = `${baseUrl}/api/attachments/upload`;
+    const params = new URLSearchParams();
+    if (typeof options === "string") {
+      params.append("entity_id", options);
+    } else if (options && typeof options === "object") {
+      if (options.entity_id) params.append("entity_id", options.entity_id);
+      if (options.custom_filename) params.append("custom_filename", options.custom_filename);
+    }
+    const queryString = params.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+    
+    xhr.open("POST", url);
     
     if (token) {
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);

@@ -101,7 +101,7 @@ export function ProfileScreen({ onClose }) {
 
     setIsUploading(true);
     try {
-      const res = await uploadFileWithProgress(file, () => {});
+      const res = await uploadFileWithProgress(file, () => {}, { entity_id: me?.id || me?.userId });
       if (res?.url) {
         setAvatar(res.url);
         toast.success("Photo uploaded");
