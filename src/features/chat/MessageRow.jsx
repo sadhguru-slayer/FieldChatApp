@@ -336,7 +336,7 @@ function MessageRowBase({
                 if (m.senderId) setProfileModalUserId(m.senderId);
               }}
             >
-              <Avatar src={null} name={senderDisplayName} size="sm" />
+              <Avatar src={m.senderAvatar} name={senderDisplayName} size="sm" />
             </button>
           ) : (
             <span className="block w-7" />

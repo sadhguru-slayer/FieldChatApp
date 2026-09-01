@@ -36,6 +36,8 @@ function normalizeEvents(events) {
           ? null
           : data.display_name || data.username,
 
+      senderAvatar: isSystem ? null : (data.avatar_url || null),
+
       text: isDeletedForEveryone ? "" : data.message || "",
 
       createdAt: data.timestamp,

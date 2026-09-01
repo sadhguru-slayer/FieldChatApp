@@ -1,13 +1,63 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Camera, Check, Sparkles, User, Calendar, ShieldCheck, Mail, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Camera,
+  Check,
+  Loader2,
+  AtSign,
+  Mail,
+  Smile,
+  FileText,
+  ShieldCheck,
+  ZoomIn,
+  X,
+} from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/useAppStore";
 import { getMe, updateMe } from "@/services/api";
 import { uploadFileWithProgress } from "@/services/api/attachments";
+import { cn } from "@/lib/utils";
+
+// ── Full-screen image viewer ──────────────────────────────────────────────────
+function ImageViewer({ src, name, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors border border-white/10"
+      >
+        <X className="size-5" />
+      </button>
+      <img
+        src={src}
+        alt={name || "Profile photo"}
+        className="max-h-[90vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
+// ── Editable field ────────────────────────────────────────────────────────────
+function Field({ icon: Icon, label, children }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+        <Icon className="size-3 opacity-70" />
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 export function ProfileScreen({ onClose }) {
   const qc = useQueryClient();
@@ -19,6 +69,7 @@ export function ProfileScreen({ onClose }) {
   const [status, setStatus] = useState("");
   const [avatar, setAvatar] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -38,9 +89,8 @@ export function ProfileScreen({ onClose }) {
       toast.error("Please select an image file only (PNG, JPG, WEBP, GIF).");
       return;
     }
-
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image file size must be less than 10MB.");
+      toast.error("Image must be less than 10 MB.");
       return;
     }
 
@@ -51,28 +101,21 @@ export function ProfileScreen({ onClose }) {
     setIsUploading(true);
     try {
       const res = await uploadFileWithProgress(file, () => {});
-      if (res && res.url) {
+      if (res?.url) {
         setAvatar(res.url);
-        toast.success("Avatar image uploaded");
+        toast.success("Photo uploaded");
       }
     } catch (err) {
-      toast.error(err.message || "Failed to upload avatar image");
+      toast.error(err.message || "Failed to upload photo");
+      setAvatar(me?.avatar || ""); // revert on error
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const updateMut = useMutation({
-    mutationFn: () =>
-      updateMe({
-        name,
-        bio,
-        customStatus: status,
-        avatar,
-      }),
+    mutationFn: () => updateMe({ name, bio, customStatus: status, avatar }),
     onSuccess: (data) => {
       qc.setQueryData(["me"], (old) => ({
         ...old,
@@ -83,144 +126,194 @@ export function ProfileScreen({ onClose }) {
         avatar,
       }));
       qc.invalidateQueries({ queryKey: ["conversations"] });
-      toast.success("Profile updated successfully");
+      toast.success("Profile saved");
     },
-    onError: (err) => {
-      toast.error(err.message || "Failed to update profile");
-    },
+    onError: (err) => toast.error(err.message || "Failed to save profile"),
   });
 
-  const handleBack = () => {
-    if (onClose) {
-      onClose();
-    } else {
-      setActiveScreen("chat");
-    }
-  };
+  const handleBack = () => (onClose ? onClose() : setActiveScreen("chat"));
+
+  const currentAvatar = avatar || me?.avatar || "";
+  const displayName = name || me?.name || "Your Name";
 
   return (
-    <div className="flex h-full w-full flex-col bg-background text-foreground select-none overflow-hidden">
-      {/* ── Top Bar ──────────────────────────────────────────────────────── */}
-      <header className="flex h-13.5 items-center justify-between border-b border-border/40 px-4 md:px-6 shrink-0 bg-surface/50">
-        <div className="flex items-center gap-3">
+    <>
+      <div className="flex h-full w-full flex-col bg-background text-foreground overflow-hidden">
+
+        {/* ── Sticky top bar ────────────────────────────────────────────── */}
+        <header className="sticky top-0 z-20 flex h-13 items-center justify-between border-b border-border/30 px-4 shrink-0 bg-background/90 backdrop-blur-md">
           <button
             type="button"
             onClick={handleBack}
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+            className="flex items-center gap-2 text-accent hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-4.5" />
+            <span className="text-[13px] font-medium">Back</span>
           </button>
-          <h1 className="text-xs font-semibold text-foreground tracking-tight">Profile & Account</h1>
-        </div>
+          <h1 className="text-[13.5px] font-semibold text-foreground tracking-tight">My Profile</h1>
+          <Button
+            onClick={() => updateMut.mutate()}
+            disabled={updateMut.isPending || isUploading}
+            size="sm"
+            className="h-8 gap-1.5 text-xs font-semibold px-4 rounded-xl"
+          >
+            <Check className="size-3.5" />
+            {updateMut.isPending ? "Saving…" : "Save"}
+          </Button>
+        </header>
 
-        <Button
-          onClick={() => updateMut.mutate()}
-          disabled={updateMut.isPending || isUploading}
-          className="h-8 gap-1.5 text-xs font-medium px-3.5 rounded-lg shadow-2xs"
-        >
-          <Check className="size-3.5" />
-          {updateMut.isPending ? "Saving..." : "Save"}
-        </Button>
-      </header>
+        {/* ── Scrollable body ───────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto scroll-slim">
 
-      {/* ── Main Content ─────────────────────────────────────────────────── */}
-      <div className="scroll-slim flex-1 overflow-y-auto px-4 py-6 md:px-8 pb-safe md:pb-6">
-        <div className="mx-auto w-full max-w-lg space-y-5">
-          
-          {/* Profile Header Hero */}
-          <div className="relative flex flex-col items-center justify-center rounded-2xl border border-border/40 bg-surface/70 p-6 text-center shadow-2xs">
-            <div className="relative mb-3">
-              <Avatar src={avatar || me?.avatar} name={name || me?.name || "User"} size="xl" className="size-24 border-2 border-border/60" />
-              
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform hover:scale-105 disabled:opacity-50 cursor-pointer"
-                title="Change Avatar"
-              >
-                {isUploading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Camera className="size-4" />
-                )}
-              </button>
+          {/* Hero banner + avatar */}
+          <div className="relative">
+            <div className="h-28 sm:h-36 bg-gradient-to-br from-accent/25 via-violet-500/15 to-emerald-500/15" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
 
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleAvatarFileChange}
-                accept="image/png, image/jpeg, image/webp, image/gif"
-                className="hidden"
-              />
+            {/* Avatar positioned at banner bottom */}
+            <div className="absolute -bottom-12 left-6 flex items-end gap-3">
+              <div className="relative group">
+                {/* Tap to view full image */}
+                <button
+                  type="button"
+                  onClick={() => currentAvatar && setImageViewerOpen(true)}
+                  className="block"
+                  aria-label="View profile photo"
+                >
+                  <Avatar
+                    src={currentAvatar}
+                    name={displayName}
+                    size="xl"
+                    className="size-24 ring-4 ring-background shadow-xl"
+                  />
+                  {currentAvatar && (
+                    <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ZoomIn className="size-5 text-white" />
+                    </span>
+                  )}
+                </button>
+
+                {/* Camera overlay button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="absolute -bottom-1 -right-1 grid size-8 place-items-center rounded-full bg-accent text-white shadow-lg border-2 border-background transition-transform hover:scale-105 disabled:opacity-60"
+                  aria-label="Change photo"
+                >
+                  {isUploading ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="size-3.5" />
+                  )}
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarFileChange}
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                />
+              </div>
             </div>
+          </div>
 
-            <h2 className="text-base font-bold text-foreground">{name || "Your Name"}</h2>
-            <p className="text-xs text-muted-foreground">@{me?.username || "username"}</p>
+          {/* Name display below banner */}
+          <div className="pt-16 px-6 pb-2">
+            <h2 className="text-xl font-bold text-foreground leading-tight">{displayName}</h2>
+            <div className="flex items-center gap-1.5 mt-0.5 text-muted-foreground">
+              <AtSign className="size-3 shrink-0" />
+              <p className="text-sm">{me?.username || "username"}</p>
+            </div>
             {me?.email && (
-              <p className="text-[11px] text-muted-foreground/80 mt-1 flex items-center gap-1">
-                <Mail className="size-3 inline opacity-70" /> {me.email}
+              <div className="flex items-center gap-1.5 mt-1 text-muted-foreground/70">
+                <Mail className="size-3 shrink-0" />
+                <p className="text-xs">{me.email}</p>
+              </div>
+            )}
+            {status && (
+              <p className="text-xs font-medium text-emerald-400 mt-2 flex items-center gap-1.5">
+                <span className="relative flex size-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
+                </span>
+                {status}
               </p>
             )}
           </div>
 
-          {/* Personal Details Form */}
-          <div className="space-y-4 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs">
-            <h3 className="text-[10.5px] font-semibold tracking-wider text-muted-foreground uppercase flex items-center gap-2">
-              <User className="size-3.5 opacity-70" /> General Details
-            </h3>
+          {/* Divider */}
+          <div className="mx-6 border-t border-border/30 mt-2 mb-5" />
 
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-foreground/80">Display Name</label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your display name"
-                  className="h-9 text-xs"
-                />
+          {/* Edit form */}
+          <div className="px-6 pb-12 space-y-5 max-w-lg">
+
+            <Field icon={AtSign} label="Display Name">
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your display name"
+                className="h-10 text-[13px] rounded-xl bg-surface/60 border-border/40"
+              />
+            </Field>
+
+            <Field icon={Smile} label="Custom Status">
+              <Input
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                placeholder="e.g. Working remotely, In a meeting…"
+                className="h-10 text-[13px] rounded-xl bg-surface/60 border-border/40"
+              />
+            </Field>
+
+            <Field icon={FileText} label="Bio">
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Write a few lines about yourself…"
+                rows={4}
+                className="w-full rounded-xl border border-border/40 bg-surface/60 px-3 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
+              />
+            </Field>
+
+            {/* Save button (bottom for thumb reach on mobile) */}
+            <Button
+              onClick={() => updateMut.mutate()}
+              disabled={updateMut.isPending || isUploading}
+              className="w-full h-11 text-sm font-semibold rounded-xl"
+            >
+              {updateMut.isPending ? (
+                <><Loader2 className="size-4 animate-spin mr-2" /> Saving…</>
+              ) : (
+                <><Check className="size-4 mr-2" /> Save Profile</>
+              )}
+            </Button>
+
+            {/* Account info — no box, just subtle row */}
+            <div className="pt-2 space-y-2.5">
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5">
+                <ShieldCheck className="size-3 opacity-60" /> Account
+              </p>
+              <div className="flex items-center justify-between text-xs py-2 border-b border-border/20">
+                <span className="text-muted-foreground">Status</span>
+                <span className="font-semibold text-emerald-400">Active</span>
               </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-foreground/80">Custom Status</label>
-                <Input
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  placeholder="e.g. Working remotely, In a meeting"
-                  className="h-9 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-foreground/80">About / Bio</label>
-                <textarea
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Write a few lines about yourself..."
-                  rows={3}
-                  className="w-full rounded-lg border border-input bg-surface p-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-                />
+              <div className="flex items-center justify-between text-xs py-2">
+                <span className="text-muted-foreground">Encryption</span>
+                <span className="text-foreground/70 font-medium">Standard</span>
               </div>
             </div>
           </div>
-
-          {/* Account Security Info */}
-          <div className="space-y-2.5 rounded-2xl border border-border/40 bg-surface/70 p-5 shadow-2xs">
-            <h3 className="text-[10.5px] font-semibold tracking-wider text-muted-foreground uppercase flex items-center gap-2">
-              <ShieldCheck className="size-3.5 opacity-70" /> Account Verification
-            </h3>
-            <div className="flex items-center justify-between text-xs py-1 border-b border-border/30">
-              <span className="text-muted-foreground">Account Type</span>
-              <span className="font-semibold text-emerald-400">Verified User</span>
-            </div>
-            <div className="flex items-center justify-between text-xs py-1">
-              <span className="text-muted-foreground">Encryption</span>
-              <span className="text-foreground font-medium">Standard End-to-End</span>
-            </div>
-          </div>
-
         </div>
       </div>
-    </div>
+
+      {imageViewerOpen && currentAvatar && (
+        <ImageViewer
+          src={currentAvatar}
+          name={displayName}
+          onClose={() => setImageViewerOpen(false)}
+        />
+      )}
+    </>
   );
 }

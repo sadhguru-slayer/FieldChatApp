@@ -787,6 +787,7 @@ export function useRealtimeSync(authed) {
                 id: msgId,
                 senderId: payload.sender_id,
                 senderName: msgSenderName,
+                senderAvatar: payload.avatar_url || null,
                 display_name: payload.display_name,
                 username: payload.username,
                 text: payload.message || "",
