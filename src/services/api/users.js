@@ -30,15 +30,10 @@ export const getMe = async () => {
       id: userId || profile.user_id || "me",
       userId: userId || profile.user_id,
       name: profile.display_name || "You",
-      username:
-        profile.display_name?.toLowerCase().replace(/\s+/g, "") || "user",
+      username: profile.username || profile.display_name?.toLowerCase().replace(/\s+/g, "") || "user",
       email: profile.email || "",
       bio: profile.bio || "",
-      avatar:
-        profile.avatar_url ||
-        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-          profile.display_name || "User"
-        )}`,
+      avatar: profile.avatar_url || "",
       customStatus: profile.custom_status || "",
     };
   } catch {
@@ -47,7 +42,8 @@ export const getMe = async () => {
       userId: userId,
       name: "Current User",
       username: "user",
-      avatar: "https://api.dicebear.com/7.x/initials/svg?seed=User",
+      email: "",
+      avatar: "",
       bio: "",
     };
   }
@@ -64,12 +60,9 @@ export const getUserProfile = async (userId) => {
       username: profile.username || profile.display_name?.toLowerCase().replace(/\s+/g, "") || "user",
       email: profile.email || "",
       bio: profile.bio || "",
-      avatar:
-        profile.avatar_url ||
-        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-          profile.display_name || "User"
-        )}`,
+      avatar: profile.avatar_url || "",
       customStatus: profile.custom_status || "",
+      createdAt: profile.created_at || null,
     };
   } catch (err) {
     throw err;
@@ -82,11 +75,11 @@ export const updateMe = async (patch) =>
   request("/api/users/me/profile", {
     method: "PATCH",
     body: JSON.stringify({
-      display_name: patch.name || patch.display_name,
+      display_name: patch.name !== undefined ? patch.name : patch.display_name,
       bio: patch.bio,
-      avatar_url: patch.avatar,
-      custom_status: patch.customStatus,
-      date_of_birth: patch.dateOfBirth,
+      avatar_url: patch.avatar !== undefined ? patch.avatar : patch.avatar_url,
+      custom_status: patch.customStatus !== undefined ? patch.customStatus : patch.custom_status,
+      date_of_birth: patch.dateOfBirth !== undefined ? patch.dateOfBirth : patch.date_of_birth,
     }),
   });
 

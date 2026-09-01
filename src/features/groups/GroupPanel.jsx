@@ -1,20 +1,29 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, LogOut, Pencil, ShieldAlert, Trash2, UserPlus, UserX, X } from "lucide-react";
+import { ArrowLeft, LogOut, Pencil, ShieldAlert, ShieldCheck, ShieldX, Trash2, UserPlus, UserX, X, Crown, MoreVertical, User } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAppStore } from "@/store/useAppStore";
 import {
   addMembers,
   deleteGroup,
+  dismissGroupAdmin,
   getConversations,
   getGroupMembers,
   getMe,
   getUsers,
   leaveGroup,
+  makeGroupAdmin,
   removeMember,
   updateGroup,
 } from "@/services/api";
@@ -72,6 +81,30 @@ export function GroupPanel() {
       toast.success("Members added");
       setAddOpen(false);
       setSelectedUserIds([]);
+    },
+  });
+
+  const makeAdminMut = useMutation({
+    mutationFn: (userId) => makeGroupAdmin({ conversationId: activeId, userId }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["groupMembers", activeId] });
+      toast.success(data?.message || "Member promoted to admin");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to make member admin");
+    },
+  });
+
+  const dismissAdminMut = useMutation({
+    mutationFn: (userId) => dismissGroupAdmin({ conversationId: activeId, userId }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["groupMembers", activeId] });
+      toast.success(data?.message || "Admin dismissed");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to dismiss admin");
     },
   });
 
@@ -191,35 +224,104 @@ export function GroupPanel() {
             <div className="space-y-1 rounded-2xl border border-border/30 bg-surface/30 p-1.5 max-h-64 overflow-y-auto scroll-slim">
               {groupMembers.map((u) => {
                 const isMe = String(u.id) === String(me?.id);
-                // Use display_name if available, otherwise fall back to name
                 const displayName = u.display_name || u.name || "Unknown";
+                const isMemberAdmin = u.role === "ADMIN";
+                const isMemberOwner = u.role === "OWNER";
+                const isMemberRegular = u.role === "MEMBER" || (!isMemberAdmin && !isMemberOwner);
                 
                 return (
                   <div key={u.id} className="group flex items-center justify-between p-2 rounded-xl hover:bg-elevated/50 transition-colors">
                     <button 
                       type="button"
-                      className="flex items-center gap-3 min-w-0 text-left cursor-pointer"
+                      className="flex items-center gap-3 min-w-0 text-left cursor-pointer flex-1"
                       onClick={() => setProfileModalUserId(u.id)}
                     >
                       <Avatar src={u.avatar} name={displayName} size="sm" />
                       <div className="min-w-0 flex flex-col justify-center">
-                        <p className="text-[13px] font-semibold truncate text-foreground/90 group-hover:text-foreground transition-colors">
-                          {displayName} {isMe && <span className="text-muted-foreground font-normal">(You)</span>}
-                        </p>
-                        <p className="text-[10px] font-medium text-muted-foreground/80 tracking-wide uppercase mt-0.5">{u.role}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[13px] font-semibold truncate text-foreground/90 group-hover:text-foreground transition-colors">
+                            {displayName}
+                          </p>
+                          {isMe && <span className="text-muted-foreground text-xs font-normal">(You)</span>}
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {isMemberOwner ? (
+                            <span className="flex items-center gap-1 text-[9.5px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.2 rounded border border-amber-400/20 uppercase tracking-wide">
+                              <Crown className="size-2.5" /> Owner
+                            </span>
+                          ) : isMemberAdmin ? (
+                            <span className="flex items-center gap-1 text-[9.5px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.2 rounded border border-emerald-400/20 uppercase tracking-wide">
+                              <ShieldCheck className="size-2.5" /> Admin
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-muted-foreground/80 tracking-wide uppercase">
+                              Member
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
 
-                    {isOwnerOrAdmin && !isMe && u.role !== "OWNER" && (
-                      <button
-                        type="button"
-                        onClick={() => removeMut.mutate(u.id)}
-                        className="text-muted-foreground hover:text-destructive p-1.5 rounded-lg hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Remove member"
-                      >
-                        <UserX className="size-4" />
-                      </button>
-                    )}
+                    {/* Member Actions Menu */}
+                    <div className="flex items-center gap-1">
+                      {isOwnerOrAdmin && !isMe && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="grid size-7 place-items-center rounded-lg hover:bg-elevated text-muted-foreground hover:text-foreground transition-all"
+                              aria-label="Member options"
+                            >
+                              <MoreVertical className="size-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onClick={() => setProfileModalUserId(u.id)}>
+                              <User className="size-3.5 mr-2 opacity-70" />
+                              View Profile
+                            </DropdownMenuItem>
+                            
+                            {/* Make Admin option */}
+                            {isMemberRegular && (
+                              <DropdownMenuItem
+                                onClick={() => makeAdminMut.mutate(u.id)}
+                                disabled={makeAdminMut.isPending}
+                                className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/15"
+                              >
+                                <ShieldCheck className="size-3.5 mr-2" />
+                                Make Group Admin
+                              </DropdownMenuItem>
+                            )}
+
+                            {/* Dismiss Admin option (Owner only) */}
+                            {isMemberAdmin && activeConv.role === "OWNER" && (
+                              <DropdownMenuItem
+                                onClick={() => dismissAdminMut.mutate(u.id)}
+                                disabled={dismissAdminMut.isPending}
+                                className="text-amber-400 focus:text-amber-300 focus:bg-amber-500/15"
+                              >
+                                <ShieldX className="size-3.5 mr-2" />
+                                Dismiss as Admin
+                              </DropdownMenuItem>
+                            )}
+
+                            {!isMemberOwner && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => removeMut.mutate(u.id)}
+                                  disabled={removeMut.isPending}
+                                  className="text-destructive focus:bg-destructive/15 focus:text-destructive"
+                                >
+                                  <UserX className="size-3.5 mr-2" />
+                                  Remove from Group
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -264,40 +366,56 @@ export function GroupPanel() {
           <div className="space-y-4 pt-2">
             <div className="flex flex-col items-center gap-3">
               <Avatar src={avatarUrl} name={name} size="xl" />
-              <label className="text-[11px] font-medium text-accent hover:text-accent/80 cursor-pointer transition-colors">
-                {isUploading ? "Uploading image..." : "Change Avatar"}
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept="image/png, image/jpeg, image/webp, image/gif"
-                  disabled={isUploading}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (!file.type.startsWith("image/")) {
-                      toast.error("Please select an image file only (PNG, JPG, WEBP, GIF).");
-                      return;
-                    }
-
-                    // Instant optimistic preview
-                    const objectUrl = URL.createObjectURL(file);
-                    setAvatarUrl(objectUrl);
-
-                    setIsUploading(true);
-                    try {
-                      const res = await uploadFileWithProgress(file, () => {});
-                      if (res && res.url) {
-                        setAvatarUrl(res.url);
-                        toast.success("Avatar image uploaded");
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] font-medium text-accent hover:text-accent/80 cursor-pointer transition-colors px-2 py-1 rounded-lg hover:bg-surface/50">
+                  {isUploading ? "Uploading image..." : avatarUrl ? "Change Avatar" : "Upload Avatar"}
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/png, image/jpeg, image/webp, image/gif"
+                    disabled={isUploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.type.startsWith("image/")) {
+                        toast.error("Please select an image file only (PNG, JPG, WEBP, GIF).");
+                        return;
                       }
-                    } catch (err) {
-                      toast.error("Failed to upload avatar image");
-                    } finally {
-                      setIsUploading(false);
-                    }
-                  }}
-                />
-              </label>
+
+                      // Instant optimistic preview
+                      const objectUrl = URL.createObjectURL(file);
+                      setAvatarUrl(objectUrl);
+
+                      setIsUploading(true);
+                      try {
+                        const res = await uploadFileWithProgress(file, () => {});
+                        if (res && res.url) {
+                          setAvatarUrl(res.url);
+                          toast.success("Avatar image uploaded");
+                        }
+                      } catch (err) {
+                        toast.error("Failed to upload avatar image");
+                      } finally {
+                        setIsUploading(false);
+                      }
+                    }}
+                  />
+                </label>
+
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAvatarUrl("");
+                      toast.info("Avatar removed. Click Save Changes to apply.");
+                    }}
+                    className="text-[11px] font-medium text-destructive hover:text-destructive/80 transition-colors px-2 py-1 rounded-lg hover:bg-destructive/10 flex items-center gap-1"
+                  >
+                    <Trash2 className="size-3" />
+                    <span>Remove</span>
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="space-y-3">
@@ -323,7 +441,7 @@ export function GroupPanel() {
               </div>
 
               <Button
-                onClick={() => updateMut.mutate({ name, description, avatar_url: avatarUrl })}
+                onClick={() => updateMut.mutate({ name, description, avatar_url: avatarUrl || null })}
                 disabled={!name.trim() || updateMut.isPending || isUploading}
                 className="w-full text-xs"
               >

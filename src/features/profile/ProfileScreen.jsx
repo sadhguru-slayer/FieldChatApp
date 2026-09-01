@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ZoomIn,
   X,
+  Trash2,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
@@ -114,8 +115,14 @@ export function ProfileScreen({ onClose }) {
     }
   };
 
+  const handleRemovePhoto = () => {
+    setAvatar("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    toast.info("Photo removed. Click Save to apply changes.");
+  };
+
   const updateMut = useMutation({
-    mutationFn: () => updateMe({ name, bio, customStatus: status, avatar }),
+    mutationFn: () => updateMe({ name, bio, customStatus: status, avatar: avatar || null }),
     onSuccess: (data) => {
       qc.setQueryData(["me"], (old) => ({
         ...old,
@@ -123,9 +130,10 @@ export function ProfileScreen({ onClose }) {
         name,
         bio,
         customStatus: status,
-        avatar,
+        avatar: data?.avatar_url || (avatar ? avatar : ""),
       }));
       qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["me"] });
       toast.success("Profile saved");
     },
     onError: (err) => toast.error(err.message || "Failed to save profile"),
@@ -165,48 +173,69 @@ export function ProfileScreen({ onClose }) {
         {/* ── Scrollable body ───────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto scroll-slim">
 
-          {/* Hero banner + avatar */}
+          {/* Hero banner */}
           <div className="relative">
             <div className="h-28 sm:h-36 bg-gradient-to-br from-accent/25 via-violet-500/15 to-emerald-500/15" />
             <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
 
-            {/* Avatar positioned at banner bottom */}
-            <div className="absolute -bottom-12 left-6 flex items-end gap-3">
+            {/* Avatar section positioned at banner bottom */}
+            <div className="absolute -bottom-12 left-6 flex items-end gap-4">
               <div className="relative group">
-                {/* Tap to view full image */}
+                {/* Avatar with click to focus/preview */}
                 <button
                   type="button"
                   onClick={() => currentAvatar && setImageViewerOpen(true)}
-                  className="block"
+                  className={cn(
+                    "block rounded-full overflow-hidden transition-all duration-200 shadow-xl",
+                    currentAvatar ? "cursor-pointer hover:opacity-95" : "cursor-default"
+                  )}
                   aria-label="View profile photo"
+                  title={currentAvatar ? "Click to view full photo" : ""}
                 >
                   <Avatar
                     src={currentAvatar}
                     name={displayName}
                     size="xl"
-                    className="size-24 ring-4 ring-background shadow-xl"
+                    className="size-24 border-2 border-background/80 shadow-md"
                   />
                   {currentAvatar && (
-                    <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-2xs">
                       <ZoomIn className="size-5 text-white" />
                     </span>
                   )}
                 </button>
+              </div>
 
-                {/* Camera overlay button */}
+              {/* Photo Action Buttons */}
+              <div className="flex items-center gap-2 mb-1">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="absolute -bottom-1 -right-1 grid size-8 place-items-center rounded-full bg-accent text-white shadow-lg border-2 border-background transition-transform hover:scale-105 disabled:opacity-60"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface/90 hover:bg-elevated text-foreground border border-border/40 text-xs font-medium shadow-sm transition-all hover:border-accent/40 active:scale-95 disabled:opacity-60"
                   aria-label="Change photo"
                 >
                   {isUploading ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin text-accent" />
                   ) : (
-                    <Camera className="size-3.5" />
+                    <Camera className="size-3.5 text-accent" />
                   )}
+                  <span>{currentAvatar ? "Change Photo" : "Upload Photo"}</span>
                 </button>
+
+                {currentAvatar && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    disabled={isUploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-xs font-medium shadow-sm transition-all active:scale-95 disabled:opacity-60"
+                    aria-label="Remove photo"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span>Remove</span>
+                  </button>
+                )}
+
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -247,6 +276,25 @@ export function ProfileScreen({ onClose }) {
 
           {/* Edit form */}
           <div className="px-6 pb-12 space-y-5 max-w-lg">
+
+            {/* Email Address - Read Only Primary Field */}
+            <Field icon={Mail} label="Email Address (Primary)">
+              <div className="relative flex items-center">
+                <Input
+                  value={me?.email || ""}
+                  readOnly
+                  disabled
+                  placeholder="user@example.com"
+                  className="h-10 text-[13px] rounded-xl bg-surface/40 border-border/30 text-muted-foreground/90 cursor-not-allowed pr-20 select-text"
+                />
+                <span className="absolute right-2.5 text-[10px] font-semibold text-accent bg-accent/15 px-2 py-0.5 rounded-md border border-accent/25 select-none">
+                  Primary
+                </span>
+              </div>
+              <p className="text-[10.5px] text-muted-foreground/60 px-0.5">
+                Your email is your primary login identifier and cannot be changed.
+              </p>
+            </Field>
 
             <Field icon={AtSign} label="Display Name">
               <Input

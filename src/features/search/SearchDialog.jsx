@@ -14,6 +14,7 @@ export function SearchDialog() {
   const setActiveId = useAppStore((s) => s.setActiveId);
   const qc = useQueryClient();
 
+  const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
   const [q, setQ] = useState("");
 
   const { data, isFetching } = useQuery({
@@ -111,14 +112,14 @@ export function SearchDialog() {
               </div>
 
               {data.people.map((u) => (
-                <button
+                <div
                   key={u.id}
-                  type="button"
-                  disabled={dmMut.isPending}
-                  onClick={() => selectUser(u.id)}
-                  className="group flex w-full items-center justify-between rounded-xl p-2.5 text-left transition-all hover:bg-elevated border border-transparent hover:border-border/40"
+                  onClick={() => {
+                    setProfileModalUserId(u.id);
+                  }}
+                  className="group flex w-full items-center justify-between rounded-xl p-2.5 text-left transition-all hover:bg-elevated border border-transparent hover:border-border/40 cursor-pointer"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <Avatar src={u.avatar} name={u.name} size="md" online={u.online} />
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-foreground">
@@ -128,11 +129,19 @@ export function SearchDialog() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-medium text-muted-foreground group-hover:text-foreground">
+                  <button
+                    type="button"
+                    disabled={dmMut.isPending}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectUser(u.id);
+                    }}
+                    className="flex items-center gap-1 text-[11px] font-medium text-accent hover:text-accent-foreground px-2.5 py-1 rounded-lg hover:bg-accent/15 transition-all"
+                  >
                     <span>Message</span>
                     <ArrowRight className="size-3" />
-                  </div>
-                </button>
+                  </button>
+                </div>
               ))}
             </div>
           )}

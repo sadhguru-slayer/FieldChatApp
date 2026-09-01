@@ -150,6 +150,20 @@ export const removeMember = async ({ conversationId, userId }) =>
     { method: "POST" }
   );
 
+/** POST /api/chat/make-admin */
+export const makeGroupAdmin = async ({ conversationId, userId }) =>
+  request(
+    `/api/chat/make-admin?group_id=${conversationId}&target_id=${userId}`,
+    { method: "POST" }
+  );
+
+/** POST /api/chat/dismiss-admin */
+export const dismissGroupAdmin = async ({ conversationId, userId }) =>
+  request(
+    `/api/chat/dismiss-admin?group_id=${conversationId}&target_id=${userId}`,
+    { method: "POST" }
+  );
+
 /** POST /api/chat/leave-group */
 export const leaveGroup = async ({ conversationId }) =>
   request(`/api/chat/leave-group?group_id=${conversationId}`, {
