@@ -305,9 +305,7 @@ function ConvItem({ c, isActive, onClick, presence, onMarkAsRead, onClearChat })
             )}
           </div>
           <p className="line-clamp-1 text-[12px] text-muted-foreground font-normal">
-            {isDm && !isOnline && lastSeenText ? (
-              <span className="text-[11px] text-muted-foreground/60">{lastSeenText}</span>
-            ) : preview}
+            {preview}
           </p>
         </div>
 
