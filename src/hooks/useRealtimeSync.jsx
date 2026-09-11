@@ -429,10 +429,13 @@ export function useRealtimeSync(authed) {
     // Invalidate and refetch queries on connection/reconnection to sync missed messages and flush offline queue
     const unsubOpen = () => {
       wsClient.on("open", () => {
-        console.log("[WS] Connected/reconnected. Refetching active conversation and flushing offline queue...");
+        console.log("[WS] Connected/reconnected. Joining active conversation and flushing offline queue...");
+        const activeId = useAppStore.getState().activeId;
+        if (activeId) {
+          joinConversation(activeId);
+        }
         flushOfflineQueue(queryClient);
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
-        const activeId = useAppStore.getState().activeId;
         if (activeId) {
           queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
         }
@@ -693,18 +696,40 @@ export function useRealtimeSync(authed) {
           if (!old || !old.pages) return old;
 
           const msgId = payload.message_id;
+          const clientMsgId = payload.client_message_id || payload.clientMessageId;
           let found = false;
 
           const pages = old.pages.map((page, pageIndex) => {
             let items = [...page.items];
-            const existingIdx = items.findIndex((item) => String(item.id) === String(msgId));
+            const existingIdx = items.findIndex((item) =>
+              String(item.id) === String(msgId) ||
+              (clientMsgId && (String(item.id) === String(clientMsgId) || String(item.tempId) === String(clientMsgId)))
+            );
             
             if (existingIdx !== -1) {
               found = true;
               const isMine = payload.sender_id && meId && String(payload.sender_id) === String(meId);
               const msgSenderName = isMine ? "You" : (payload.display_name || payload.username || payload.sender || "Someone");
 
-              if (payload.event === "message.edited") {
+              if (payload.event === "message.created") {
+                items[existingIdx] = {
+                  ...items[existingIdx],
+                  id: msgId,
+                  senderId: payload.sender_id,
+                  senderName: msgSenderName,
+                  senderAvatar: payload.avatar_url || items[existingIdx].senderAvatar || null,
+                  display_name: payload.display_name,
+                  username: payload.username,
+                  text: payload.message || items[existingIdx].text || "",
+                  createdAt: payload.timestamp || items[existingIdx].createdAt,
+                  isMine,
+                  status: undefined,
+                  isOptimistic: false,
+                  mediaUrl: payload.media_url || items[existingIdx].mediaUrl || null,
+                  mediaName: payload.media_name || items[existingIdx].mediaName || null,
+                };
+                removeOfflineMessage(clientMsgId || items[existingIdx].tempId || items[existingIdx].id).catch(() => {});
+              } else if (payload.event === "message.edited") {
                 items[existingIdx] = {
                   ...items[existingIdx],
                   text: payload.message || "",
@@ -823,7 +848,6 @@ export function useRealtimeSync(authed) {
               };
 
               if (isMine) {
-                const clientMsgId = payload.client_message_id || payload.clientMessageId;
                 // Find matching optimistic message to reconcile (exact client_message_id match first)
                 let optIdx = -1;
                 if (clientMsgId) {

@@ -810,6 +810,9 @@ export function ChatPane() {
         }
       }
 
+      const isConn = (typeof navigator !== "undefined" && navigator.onLine) && wsClient.isConnected;
+      const initialStatus = isConn ? "sending" : "offline";
+
       const optimisticMsg = {
         id: tempId,
         tempId,
@@ -825,7 +828,7 @@ export function ChatPane() {
         edited: false,
         type: "CHAT",
         isMine: true,
-        status: "sending",
+        status: initialStatus,
         isOptimistic: true,
         delivered: false,
         read: false,
@@ -876,21 +879,23 @@ export function ChatPane() {
         return [updated, ...old.filter((c) => String(c.id) !== String(activeId))];
       });
 
-      // 3. Persist to IndexedDB outbox before attempting network delivery
-      saveOfflineMessage({
-        tempId,
-        conversationId: activeId,
-        text,
-        replyToId,
-        fileUrl,
-        fileName,
-        createdAt,
-        status: "sending",
-        replyToPreview: replyContext,
-        senderInfo: { id: me?.id, username: me?.username, avatar: me?.avatar },
-      }).catch((err) => console.warn("[OfflineDB] Save error:", err));
+      // 3. Persist to IndexedDB outbox ONLY if offline (disconnected)
+      if (!isConn) {
+        await saveOfflineMessage({
+          tempId,
+          conversationId: activeId,
+          text,
+          replyToId,
+          fileUrl,
+          fileName,
+          createdAt,
+          status: "offline",
+          replyToPreview: replyContext,
+          senderInfo: { id: me?.id, username: me?.username, avatar: me?.avatar },
+        }).catch((err) => console.warn("[OfflineDB] Save error:", err));
+      }
 
-      return { tempId };
+      return { tempId, text, replyToId, fileUrl, fileName, createdAt, replyContext };
     },
     mutationFn: async ({ text, replyToId, fileUrl, fileName }, context) => {
       const isOnline = typeof navigator === "undefined" || navigator.onLine;
@@ -916,7 +921,19 @@ export function ChatPane() {
       const tempId = context?.tempId;
       if (data?.offline) {
         if (tempId) {
-          await updateOfflineMessageStatus(tempId, "offline");
+          await saveOfflineMessage({
+            tempId,
+            conversationId: activeId,
+            text: context?.text || variables?.text,
+            replyToId: context?.replyToId || variables?.replyToId,
+            fileUrl: context?.fileUrl || variables?.fileUrl,
+            fileName: context?.fileName || variables?.fileName,
+            createdAt: context?.createdAt || new Date().toISOString(),
+            status: "offline",
+            replyToPreview: context?.replyContext,
+            senderInfo: { id: me?.id, username: me?.username, avatar: me?.avatar },
+          }).catch(() => {});
+
           qc.setQueryData(["messages", activeId], (old) => {
             if (!old?.pages) return old;
             return {
@@ -957,7 +974,19 @@ export function ChatPane() {
       console.warn("[SendMut] Mutation error:", err);
       const tempId = context?.tempId;
       if (tempId) {
-        await updateOfflineMessageStatus(tempId, "offline");
+        await saveOfflineMessage({
+          tempId,
+          conversationId: activeId,
+          text: context?.text || variables?.text,
+          replyToId: context?.replyToId || variables?.replyToId,
+          fileUrl: context?.fileUrl || variables?.fileUrl,
+          fileName: context?.fileName || variables?.fileName,
+          createdAt: context?.createdAt || new Date().toISOString(),
+          status: "offline",
+          replyToPreview: context?.replyContext,
+          senderInfo: { id: me?.id, username: me?.username, avatar: me?.avatar },
+        }).catch(() => {});
+
         qc.setQueryData(["messages", activeId], (old) => {
           if (!old?.pages) return old;
           return {

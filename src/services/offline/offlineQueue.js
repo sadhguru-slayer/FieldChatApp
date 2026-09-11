@@ -43,17 +43,29 @@ function getDB() {
   });
 }
 
+const inFlightDeletions = new Set();
+
 /**
  * Persist an optimistic message into IndexedDB before sending.
  */
 export async function saveOfflineMessage(msg) {
+  const tempId = msg.tempId || msg.id;
+  if (!tempId) return null;
+  if (inFlightDeletions.has(tempId)) {
+    return null;
+  }
+
   try {
     const db = await getDB();
     return new Promise((resolve, reject) => {
+      if (inFlightDeletions.has(tempId)) {
+        return resolve(null);
+      }
+
       const tx = db.transaction(STORE_OUTBOX, "readwrite");
       const store = tx.objectStore(STORE_OUTBOX);
       const record = {
-        tempId: msg.tempId || msg.id,
+        tempId,
         conversationId: String(msg.conversationId),
         text: msg.text || "",
         replyToId: msg.replyToId ? String(msg.replyToId) : null,
@@ -66,7 +78,12 @@ export async function saveOfflineMessage(msg) {
       };
 
       const req = store.put(record);
-      req.onsuccess = () => resolve(record);
+      req.onsuccess = () => {
+        if (inFlightDeletions.has(tempId)) {
+          removeOfflineMessage(tempId);
+        }
+        resolve(record);
+      };
       req.onerror = (e) => reject(e.target.error);
     });
   } catch (err) {
@@ -80,13 +97,17 @@ export async function saveOfflineMessage(msg) {
  */
 export async function removeOfflineMessage(tempId) {
   if (!tempId) return;
+  inFlightDeletions.add(tempId);
   try {
     const db = await getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_OUTBOX, "readwrite");
       const store = tx.objectStore(STORE_OUTBOX);
       const req = store.delete(tempId);
-      req.onsuccess = () => resolve(true);
+      req.onsuccess = () => {
+        setTimeout(() => inFlightDeletions.delete(tempId), 30000);
+        resolve(true);
+      };
       req.onerror = (e) => reject(e.target.error);
     });
   } catch (err) {
@@ -190,7 +211,7 @@ export async function clearOutbox() {
   }
 }
 
-let isFlushing = false;
+const inFlightSends = new Set();
 
 /**
  * Flushes the offline message queue by attempting to send all pending messages in FIFO order.
@@ -204,21 +225,16 @@ export async function flushOfflineQueue(queryClient) {
     const allPending = await getAllPendingMessages();
     if (!allPending || !allPending.length) return;
 
-    // If any messages were left in 'sending' state from a reloaded/closed session, promote them to 'offline' so they get delivered cleanly
-    for (const m of allPending) {
-      if (m.status === "sending") {
-        await updateOfflineMessageStatus(m.tempId, "offline");
-        m.status = "offline";
-      }
-    }
-
-    const offlineOnly = allPending.filter((m) => m.status === "offline");
+    const offlineOnly = allPending.filter((m) => m.status === "offline" && !inFlightSends.has(m.tempId));
     if (!offlineOnly.length) return;
 
     const { wsClient } = await import("../ws/client");
     const { sendMessage } = await import("../api/messages");
 
     for (const msg of offlineOnly) {
+      if (inFlightSends.has(msg.tempId)) continue;
+      inFlightSends.add(msg.tempId);
+
       try {
         let sent = false;
         if (wsClient.isConnected) {
@@ -252,11 +268,12 @@ export async function flushOfflineQueue(queryClient) {
             }
           }
         } else {
-          // Sent via WebSocket, keep record until message.created arrives but mark status
-          await updateOfflineMessageStatus(msg.tempId, "sending");
+          // Sent via WebSocket, clean up from outbox immediately
+          await removeOfflineMessage(msg.tempId);
         }
       } catch (err) {
         console.warn("[OfflineQueue] Error sending queued message:", msg.tempId, err);
+        inFlightSends.delete(msg.tempId);
         await updateOfflineMessageStatus(msg.tempId, "offline");
       }
     }
