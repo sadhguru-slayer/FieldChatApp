@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   MessageSquare,
   Info,
-  Calendar,
 } from "lucide-react";
 import { cn, getFullMediaUrl } from "@/lib/utils";
 
@@ -57,7 +56,13 @@ function ImageViewer({ src, name, onClose }) {
 
 export function UserProfileModal({ userId, open, onOpenChange }) {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
-  const [showFullInfo, setShowFullInfo] = useState(true);
+
+  // Reset image viewer whenever the modal is closed so next open is always fresh
+  useEffect(() => {
+    if (!open) {
+      setImageViewerOpen(false);
+    }
+  }, [open]);
 
   const qc = useQueryClient();
   const setActiveId = useAppStore((s) => s.setActiveId);
@@ -108,7 +113,7 @@ export function UserProfileModal({ userId, open, onOpenChange }) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-sm p-0 overflow-hidden bg-background border-border/30 rounded-3xl shadow-2xl select-none">
+        <DialogContent className="max-w-sm p-0 overflow-hidden bg-background border-border/30 rounded-3xl shadow-2xl select-none" hideClose>
           <DialogTitle className="sr-only">{displayName}'s Profile</DialogTitle>
           <DialogDescription className="sr-only">Profile modal showing info for {displayName}</DialogDescription>
 
@@ -131,22 +136,21 @@ export function UserProfileModal({ userId, open, onOpenChange }) {
             </div>
           ) : profile ? (
             <div className="flex flex-col">
-              {/* Premium Hero Banner */}
-              <div className="relative h-28 bg-gradient-to-br from-accent/35 via-purple-600/20 to-emerald-500/20 shrink-0">
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-                
+              {/* Subtle Elegant Header (No harsh gradient, smooth depth) */}
+              <div className="relative h-20 bg-surface/60 border-b border-border/20 shrink-0">
                 {/* Close modal X button */}
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="absolute top-3 right-3 z-20 grid size-7 place-items-center rounded-full bg-black/30 text-white/80 hover:text-white hover:bg-black/50 transition-colors backdrop-blur-xs"
+                  className="absolute top-3 right-3 z-20 grid size-7 place-items-center rounded-full bg-elevated/80 text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors border border-border/40"
+                  aria-label="Close"
                 >
-                  <X className="size-4" />
+                  <X className="size-3.5" />
                 </button>
               </div>
 
               {/* Profile Card Content */}
-              <div className="flex flex-col px-5 pb-5 -mt-12 relative z-10">
+              <div className="flex flex-col px-5 pb-5 -mt-10 relative z-10">
                 {/* Header row: Avatar + Action Buttons */}
                 <div className="flex items-end justify-between mb-3">
                   {/* Avatar — Specifically clicking ONLY the avatar opens full-screen image */}
@@ -167,7 +171,7 @@ export function UserProfileModal({ userId, open, onOpenChange }) {
                         src={rawAvatar}
                         name={displayName}
                         size="xl"
-                        className="size-20 border-2 border-background/80 shadow-md"
+                        className="size-20 border-2 border-background shadow-lg"
                       />
                       {rawAvatar && (
                         <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
@@ -196,7 +200,7 @@ export function UserProfileModal({ userId, open, onOpenChange }) {
                 </div>
 
                 {/* Display Name & Handle */}
-                <div className="flex flex-col gap-0.5 mb-3">
+                <div className="flex flex-col gap-0.5 mb-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-foreground leading-tight tracking-tight">
                       {displayName}
@@ -226,27 +230,27 @@ export function UserProfileModal({ userId, open, onOpenChange }) {
                   )}
                 </div>
 
-                {/* Full Profile Information ('i' Info Section) */}
-                <div className="space-y-2.5">
+                {/* Grouped Info Card (Bezel-less, cohesive, iOS/Telegram style) */}
+                <div className="rounded-2xl bg-surface/30 border border-border/30 overflow-hidden divide-y divide-border/20 backdrop-blur-xs">
                   {/* Primary Email */}
                   {email && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface/40 border border-border/20 text-xs">
-                      <Mail className="size-3.5 text-accent shrink-0" />
+                    <div className="flex items-center gap-3 px-3.5 py-2.5 text-xs">
+                      <Mail className="size-3.5 text-muted-foreground/70 shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] uppercase font-semibold text-muted-foreground/70">Email</p>
+                        <p className="text-[10px] uppercase font-semibold text-muted-foreground/60">Email</p>
                         <p className="text-foreground/90 font-medium truncate select-text">{email}</p>
                       </div>
                     </div>
                   )}
 
                   {/* Bio */}
-                  <div className="flex flex-col gap-1 px-3 py-2.5 rounded-xl bg-surface/40 border border-border/20 text-xs">
-                    <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-muted-foreground/70 uppercase">
-                      <Info className="size-3 opacity-70 text-accent" />
+                  <div className="flex flex-col gap-1 px-3.5 py-2.5 text-xs">
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase">
+                      <Info className="size-3 opacity-70 text-muted-foreground/70" />
                       <span>About / Bio</span>
                     </div>
                     <p className={cn(
-                      "text-xs leading-relaxed mt-0.5 select-text",
+                      "text-xs leading-relaxed select-text",
                       bio ? "text-foreground/90 whitespace-pre-wrap" : "text-muted-foreground/50 italic"
                     )}>
                       {bio || "No bio available."}

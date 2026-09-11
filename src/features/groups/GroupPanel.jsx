@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, LogOut, Pencil, ShieldAlert, ShieldCheck, ShieldX, Trash2, UserPlus, UserX, X, Crown, MoreVertical, User } from "lucide-react";
+import { ArrowLeft, LogOut, Pencil, ShieldAlert, ShieldCheck, ShieldX, Trash2, UserPlus, UserX, X, Crown, MoreVertical, User, ZoomIn } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import {
   updateGroup,
 } from "@/services/api";
 import { uploadFileWithProgress } from "@/services/api/attachments";
+import { cn, getFullMediaUrl } from "@/lib/utils";
 
 export function GroupPanel() {
   const activeId = useAppStore((s) => s.activeId);
@@ -43,6 +44,7 @@ export function GroupPanel() {
   const [description, setDescription] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [groupAvatarViewerOpen, setGroupAvatarViewerOpen] = useState(false);
   
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [addMemberSearch, setAddMemberSearch] = useState("");
@@ -174,7 +176,27 @@ export function GroupPanel() {
       <div className="scroll-slim flex-1 overflow-y-auto p-4 space-y-6">
         {/* Main Card Header */}
         <div className="text-center space-y-3 pb-4 border-b border-border/20">
-          <Avatar src={activeConv.avatar} name={activeConv.title} size="xl" className="mx-auto" />
+          {/* Avatar — click to view full-screen */}
+          <div
+            className={cn(
+              "relative inline-block group/gavatar mx-auto",
+              activeConv.avatar ? "cursor-pointer" : "cursor-default"
+            )}
+            onClick={() => { if (activeConv.avatar) setGroupAvatarViewerOpen(true); }}
+            role={activeConv.avatar ? "button" : undefined}
+            tabIndex={activeConv.avatar ? 0 : -1}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === " ") && activeConv.avatar) setGroupAvatarViewerOpen(true);
+            }}
+            title={activeConv.avatar ? "Click to view photo" : ""}
+          >
+            <Avatar src={activeConv.avatar} name={activeConv.title} size="xl" />
+            {activeConv.avatar && (
+              <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/45 opacity-0 group-hover/gavatar:opacity-100 transition-opacity">
+                <ZoomIn className="size-5 text-white" />
+              </span>
+            )}
+          </div>
           <div className="space-y-1">
             <h4 className="text-[15px] font-semibold text-foreground tracking-tight">{activeConv.title}</h4>
             <p className="text-[12px] font-medium text-muted-foreground/80">
@@ -524,6 +546,34 @@ export function GroupPanel() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Group Avatar Full-screen Viewer */}
+      {groupAvatarViewerOpen && activeConv?.avatar && (
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 backdrop-blur-md"
+          onClick={() => setGroupAvatarViewerOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setGroupAvatarViewerOpen(false)}
+            className="absolute top-4 right-4 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all border border-white/10 shadow-lg cursor-pointer"
+            aria-label="Close image viewer"
+          >
+            <X className="size-5" />
+          </button>
+          <div className="relative p-4 max-w-[95vw] max-h-[92vh] flex flex-col items-center">
+            <img
+              src={getFullMediaUrl(activeConv.avatar)}
+              alt={activeConv.title}
+              className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/15"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="mt-3 text-sm font-semibold text-white/90 bg-black/50 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
+              {activeConv.title}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

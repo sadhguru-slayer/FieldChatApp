@@ -13,49 +13,46 @@ import {
   ShieldCheck,
   ZoomIn,
   X,
-  Trash2,
+  Lock,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/useAppStore";
 import { getMe, updateMe } from "@/services/api";
 import { uploadFileWithProgress } from "@/services/api/attachments";
-import { cn } from "@/lib/utils";
+import { cn, getFullMediaUrl } from "@/lib/utils";
 
 // ── Full-screen image viewer ──────────────────────────────────────────────────
 function ImageViewer({ src, name, onClose }) {
+  const fullSrc = getFullMediaUrl(src);
+  if (!fullSrc) return null;
+
   return (
     <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 backdrop-blur-sm"
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 backdrop-blur-md transition-opacity duration-200"
       onClick={onClose}
     >
       <button
         type="button"
         onClick={onClose}
-        className="absolute top-4 right-4 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors border border-white/10"
+        className="absolute top-4 right-4 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all border border-white/10 shadow-lg cursor-pointer"
+        aria-label="Close image viewer"
       >
         <X className="size-5" />
       </button>
-      <img
-        src={src}
-        alt={name || "Profile photo"}
-        className="max-h-[90vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      />
-    </div>
-  );
-}
-
-// ── Editable field ────────────────────────────────────────────────────────────
-function Field({ icon: Icon, label, children }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-        <Icon className="size-3 opacity-70" />
-        {label}
-      </label>
-      {children}
+      <div className="relative p-4 max-w-[95vw] max-h-[92vh] flex flex-col items-center">
+        <img
+          src={fullSrc}
+          alt={name || "Profile photo"}
+          className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/15"
+          onClick={(e) => e.stopPropagation()}
+        />
+        {name && (
+          <p className="mt-3 text-sm font-semibold text-white/90 bg-black/50 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
+            {name}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -75,10 +72,10 @@ export function ProfileScreen({ onClose }) {
 
   useEffect(() => {
     if (me) {
-      setName(me.name || "");
+      setName(me.name || me.display_name || "");
       setBio(me.bio || "");
-      setStatus(me.customStatus || "");
-      setAvatar(me.avatar || "");
+      setStatus(me.customStatus || me.custom_status || "");
+      setAvatar(me.avatar || me.avatar_url || "");
     }
   }, [me]);
 
@@ -108,7 +105,7 @@ export function ProfileScreen({ onClose }) {
       }
     } catch (err) {
       toast.error(err.message || "Failed to upload photo");
-      setAvatar(me?.avatar || ""); // revert on error
+      setAvatar(me?.avatar || me?.avatar_url || ""); // revert on error
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -134,107 +131,98 @@ export function ProfileScreen({ onClose }) {
       }));
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["me"] });
-      toast.success("Profile saved");
+      toast.success("Profile saved successfully");
     },
     onError: (err) => toast.error(err.message || "Failed to save profile"),
   });
 
   const handleBack = () => (onClose ? onClose() : setActiveScreen("chat"));
 
-  const currentAvatar = avatar || me?.avatar || "";
-  const displayName = name || me?.name || "Your Name";
+  const currentAvatar = avatar || me?.avatar || me?.avatar_url || "";
+  const displayName = name || me?.display_name || me?.name || "Your Name";
 
   return (
     <>
-      <div className="flex h-full w-full flex-col bg-background text-foreground overflow-hidden">
+      <div className="flex h-full w-full flex-col bg-background text-foreground overflow-hidden select-none">
 
-        {/* ── Sticky top bar ────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-20 flex h-13 items-center justify-between border-b border-border/30 px-4 shrink-0 bg-background/90 backdrop-blur-md">
+        {/* ── Sleek translucent header ──────────────────────────────────── */}
+        <header
+          className="sticky top-0 z-20 flex h-14 items-center justify-between px-4 shrink-0 bg-background/80 backdrop-blur-xl border-b border-border/20"
+          style={{
+            paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
+          }}
+        >
           <button
             type="button"
             onClick={handleBack}
-            className="flex items-center gap-2 text-accent hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 py-1.5 px-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-elevated/40 transition-colors -ml-1 text-[13px] font-medium"
           >
-            <ArrowLeft className="size-4.5" />
-            <span className="text-[13px] font-medium">Back</span>
+            <ArrowLeft className="size-4" />
+            <span>Back</span>
           </button>
-          <h1 className="text-[13.5px] font-semibold text-foreground tracking-tight">My Profile</h1>
+          
+          <h1 className="text-[14px] font-semibold text-foreground tracking-tight">Edit Profile</h1>
+
           <Button
             onClick={() => updateMut.mutate()}
             disabled={updateMut.isPending || isUploading}
             size="sm"
-            className="h-8 gap-1.5 text-xs font-semibold px-4 rounded-xl"
+            className="h-8 gap-1.5 text-xs font-semibold px-3.5 rounded-xl shadow-xs"
           >
-            <Check className="size-3.5" />
-            {updateMut.isPending ? "Saving…" : "Save"}
+            {updateMut.isPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Check className="size-3.5" />
+            )}
+            <span>Save</span>
           </Button>
         </header>
 
-        {/* ── Scrollable body ───────────────────────────────────────────── */}
+        {/* ── Scrollable content ────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto scroll-slim">
+          <div className="max-w-md mx-auto px-4 py-6 space-y-6">
 
-          {/* Hero banner */}
-          <div className="relative">
-            <div className="h-28 sm:h-36 bg-gradient-to-br from-accent/25 via-violet-500/15 to-emerald-500/15" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-
-            {/* Avatar section positioned at banner bottom */}
-            <div className="absolute -bottom-12 left-6 flex items-end gap-4">
+            {/* ── Avatar & Identity Section ──────────────────────────────── */}
+            <div className="flex flex-col items-center text-center pt-2 pb-1">
+              {/* Avatar with click-to-preview & subtle camera overlay */}
               <div className="relative group">
-                {/* Avatar with click to focus/preview */}
                 <button
                   type="button"
                   onClick={() => currentAvatar && setImageViewerOpen(true)}
                   className={cn(
-                    "block rounded-full overflow-hidden transition-all duration-200 shadow-xl",
-                    currentAvatar ? "cursor-pointer hover:opacity-95" : "cursor-default"
+                    "relative block rounded-full transition-transform active:scale-95",
+                    currentAvatar ? "cursor-pointer" : "cursor-default"
                   )}
-                  aria-label="View profile photo"
                   title={currentAvatar ? "Click to view full photo" : ""}
                 >
                   <Avatar
                     src={currentAvatar}
                     name={displayName}
                     size="xl"
-                    className="size-24 border-2 border-background/80 shadow-md"
+                    className="size-24 border-2 border-border/30 shadow-xl"
                   />
                   {currentAvatar && (
-                    <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-2xs">
+                    <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
                       <ZoomIn className="size-5 text-white" />
                     </span>
                   )}
                 </button>
-              </div>
 
-              {/* Photo Action Buttons */}
-              <div className="flex items-center gap-2 mb-1">
+                {/* Subtle camera upload button badge */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface/90 hover:bg-elevated text-foreground border border-border/40 text-xs font-medium shadow-sm transition-all hover:border-accent/40 active:scale-95 disabled:opacity-60"
+                  className="absolute bottom-0 right-0 grid size-8 place-items-center rounded-full bg-elevated text-foreground border border-border/50 shadow-md transition-transform hover:scale-105 active:scale-90 cursor-pointer"
+                  title="Change photo"
                   aria-label="Change photo"
                 >
                   {isUploading ? (
                     <Loader2 className="size-3.5 animate-spin text-accent" />
                   ) : (
-                    <Camera className="size-3.5 text-accent" />
+                    <Camera className="size-3.5 text-foreground/80" />
                   )}
-                  <span>{currentAvatar ? "Change Photo" : "Upload Photo"}</span>
                 </button>
-
-                {currentAvatar && (
-                  <button
-                    type="button"
-                    onClick={handleRemovePhoto}
-                    disabled={isUploading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 text-xs font-medium shadow-sm transition-all active:scale-95 disabled:opacity-60"
-                    aria-label="Remove photo"
-                  >
-                    <Trash2 className="size-3.5" />
-                    <span>Remove</span>
-                  </button>
-                )}
 
                 <input
                   type="file"
@@ -244,117 +232,164 @@ export function ProfileScreen({ onClose }) {
                   className="hidden"
                 />
               </div>
-            </div>
-          </div>
 
-          {/* Name display below banner */}
-          <div className="pt-16 px-6 pb-2">
-            <h2 className="text-xl font-bold text-foreground leading-tight">{displayName}</h2>
-            <div className="flex items-center gap-1.5 mt-0.5 text-muted-foreground">
-              <AtSign className="size-3 shrink-0" />
-              <p className="text-sm">{me?.username || "username"}</p>
-            </div>
-            {me?.email && (
-              <div className="flex items-center gap-1.5 mt-1 text-muted-foreground/70">
-                <Mail className="size-3 shrink-0" />
-                <p className="text-xs">{me.email}</p>
+              {/* Photo action text / remove link */}
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="text-xs font-semibold text-accent hover:underline transition-all cursor-pointer"
+                >
+                  {currentAvatar ? "Change Photo" : "Upload Photo"}
+                </button>
+                {currentAvatar && (
+                  <>
+                    <span className="text-muted-foreground/30 text-xs">·</span>
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      disabled={isUploading}
+                      className="text-xs font-medium text-destructive/80 hover:text-destructive hover:underline transition-all cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </>
+                )}
               </div>
-            )}
-            {status && (
-              <p className="text-xs font-medium text-emerald-400 mt-2 flex items-center gap-1.5">
-                <span className="relative flex size-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
-                </span>
-                {status}
-              </p>
-            )}
-          </div>
 
-          {/* Divider */}
-          <div className="mx-6 border-t border-border/30 mt-2 mb-5" />
-
-          {/* Edit form */}
-          <div className="px-6 pb-12 space-y-5 max-w-lg">
-
-            {/* Email Address - Read Only Primary Field */}
-            <Field icon={Mail} label="Email Address (Primary)">
-              <div className="relative flex items-center">
-                <Input
-                  value={me?.email || ""}
-                  readOnly
-                  disabled
-                  placeholder="user@example.com"
-                  className="h-10 text-[13px] rounded-xl bg-surface/40 border-border/30 text-muted-foreground/90 cursor-not-allowed pr-20 select-text"
-                />
-                <span className="absolute right-2.5 text-[10px] font-semibold text-accent bg-accent/15 px-2 py-0.5 rounded-md border border-accent/25 select-none">
-                  Primary
-                </span>
-              </div>
-              <p className="text-[10.5px] text-muted-foreground/60 px-0.5">
-                Your email is your primary login identifier and cannot be changed.
-              </p>
-            </Field>
-
-            <Field icon={AtSign} label="Display Name">
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your display name"
-                className="h-10 text-[13px] rounded-xl bg-surface/60 border-border/40"
-              />
-            </Field>
-
-            <Field icon={Smile} label="Custom Status">
-              <Input
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                placeholder="e.g. Working remotely, In a meeting…"
-                className="h-10 text-[13px] rounded-xl bg-surface/60 border-border/40"
-              />
-            </Field>
-
-            <Field icon={FileText} label="Bio">
-              <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="Write a few lines about yourself…"
-                rows={4}
-                className="w-full rounded-xl border border-border/40 bg-surface/60 px-3 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
-              />
-            </Field>
-
-            {/* Save button (bottom for thumb reach on mobile) */}
-            <Button
-              onClick={() => updateMut.mutate()}
-              disabled={updateMut.isPending || isUploading}
-              className="w-full h-11 text-sm font-semibold rounded-xl"
-            >
-              {updateMut.isPending ? (
-                <><Loader2 className="size-4 animate-spin mr-2" /> Saving…</>
-              ) : (
-                <><Check className="size-4 mr-2" /> Save Profile</>
+              {/* Name & Handle */}
+              <h2 className="text-lg font-bold text-foreground mt-3 tracking-tight">
+                {displayName}
+              </h2>
+              {me?.username && (
+                <p className="text-xs text-muted-foreground font-medium flex items-center gap-1 mt-0.5">
+                  <AtSign className="size-3 opacity-60 shrink-0" />
+                  <span>{me.username}</span>
+                </p>
               )}
-            </Button>
+              {status && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-medium">
+                  <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="truncate max-w-[200px]">{status}</span>
+                </div>
+              )}
+            </div>
 
-            {/* Account info — no box, just subtle row */}
-            <div className="pt-2 space-y-2.5">
-              <p className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5">
-                <ShieldCheck className="size-3 opacity-60" /> Account
+            {/* ── Grouped Profile Info Card (Sleek, bezel-less, iOS style) ─ */}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-1">
+                Profile Details
               </p>
-              <div className="flex items-center justify-between text-xs py-2 border-b border-border/20">
-                <span className="text-muted-foreground">Status</span>
-                <span className="font-semibold text-emerald-400">Active</span>
-              </div>
-              <div className="flex items-center justify-between text-xs py-2">
-                <span className="text-muted-foreground">Encryption</span>
-                <span className="text-foreground/70 font-medium">Standard</span>
+
+              <div className="rounded-2xl bg-surface/30 border border-border/30 overflow-hidden divide-y divide-border/20 backdrop-blur-xs">
+                {/* Display Name Row */}
+                <div className="flex items-center px-4 py-3 gap-3">
+                  <AtSign className="size-4 text-muted-foreground/60 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10.5px] uppercase font-semibold text-muted-foreground/60">Display Name</p>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your display name"
+                      className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none mt-0.5 font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Custom Status Row */}
+                <div className="flex items-center px-4 py-3 gap-3">
+                  <Smile className="size-4 text-muted-foreground/60 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10.5px] uppercase font-semibold text-muted-foreground/60">Custom Status</p>
+                    <input
+                      type="text"
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      placeholder="What's your status?"
+                      className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none mt-0.5 font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Bio Row */}
+                <div className="flex items-start px-4 py-3 gap-3">
+                  <FileText className="size-4 text-muted-foreground/60 shrink-0 mt-1" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10.5px] uppercase font-semibold text-muted-foreground/60">Bio / About</p>
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Add a few words about yourself…"
+                      rows={3}
+                      className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none mt-0.5 resize-none leading-relaxed font-normal"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* ── Account & Security Card ────────────────────────────────── */}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-1">
+                Account Information
+              </p>
+
+              <div className="rounded-2xl bg-surface/30 border border-border/30 overflow-hidden divide-y divide-border/20 backdrop-blur-xs">
+                {/* Email Row (Read-only) */}
+                <div className="flex items-center justify-between px-4 py-3 gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <Mail className="size-4 text-muted-foreground/60 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[10.5px] uppercase font-semibold text-muted-foreground/60">Email</p>
+                      <p className="text-sm font-medium text-foreground/90 truncate select-text mt-0.5">
+                        {me?.email || "No email"}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground bg-elevated px-2 py-0.5 rounded-full border border-border/40 shrink-0">
+                    <Lock className="size-2.5 opacity-70" /> Primary
+                  </span>
+                </div>
+
+                {/* Account Status Row */}
+                <div className="flex items-center justify-between px-4 py-3 text-xs">
+                  <span className="flex items-center gap-2 font-medium text-muted-foreground">
+                    <ShieldCheck className="size-3.5 text-emerald-400 shrink-0" />
+                    <span>Account Status</span>
+                  </span>
+                  <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    Active & Verified
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground/50 px-1 pt-0.5">
+                Your email is used for account authentication and notifications.
+              </p>
+            </div>
+
+            {/* Save Button */}
+            <div className="pt-2 pb-8">
+              <Button
+                onClick={() => updateMut.mutate()}
+                disabled={updateMut.isPending || isUploading}
+                className="w-full h-10 text-xs font-semibold rounded-xl shadow-md gap-2"
+              >
+                {updateMut.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Check className="size-4" />
+                )}
+                <span>Save Changes</span>
+              </Button>
+            </div>
+
           </div>
         </div>
       </div>
 
+      {/* Full-screen photo lightbox */}
       {imageViewerOpen && currentAvatar && (
         <ImageViewer
           src={currentAvatar}

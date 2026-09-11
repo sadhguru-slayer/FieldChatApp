@@ -1,11 +1,33 @@
-import { useEffect, useRef, useState } from "react";
-import { X, ChevronLeft, ChevronRight, Download, User } from "lucide-react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import useEmblaCarousel from "embla-carousel-react";
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  User,
+  ZoomIn,
+  ZoomOut,
+  Eye,
+  EyeOff,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
+  Film,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function getFullMediaUrl(url) {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
+  }
+  const storageUrl = import.meta.env?.VITE_STORAGE_URL;
+  if (storageUrl) {
+    return `${storageUrl.replace(/\/$/, "")}${url}`;
   }
   if (typeof window !== "undefined") {
     const protocol = window.location.protocol;
@@ -15,29 +37,362 @@ function getFullMediaUrl(url) {
   return `http://localhost:9000${url}`;
 }
 
+function formatVideoTime(seconds) {
+  if (isNaN(seconds) || seconds < 0) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+}
+
+// ── Custom Video Player Component ─────────────────────────────────────────────
+function CustomVideoPlayer({ src, isActive, showChrome }) {
+  const videoRef = useRef(null);
+  const containerRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
+
+  // Auto-pause when slide is inactive
+  useEffect(() => {
+    if (!isActive && videoRef.current) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [isActive]);
+
+  const togglePlay = useCallback((e) => {
+    e?.stopPropagation();
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, []);
+
+  const toggleMute = useCallback((e) => {
+    e?.stopPropagation();
+    if (!videoRef.current) return;
+    videoRef.current.muted = !videoRef.current.muted;
+    setIsMuted(videoRef.current.muted);
+  }, []);
+
+  const toggleFullscreen = useCallback((e) => {
+    e?.stopPropagation();
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  const handleTimeUpdate = () => {
+    if (!videoRef.current || isSeeking) return;
+    setCurrentTime(videoRef.current.currentTime);
+  };
+
+  const handleLoadedMetadata = () => {
+    if (!videoRef.current) return;
+    setDuration(videoRef.current.duration || 0);
+  };
+
+  const handleSeek = (e) => {
+    const val = parseFloat(e.target.value);
+    setCurrentTime(val);
+    if (videoRef.current) {
+      videoRef.current.currentTime = val;
+    }
+  };
+
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex items-center justify-center w-full h-full max-h-[82vh] group/player"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+      onClick={togglePlay}
+    >
+      <video
+        ref={videoRef}
+        src={src}
+        playsInline
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl object-contain cursor-pointer outline-none ring-1 ring-white/10"
+      />
+
+      {/* Center Big Play Button when paused */}
+      {!isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="size-16 md:size-20 rounded-full bg-black/60 backdrop-blur-md text-white grid place-items-center shadow-2xl ring-1 ring-white/20 transition-transform group-hover/player:scale-110">
+            <Play className="size-8 md:size-10 ml-1 text-white fill-white" />
+          </div>
+        </div>
+      )}
+
+      {/* Floating Video Controls Bar */}
+      <div
+        className={cn(
+          "absolute bottom-4 left-4 right-4 max-w-xl mx-auto rounded-2xl bg-black/75 backdrop-blur-xl border border-white/10 px-4 py-2.5 flex flex-col gap-2 transition-all duration-300 shadow-2xl",
+          showChrome || isHovering || !isPlaying
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-3 pointer-events-none"
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Scrubber timeline */}
+        <div className="relative flex items-center w-full group/seek py-1">
+          <input
+            type="range"
+            min={0}
+            max={duration || 100}
+            step={0.1}
+            value={currentTime}
+            onMouseDown={() => setIsSeeking(true)}
+            onMouseUp={() => setIsSeeking(false)}
+            onTouchStart={() => setIsSeeking(true)}
+            onTouchEnd={() => setIsSeeking(false)}
+            onChange={handleSeek}
+            className="w-full h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-accent"
+            style={{
+              background: `linear-gradient(to right, var(--color-accent, #6366f1) ${progressPercent}%, rgba(255,255,255,0.2) ${progressPercent}%)`,
+            }}
+          />
+        </div>
+
+        {/* Buttons and timestamps */}
+        <div className="flex items-center justify-between text-xs text-white/90">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="p-1 rounded-lg hover:bg-white/15 active:scale-95 transition-all text-white"
+              aria-label={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? <Pause className="size-4" /> : <Play className="size-4 fill-white" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="p-1 rounded-lg hover:bg-white/15 active:scale-95 transition-all text-white/80 hover:text-white"
+              aria-label={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <VolumeX className="size-4 text-rose-400" /> : <Volume2 className="size-4" />}
+            </button>
+
+            <span className="text-[11px] font-mono text-white/70">
+              {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="p-1 rounded-lg hover:bg-white/15 active:scale-95 transition-all text-white/80 hover:text-white"
+              aria-label="Fullscreen"
+            >
+              {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Fullscreen Lightbox ──────────────────────────────────────────────────
 export function FullscreenLightbox({ message, messages = [], onClose, onSelect }) {
+  const [showChrome, setShowChrome] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const thumbnailsRef = useRef(null);
 
   // Filter messages to get only media items (images and videos)
-  const mediaMessages = messages.filter((m) => {
-    return m.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg|mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
+  const mediaMessages = useMemo(() => {
+    return messages.filter((m) => {
+      return m.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg|mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
+    });
+  }, [messages]);
+
+  const initialIndex = useMemo(() => {
+    const idx = mediaMessages.findIndex((m) => String(m.id) === String(message?.id));
+    return idx >= 0 ? idx : 0;
+  }, [mediaMessages, message]);
+
+  // Keep startIndex stable throughout the component's lifetime so Embla never re-inits on slide change
+  const [stableStartIndex] = useState(initialIndex);
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const showChromeRef = useRef(showChrome);
+
+  useEffect(() => {
+    showChromeRef.current = showChrome;
+  }, [showChrome]);
+
+  // Setup Embla Carousel with smooth, gentle duration (35)
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    startIndex: stableStartIndex,
+    loop: false,
+    duration: 35,
+    dragFree: false,
+    skipSnaps: false,
   });
 
-  const currentIndex = mediaMessages.findIndex((m) => m.id === message.id);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
 
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      onSelect(mediaMessages[currentIndex - 1]);
-      setZoomLevel(1);
-    }
-  };
+  // Smooth continuous Parallax + Fade Tween Engine
+  const tweenParallaxAndFade = useCallback((embla, eventName) => {
+    if (!embla) return;
+    const engine = embla.internalEngine();
+    const scrollProgress = embla.scrollProgress();
+    const slidesInView = embla.slidesInView();
+    const isScrollEvent = eventName === "scroll";
+    const slideNodes = embla.slideNodes();
+    const numSlides = embla.scrollSnapList().length;
+    if (numSlides === 0) return;
 
-  const handleNext = () => {
-    if (currentIndex < mediaMessages.length - 1) {
-      onSelect(mediaMessages[currentIndex + 1]);
-      setZoomLevel(1);
+    if (numSlides === 1) {
+      if (slideNodes[0]) {
+        slideNodes[0].style.opacity = "1";
+        slideNodes[0].style.pointerEvents = "";
+      }
+      return;
     }
-  };
+
+    embla.scrollSnapList().forEach((scrollSnap, snapIndex) => {
+      let diffToTarget = scrollSnap - scrollProgress;
+      const slidesInSnap = engine.slideRegistry[snapIndex];
+      if (!slidesInSnap) return;
+
+      slidesInSnap.forEach((slideIndex) => {
+        if (isScrollEvent && !slidesInView.includes(slideIndex)) return;
+
+        if (engine.options.loop) {
+          engine.slideLooper.loopPoints.forEach((loopItem) => {
+            const target = loopItem.target();
+            if (slideIndex === loopItem.index && target !== 0) {
+              const sign = Math.sign(target);
+              if (sign === -1) {
+                diffToTarget = scrollSnap - (1 + scrollProgress);
+              }
+              if (sign === 1) {
+                diffToTarget = scrollSnap + (1 - scrollProgress);
+              }
+            }
+          });
+        }
+
+        // Normalize distance: 1.0 = distance between adjacent slides
+        const progressDiff = diffToTarget * (numSlides - 1);
+
+        // Smooth parallax translation: -20% to +20%
+        const translate = progressDiff * -20;
+
+        // Smooth, non-abrupt fade:
+        // When UI is hidden, adjacent slides naturally fade to 0.0 at distance 1.0
+        // When UI is shown, gentle fade down to 0.15
+        const fadeRate = showChromeRef.current ? 0.85 : 1.0;
+        const opacity = Math.max(0, Math.min(1, 1 - Math.abs(progressDiff) * fadeRate));
+
+        const slideNode = slideNodes[slideIndex];
+        if (slideNode) {
+          slideNode.style.opacity = opacity.toFixed(3);
+          slideNode.style.pointerEvents = opacity < 0.1 ? "none" : "";
+
+          const parallaxLayer = slideNode.querySelector(".embla__parallax__layer");
+          if (parallaxLayer) {
+            parallaxLayer.style.transform = `translate3d(${translate.toFixed(2)}%, 0px, 0px)`;
+          }
+        }
+      });
+    });
+  }, []);
+
+  const onSelectSlide = useCallback(() => {
+    if (!emblaApi) return;
+    const snap = emblaApi.selectedScrollSnap();
+    setCurrentIndex(snap);
+    setCanScrollPrev(emblaApi.canScrollPrev());
+    setCanScrollNext(emblaApi.canScrollNext());
+    setZoomLevel(1);
+
+    const activeMsg = mediaMessages[snap];
+    if (activeMsg && onSelect) {
+      onSelect(activeMsg);
+    }
+  }, [emblaApi, mediaMessages, onSelect]);
+
+  // Attach Embla events
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    tweenParallaxAndFade(emblaApi);
+    onSelectSlide();
+
+    emblaApi
+      .on("reInit", tweenParallaxAndFade)
+      .on("reInit", onSelectSlide)
+      .on("scroll", tweenParallaxAndFade)
+      .on("slideFocus", tweenParallaxAndFade)
+      .on("select", onSelectSlide);
+
+    return () => {
+      emblaApi
+        .off("reInit", tweenParallaxAndFade)
+        .off("reInit", onSelectSlide)
+        .off("scroll", tweenParallaxAndFade)
+        .off("slideFocus", tweenParallaxAndFade)
+        .off("select", onSelectSlide);
+    };
+  }, [emblaApi, tweenParallaxAndFade, onSelectSlide]);
+
+  // React to showChrome toggle to immediately hide or restore side images
+  useEffect(() => {
+    if (!emblaApi) return;
+    tweenParallaxAndFade(emblaApi);
+  }, [showChrome, emblaApi, tweenParallaxAndFade]);
+
+  // Jump to specific slide
+  const scrollTo = useCallback((idx) => {
+    if (!emblaApi) return;
+    emblaApi.scrollTo(idx);
+  }, [emblaApi]);
+
+  const handlePrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const handleNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
+  // Auto-scroll active thumbnail into view in filmstrip
+  useEffect(() => {
+    if (!thumbnailsRef.current) return;
+    const activeThumb = thumbnailsRef.current.children[currentIndex];
+    if (activeThumb) {
+      activeThumb.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [currentIndex]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -45,81 +400,83 @@ export function FullscreenLightbox({ message, messages = [], onClose, onSelect }
       if (e.key === "ArrowLeft") handlePrev();
       if (e.key === "ArrowRight") handleNext();
       if (e.key === "Escape") onClose();
+      if (e.key.toLowerCase() === "f" || e.key.toLowerCase() === "h") {
+        setShowChrome((prev) => !prev);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, mediaMessages]);
+  }, [handlePrev, handleNext, onClose]);
 
-  // Touch navigation for mobile swipes
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
+  if (mediaMessages.length === 0) return null;
 
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.targetTouches[0].clientX;
-    touchEndX.current = e.targetTouches[0].clientX;
-  };
+  const currentMsg = mediaMessages[currentIndex] || mediaMessages[0];
+  const senderName = currentMsg?.senderName || currentMsg?.display_name || currentMsg?.username || "Someone";
+  const caption = currentMsg?.text || "";
+  const isCurrentVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(currentMsg?.mediaName || currentMsg?.mediaUrl || "");
+  const filename = currentMsg?.mediaName || (isCurrentVideo ? "video.mp4" : "image.jpg");
+  const fullUrl = getFullMediaUrl(currentMsg?.mediaUrl);
 
-  const handleTouchMove = (e) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    const swipeThreshold = 60;
-    const diff = touchStartX.current - touchEndX.current;
-
-    if (diff > swipeThreshold) {
-      handleNext();
-    } else if (diff < -swipeThreshold) {
-      handlePrev();
-    }
-  };
-
-  if (currentIndex === -1) return null;
-
-  const currentMsg = mediaMessages[currentIndex];
-  const fullUrl = getFullMediaUrl(currentMsg.mediaUrl);
-  const senderName = currentMsg.senderName || currentMsg.display_name || currentMsg.username || "Someone";
-  const caption = currentMsg.text || "";
-  const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(currentMsg.mediaName || currentMsg.mediaUrl || "");
-  const filename = currentMsg.mediaName || (isVideo ? "video.mp4" : "image.jpg");
-
-  const handleZoomToggle = () => {
+  const toggleZoom = () => {
     setZoomLevel((z) => (z === 1 ? 2 : 1));
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex flex-col justify-between bg-zinc-950/98 backdrop-blur-md select-none text-zinc-100"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 to-transparent z-10">
+    <div className="fixed inset-0 z-[9999] flex flex-col justify-between bg-black/96 backdrop-blur-2xl select-none text-white overflow-hidden animate-in fade-in duration-200">
+
+      {/* ── Top Bar (Sender, Actions, Focus toggle, Close) ─────────────── */}
+      <header
+        className={cn(
+          "relative z-30 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent transition-all duration-300",
+          showChrome ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
+        )}
+      >
         <div className="flex items-center gap-3 min-w-0 pr-4">
-          <div className="grid size-8 place-items-center rounded-full bg-zinc-800 shrink-0">
-            <User className="size-4 text-zinc-300" />
+          <div className="grid size-8.5 place-items-center rounded-full bg-white/10 border border-white/10 shrink-0 text-white/90">
+            <User className="size-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold truncate text-zinc-200">
+            <p className="text-xs font-semibold truncate text-white/90">
               {senderName}
             </p>
-            <p className="text-[10px] text-zinc-400 truncate">
+            <p className="text-[10px] text-white/50 truncate font-mono">
               {filename}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Zoom toggle (images only) */}
+          {!isCurrentVideo && (
+            <button
+              type="button"
+              onClick={toggleZoom}
+              title={zoomLevel === 1 ? "Zoom in" : "Reset zoom"}
+              className="grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10"
+            >
+              {zoomLevel === 1 ? <ZoomIn className="size-4" /> : <ZoomOut className="size-4" />}
+            </button>
+          )}
+
+          {/* Focus Mode Toggle (Hide/Show extra UI) */}
+          <button
+            type="button"
+            onClick={() => setShowChrome(false)}
+            title="Focus Mode (Hide UI) — Press F or click"
+            className="grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10"
+          >
+            <EyeOff className="size-4" />
+          </button>
+
           {/* Download button */}
           <a
             href={fullUrl}
             download={filename}
             target="_blank"
             rel="noopener noreferrer"
-            title="Open in new tab / Download"
-            className="grid size-9 place-items-center rounded-full bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-200 hover:text-white transition-all active:scale-95 cursor-pointer"
+            title="Download / Open full resolution"
+            className="grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer"
           >
             <Download className="size-4" />
           </a>
@@ -129,79 +486,171 @@ export function FullscreenLightbox({ message, messages = [], onClose, onSelect }
             type="button"
             onClick={onClose}
             aria-label="Close viewer"
-            className="grid size-9 place-items-center rounded-full bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-200 hover:text-white transition-all active:scale-95"
+            className="grid size-9 place-items-center rounded-full bg-white/15 hover:bg-white/25 text-white transition-all active:scale-95 border border-white/15 ml-1"
           >
-            <X className="size-5" />
+            <X className="size-4.5" />
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Main Image Container */}
-      <div 
-        className="relative flex-1 flex items-center justify-center overflow-hidden px-4"
-        onClick={onClose}
-      >
-        {/* Left Arrow (Desktop) */}
-        {currentIndex > 0 && (
+      {/* Floating Restore UI button when Focus Mode is active */}
+      {!showChrome && (
+        <button
+          type="button"
+          onClick={() => setShowChrome(true)}
+          className="fixed top-4 right-4 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/85 text-white/80 hover:text-white backdrop-blur-md border border-white/15 shadow-xl transition-all active:scale-95 text-xs font-medium cursor-pointer"
+          title="Show controls (Press F)"
+        >
+          <Eye className="size-3.5" />
+          <span>Show UI</span>
+        </button>
+      )}
+
+      {/* ── Main Media Canvas (Embla Carousel) ─────────────────────────── */}
+      <div className="relative flex-1 min-h-0 w-full flex items-center justify-center">
+
+        {/* Desktop Previous Button */}
+        {canScrollPrev && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); handlePrev(); }}
-            className="absolute left-4 z-20 hidden md:grid size-12 place-items-center rounded-full bg-black/40 hover:bg-black/75 border border-white/5 text-zinc-300 hover:text-white transition-all active:scale-90"
+            onClick={handlePrev}
+            aria-label="Previous"
+            className={cn(
+              "absolute left-4 z-30 hidden md:grid size-12 place-items-center rounded-full bg-black/40 hover:bg-black/80 border border-white/10 text-white/80 hover:text-white shadow-2xl transition-all active:scale-90 hover:scale-105 backdrop-blur-md",
+              showChrome ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}
           >
             <ChevronLeft className="size-6" />
           </button>
         )}
 
-        {/* Media content (Image or Video) */}
-        {isVideo ? (
-          <video
-            key={currentMsg.id}
-            src={fullUrl}
-            controls
-            autoPlay
-            playsInline
-            className="max-w-full max-h-[75vh] md:max-h-[80vh] rounded-lg shadow-2xl outline-none z-10"
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <div 
-            className="relative max-w-full max-h-[80vh] flex items-center justify-center transition-transform duration-250 ease-out"
-            style={{ transform: `scale(${zoomLevel})` }}
-            onClick={(e) => { e.stopPropagation(); handleZoomToggle(); }}
-          >
-            <img
-              src={fullUrl}
-              alt={filename}
-              className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl cursor-zoom-in"
-            />
-          </div>
-        )}
+        {/* Embla Viewport */}
+        <div className="overflow-hidden w-full h-full" ref={emblaRef}>
+          <div className="flex h-full touch-pan-y">
+            {mediaMessages.map((m, idx) => {
+              const itemUrl = getFullMediaUrl(m.mediaUrl);
+              const isVideoItem = /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
 
-        {/* Right Arrow (Desktop) */}
-        {currentIndex < mediaMessages.length - 1 && (
+              return (
+                <div
+                  key={m.id}
+                  className="embla__slide flex-[0_0_100%] min-w-0 h-full relative flex items-center justify-center p-2 md:p-6 overflow-hidden select-none"
+                >
+                  <div className="embla__parallax__layer relative w-full h-full flex items-center justify-center will-change-transform">
+                    {isVideoItem ? (
+                      <CustomVideoPlayer
+                        src={itemUrl}
+                        isActive={currentIndex === idx}
+                        showChrome={showChrome}
+                      />
+                    ) : (
+                      <div
+                        className="relative max-w-full max-h-[82vh] flex items-center justify-center cursor-zoom-in transition-transform duration-250 ease-out"
+                        style={{
+                          transform: currentIndex === idx ? `scale(${zoomLevel})` : "scale(1)",
+                        }}
+                        onDoubleClick={toggleZoom}
+                      >
+                        <img
+                          src={itemUrl}
+                          alt={m.mediaName || "Media"}
+                          className="max-w-full max-h-[80vh] md:max-h-[82vh] object-contain rounded-2xl shadow-2xl ring-1 ring-white/10 pointer-events-auto select-none"
+                          draggable={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Desktop Next Button */}
+        {canScrollNext && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); handleNext(); }}
-            className="absolute right-4 z-20 hidden md:grid size-12 place-items-center rounded-full bg-black/40 hover:bg-black/75 border border-white/5 text-zinc-300 hover:text-white transition-all active:scale-90"
+            onClick={handleNext}
+            aria-label="Next"
+            className={cn(
+              "absolute right-4 z-30 hidden md:grid size-12 place-items-center rounded-full bg-black/40 hover:bg-black/80 border border-white/10 text-white/80 hover:text-white shadow-2xl transition-all active:scale-90 hover:scale-105 backdrop-blur-md",
+              showChrome ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}
           >
             <ChevronRight className="size-6" />
           </button>
         )}
       </div>
 
-      {/* Bottom Info Bar */}
-      <div className="bg-gradient-to-t from-black/80 via-black/50 to-transparent p-4 pb-6 z-10 flex flex-col items-center text-center">
+      {/* ── Bottom Section (Caption, Counter & PC Filmstrip) ──────────── */}
+      <footer
+        className={cn(
+          "relative z-30 flex flex-col items-center bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-3 pb-4 px-4 gap-2 transition-all duration-300",
+          showChrome ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
+        )}
+      >
+        {/* Caption */}
         {caption && (
-          <p className="text-xs md:text-sm font-normal text-zinc-200 max-w-2xl line-clamp-3 mb-2 leading-relaxed">
+          <p className="text-xs md:text-sm font-normal text-white/90 max-w-xl text-center line-clamp-2 px-3 py-1.5 rounded-full bg-black/50 border border-white/10 backdrop-blur-md">
             {caption}
           </p>
         )}
-        
-        {/* Slide indicators / pagination */}
-        <div className="px-3 py-1 rounded-full bg-black/50 border border-white/5 text-[10px] tracking-wider font-semibold text-zinc-400">
+
+        {/* Slide Counter */}
+        <div className="px-2.5 py-0.5 rounded-full bg-white/10 border border-white/10 text-[10px] font-mono tracking-wider font-semibold text-white/70">
           {currentIndex + 1} / {mediaMessages.length}
         </div>
-      </div>
+
+        {/* Horizontal Filmstrip / Thumbnail List (Always active on PC / bigger screens) */}
+        {mediaMessages.length > 1 && (
+          <div
+            ref={thumbnailsRef}
+            className="hidden md:flex items-center gap-2 max-w-2xl overflow-x-auto py-1.5 px-3 scroll-slim rounded-2xl bg-black/40 border border-white/10 backdrop-blur-md mt-1"
+          >
+            {mediaMessages.map((m, idx) => {
+              const thumbUrl = getFullMediaUrl(m.mediaUrl);
+              const isVideoThumb = /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
+              const isSelected = currentIndex === idx;
+
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => scrollTo(idx)}
+                  className={cn(
+                    "relative size-12 rounded-xl overflow-hidden shrink-0 border transition-all active:scale-95 cursor-pointer",
+                    isSelected
+                      ? "border-accent ring-2 ring-accent/60 scale-105 opacity-100 shadow-md shadow-accent/20"
+                      : "border-white/15 opacity-40 hover:opacity-85 hover:border-white/40"
+                  )}
+                  title={m.mediaName || `Media ${idx + 1}`}
+                >
+                  {isVideoThumb ? (
+                    <div className="size-full bg-zinc-900 grid place-items-center relative">
+                      <video
+                        src={thumbUrl}
+                        className="size-full object-cover pointer-events-none"
+                        muted
+                        preload="metadata"
+                      />
+                      <div className="absolute inset-0 grid place-items-center bg-black/40">
+                        <Film className="size-3.5 text-white/90" />
+                      </div>
+                    </div>
+                  ) : (
+                    <img
+                      src={thumbUrl}
+                      alt={m.mediaName || ""}
+                      className="size-full object-cover"
+                      loading="lazy"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </footer>
     </div>
   );
 }

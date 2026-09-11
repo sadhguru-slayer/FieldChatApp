@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MessageSquarePlus,
@@ -13,8 +13,7 @@ import {
   Menu,
   X,
   ChevronRight,
-  MessageCircle,
-  Bell,
+  ZoomIn,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,7 +21,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { getConversations, getMe, markAllAsRead, clearChat } from "@/services/api";
 import { formatListTime, formatLastSeen } from "@/lib/format";
 import { NotificationPopover } from "./NotificationPopover";
-import { cn } from "@/lib/utils";
+import { cn, getFullMediaUrl } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -218,14 +217,20 @@ function FloatingActionButton({ onNewDm, onNewGroup }) {
           aria-label={open ? "Close" : "New chat"}
           onClick={() => setOpen((p) => !p)}
           className={cn(
-            "grid size-11 place-items-center rounded-full shadow-xl transition-all duration-250 active:scale-95 no-tap-highlight",
+            "grid size-11 place-items-center rounded-full shadow-lg transition-all duration-250 active:scale-95 no-tap-highlight backdrop-blur-xl border",
             open
-              ? "bg-elevated text-foreground border border-border/60 shadow-2xl rotate-45"
-              : "bg-accent text-accent-foreground shadow-accent/30 hover:shadow-accent/40 hover:scale-105"
+              ? "bg-elevated/90 text-foreground border-border/70 shadow-2xl rotate-45 scale-100"
+              : "bg-sidebar/90 hover:bg-elevated/90 text-muted-foreground hover:text-foreground border-border/60 hover:border-border/90 shadow-black/30 hover:shadow-xl hover:scale-105"
           )}
-          style={{ width: 44, height: 44 }}
+          style={{ width: 42, height: 42 }}
         >
-          <Plus className={cn("size-4.5 transition-transform duration-250", open ? "rotate-45" : "rotate-0")} />
+          <Plus
+            className={cn(
+              "size-4 transition-all duration-250",
+              open ? "rotate-45 text-foreground" : "rotate-0 opacity-80 group-hover:opacity-100"
+            )}
+            strokeWidth={1.8}
+          />
         </button>
       </div>
     </>
@@ -233,8 +238,9 @@ function FloatingActionButton({ onNewDm, onNewGroup }) {
 }
 
 // ─── Conversation Item ─────────────────────────────────────────────────────────
-function ConvItem({ c, isActive, onClick, presence, onMarkAsRead, onClearChat }) {
+function ConvItem({ c, isActive, onClick, onAvatarClick, presence, onMarkAsRead, onClearChat }) {
   const isDm = c.type === "dm";
+  const isGroup = c.type === "group";
   const wsPresence = isDm && c.otherUserId ? presence[String(c.otherUserId)] : undefined;
   const isOnline = isDm
     ? (wsPresence !== undefined ? wsPresence.online : Boolean(c.isOnline))
@@ -242,7 +248,6 @@ function ConvItem({ c, isActive, onClick, presence, onMarkAsRead, onClearChat })
   const lastSeenTs = isDm
     ? (wsPresence !== undefined ? wsPresence.lastSeen : c.lastSeen)
     : null;
-  const lastSeenText = !isOnline ? formatLastSeen(lastSeenTs) : null;
   const lastMsg = c.lastMessage;
 
   const preview = (() => {
@@ -275,9 +280,41 @@ function ConvItem({ c, isActive, onClick, presence, onMarkAsRead, onClearChat })
           <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full bg-accent" />
         )}
 
-        {/* Avatar */}
-        <div className="relative shrink-0">
+        {/* Avatar — separate click zone to open image */}
+        <div
+          className="relative shrink-0 group/avatar"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (c.avatar) onAvatarClick?.();
+          }}
+          role="button"
+          tabIndex={c.avatar ? 0 : -1}
+          onKeyDown={(e) => {
+            if ((e.key === "Enter" || e.key === " ") && c.avatar) {
+              e.stopPropagation();
+              onAvatarClick?.();
+            }
+          }}
+          title={c.avatar ? "Click to view photo" : ""}
+          style={{ cursor: c.avatar ? "pointer" : "default" }}
+        >
           <Avatar src={c.avatar} name={c.title} size="md" />
+
+          {/* Hover zoom-in overlay (only if has avatar) */}
+          {c.avatar && (
+            <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+              <ZoomIn className="size-3 text-white" />
+            </span>
+          )}
+
+          {/* Group badge icon — shown on groups that have no avatar */}
+          {isGroup && !c.avatar && (
+            <span className="absolute -bottom-0.5 -right-0.5 grid size-4 place-items-center rounded-full bg-accent/90 ring-2 ring-sidebar">
+              <Users className="size-2.5 text-accent-foreground" />
+            </span>
+          )}
+
+          {/* Online dot for DMs */}
           {isDm && (
             <span className={cn(
               "absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-sidebar transition-colors duration-300",
@@ -365,6 +402,7 @@ export function Sidebar({ onOpenSettings }) {
   
   const [scrolled, setScrolled] = useState(false);
   const [clearChatConvId, setClearChatConvId] = useState(null);
+  const [sidebarAvatarViewer, setSidebarAvatarViewer] = useState(null); // { src, title }
 
   const queryClient = useQueryClient();
 
@@ -599,6 +637,9 @@ export function Sidebar({ onOpenSettings }) {
                   c={c}
                   isActive={activeId === String(c.id)}
                   onClick={() => selectConv(c.id)}
+                  onAvatarClick={() => {
+                    if (c.avatar) setSidebarAvatarViewer({ src: c.avatar, title: c.title });
+                  }}
                   presence={presence}
                   onMarkAsRead={() => handleMarkAsRead(c.id)}
                   onClearChat={() => setClearChatConvId(c.id)}
@@ -633,6 +674,34 @@ export function Sidebar({ onOpenSettings }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Sidebar Avatar Full-screen Viewer */}
+      {sidebarAvatarViewer && (
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 backdrop-blur-md"
+          onClick={() => setSidebarAvatarViewer(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setSidebarAvatarViewer(null)}
+            className="absolute top-4 right-4 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all border border-white/10 shadow-lg cursor-pointer"
+            aria-label="Close image viewer"
+          >
+            <X className="size-5" />
+          </button>
+          <div className="relative p-4 max-w-[95vw] max-h-[92vh] flex flex-col items-center">
+            <img
+              src={getFullMediaUrl(sidebarAvatarViewer.src)}
+              alt={sidebarAvatarViewer.title}
+              className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/15"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="mt-3 text-sm font-semibold text-white/90 bg-black/50 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
+              {sidebarAvatarViewer.title}
+            </p>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

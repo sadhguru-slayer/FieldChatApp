@@ -19,6 +19,7 @@ import {
   Forward,
   X,
   Check,
+  ZoomIn,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { MessageList } from "./MessageList";
@@ -583,6 +584,7 @@ export function ChatPane() {
   const [ctxMenu, setCtxMenu] = useState(null);
   const [reactionsDetailMsg, setReactionsDetailMsg] = useState(null);
   const [selectedMediaMessage, setSelectedMediaMessage] = useState(null);
+  const [headerAvatarViewerOpen, setHeaderAvatarViewerOpen] = useState(false);
 
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedMsgIds, setSelectedMsgIds] = useState(new Set());
@@ -1286,7 +1288,31 @@ export function ChatPane() {
             <ArrowLeft className="size-5" />
           </button>
 
-          {/* Avatar — clickable to open group/dm info */}
+          {/* Avatar — clicking opens full-screen image viewer */}
+          <button
+            type="button"
+            onClick={() => {
+              if (activeConv.avatar) {
+                setHeaderAvatarViewerOpen(true);
+              } else if (isGroup) {
+                togglePanel("details");
+              }
+            }}
+            className={cn(
+              "relative group shrink-0 rounded-full no-tap-highlight transition-opacity",
+              activeConv.avatar ? "cursor-pointer hover:opacity-90" : "cursor-default"
+            )}
+            title={activeConv.avatar ? "Click to view photo" : ""}
+          >
+            <Avatar src={activeConv.avatar} name={activeConv.title} size="md" />
+            {activeConv.avatar && (
+              <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ZoomIn className="size-3.5 text-white" />
+              </span>
+            )}
+          </button>
+
+          {/* Name + status — clicking opens profile modal (DM) or group info (group) */}
           <button
             type="button"
             onClick={() => {
@@ -1296,33 +1322,30 @@ export function ChatPane() {
                 setProfileModalUserId(activeConv.otherUserId);
               }
             }}
-            className="flex items-center gap-2.5 min-w-0 hover:opacity-90 transition-opacity no-tap-highlight"
+            className="flex flex-col min-w-0 text-left ml-2.5 hover:opacity-80 transition-opacity no-tap-highlight"
           >
-            <Avatar src={activeConv.avatar} name={activeConv.title} size="md" />
-            <div className="min-w-0 text-left">
-              <h1 className="truncate text-[13.5px] font-semibold text-foreground tracking-tight leading-tight">
-                {activeConv.title}
-              </h1>
-              <p className="truncate text-[11.5px] leading-tight mt-0.5">
-                {typingText ? (
-                  <span className="text-emerald-400 font-medium">{typingText}</span>
-                ) : isGroup ? (
-                  <span className="text-muted-foreground">
-                    {activeConv.memberCount ? `${activeConv.memberCount} members` : "Group"}
-                  </span>
-                ) : (
-                  <span className={cn(
-                    "font-medium transition-colors duration-300",
-                    otherUserOnline ? "text-emerald-400" : "text-muted-foreground"
-                  )}>
-                    {otherUserOnline ? "Online" : formatLastSeen(otherUserLastSeen) || "Offline"}
-                  </span>
-                )}
-                {msgError && (
-                  <span className="ml-1 text-destructive/80 text-[10px]">· Unavailable</span>
-                )}
-              </p>
-            </div>
+            <h1 className="truncate text-[13.5px] font-semibold text-foreground tracking-tight leading-tight">
+              {activeConv.title}
+            </h1>
+            <p className="truncate text-[11.5px] leading-tight mt-0.5">
+              {typingText ? (
+                <span className="text-emerald-400 font-medium">{typingText}</span>
+              ) : isGroup ? (
+                <span className="text-muted-foreground">
+                  {activeConv.memberCount ? `${activeConv.memberCount} members` : "Group"}
+                </span>
+              ) : (
+                <span className={cn(
+                  "font-medium transition-colors duration-300",
+                  otherUserOnline ? "text-emerald-400" : "text-muted-foreground"
+                )}>
+                  {otherUserOnline ? "Online" : formatLastSeen(otherUserLastSeen) || "Offline"}
+                </span>
+              )}
+              {msgError && (
+                <span className="ml-1 text-destructive/80 text-[10px]">· Unavailable</span>
+              )}
+            </p>
           </button>
         </div>
 
@@ -1500,6 +1523,34 @@ export function ChatPane() {
           onClose={() => setSelectedMediaMessage(null)}
           onSelect={(msg) => setSelectedMediaMessage(msg)}
         />
+      )}
+
+      {/* ── Header Avatar Full-screen Viewer ── */}
+      {headerAvatarViewerOpen && activeConv?.avatar && (
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 backdrop-blur-md"
+          onClick={() => setHeaderAvatarViewerOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setHeaderAvatarViewerOpen(false)}
+            className="absolute top-4 right-4 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all border border-white/10 shadow-lg cursor-pointer"
+            aria-label="Close image viewer"
+          >
+            <X className="size-5" />
+          </button>
+          <div className="relative p-4 max-w-[95vw] max-h-[92vh] flex flex-col items-center">
+            <img
+              src={getFullMediaUrl(activeConv.avatar)}
+              alt={activeConv.title}
+              className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/15"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="mt-3 text-sm font-semibold text-white/90 bg-black/50 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
+              {activeConv.title}
+            </p>
+          </div>
+        </div>
       )}
     </main>
   );
