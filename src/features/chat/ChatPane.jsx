@@ -48,6 +48,12 @@ import {
   getGroupMembers,
   getUsers,
 } from "@/services/api";
+import {
+  saveOfflineMessage,
+  removeOfflineMessage,
+  updateOfflineMessageStatus,
+  getPendingMessages,
+} from "@/services/offline/offlineQueue";
 import { cn } from "@/lib/utils";
 
 function useVisualViewportHeight() {
@@ -536,6 +542,7 @@ export function ChatPane() {
   const activeId = useAppStore((s) => s.activeId);
   const togglePanel = useAppStore((s) => s.togglePanel);
   const setMobileView = useAppStore((s) => s.setMobileView);
+  const reply = useAppStore((s) => s.reply);
   const setReply = useAppStore((s) => s.setReply);
   const setEditing = useAppStore((s) => s.setEditing);
   const typingUsers = useAppStore((s) => s.typingUsers);
@@ -712,21 +719,259 @@ export function ChatPane() {
     }
   }, [activeId, isFocused, qc]);
 
+  // ── Restore pending offline messages on conversation load/change ──────────
+  useEffect(() => {
+    if (!activeId) return;
+
+    let active = true;
+    getPendingMessages(activeId).then((pending) => {
+      if (!active || !pending || !pending.length) return;
+
+      qc.setQueryData(["messages", activeId], (oldData) => {
+        if (!oldData || !oldData.pages || !oldData.pages.length) return oldData;
+
+        const firstPage = oldData.pages[0];
+        const existingIds = new Set(firstPage.items.map((m) => String(m.id)));
+        const missing = [];
+
+        for (const item of pending) {
+          if (!existingIds.has(String(item.tempId))) {
+            missing.push({
+              id: item.tempId,
+              tempId: item.tempId,
+              conversationId: item.conversationId,
+              senderId: me?.id || null,
+              senderName: "You",
+              senderAvatar: me?.avatar || null,
+              display_name: me?.display_name || me?.username || "You",
+              username: me?.username || "You",
+              text: item.text,
+              createdAt: item.createdAt,
+              editedAt: null,
+              edited: false,
+              type: "CHAT",
+              isMine: true,
+              status: item.status || "offline",
+              isOptimistic: true,
+              delivered: false,
+              read: false,
+              deletedForEveryone: false,
+              mediaUrl: item.fileUrl || null,
+              mediaName: item.fileName || null,
+              replyTo: item.replyToPreview || null,
+              reactions: [],
+            });
+          }
+        }
+
+        if (!missing.length) return oldData;
+
+        const updatedPages = [
+          { ...firstPage, items: [...missing, ...firstPage.items] },
+          ...oldData.pages.slice(1),
+        ];
+        return { ...oldData, pages: updatedPages };
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [activeId, me, qc]);
+
   // ── Mutations ─────────────────────────────────────────────────────────────
   const sendMut = useMutation({
-    mutationFn: async ({ text, replyToId, fileUrl, fileName }) => {
-      const sent = wsCreateMessage(activeId, text, replyToId, fileUrl, fileName);
+    onMutate: async ({ text, replyToId, fileUrl, fileName }) => {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const createdAt = new Date().toISOString();
+
+      let replyContext = null;
+      if (replyToId) {
+        if (reply && String(reply.id) === String(replyToId)) {
+          replyContext = {
+            id: reply.id,
+            senderId: reply.senderId,
+            senderName: reply.senderName || reply.display_name || reply.username || "Unknown",
+            text: reply.text,
+            isDeleted: false,
+          };
+        } else {
+          const currentMsgs = msgData?.pages?.flatMap((p) => p.items) || [];
+          const found = currentMsgs.find((m) => String(m.id) === String(replyToId));
+          if (found) {
+            replyContext = {
+              id: found.id,
+              senderId: found.senderId,
+              senderName: found.senderName || found.display_name || found.username || "Unknown",
+              text: found.text,
+              isDeleted: found.deletedForEveryone,
+            };
+          }
+        }
+      }
+
+      const optimisticMsg = {
+        id: tempId,
+        tempId,
+        conversationId: activeId,
+        senderId: me?.id || null,
+        senderName: "You",
+        senderAvatar: me?.avatar || null,
+        display_name: me?.display_name || me?.username || "You",
+        username: me?.username || "You",
+        text: text || "",
+        createdAt,
+        editedAt: null,
+        edited: false,
+        type: "CHAT",
+        isMine: true,
+        status: "sending",
+        isOptimistic: true,
+        delivered: false,
+        read: false,
+        deletedForEveryone: false,
+        mediaUrl: fileUrl || null,
+        mediaName: fileName || null,
+        replyTo: replyContext,
+        reactions: [],
+      };
+
+      // 1. Immediately inject into messages query cache (0ms perceived latency)
+      qc.setQueryData(["messages", activeId], (oldData) => {
+        if (!oldData || !oldData.pages || !oldData.pages.length) {
+          return {
+            pageParams: [null],
+            pages: [{ items: [optimisticMsg], hasMore: false, nextCursor: null }],
+          };
+        }
+        const firstPage = oldData.pages[0];
+        const newItems = [optimisticMsg, ...firstPage.items];
+        return {
+          ...oldData,
+          pages: [{ ...firstPage, items: newItems }, ...oldData.pages.slice(1)],
+        };
+      });
+
+      // 2. Immediately bump conversation to top in sidebar
+      qc.setQueryData(["conversations"], (old) => {
+        if (!Array.isArray(old)) return old;
+        const target = old.find((c) => String(c.id) === String(activeId));
+        if (!target) return old;
+        const updated = {
+          ...target,
+          updatedAt: Date.now(),
+          lastMessage: {
+            id: tempId,
+            senderId: me?.id,
+            senderName: "You",
+            display_name: me?.display_name || me?.username || "You",
+            username: me?.username || "You",
+            text: text || (fileUrl ? "Attachment" : ""),
+            deletedForEveryone: false,
+            createdAt,
+            mediaUrl: fileUrl || null,
+            mediaName: fileName || null,
+          },
+        };
+        return [updated, ...old.filter((c) => String(c.id) !== String(activeId))];
+      });
+
+      // 3. Persist to IndexedDB outbox before attempting network delivery
+      saveOfflineMessage({
+        tempId,
+        conversationId: activeId,
+        text,
+        replyToId,
+        fileUrl,
+        fileName,
+        createdAt,
+        status: "sending",
+        replyToPreview: replyContext,
+        senderInfo: { id: me?.id, username: me?.username, avatar: me?.avatar },
+      }).catch((err) => console.warn("[OfflineDB] Save error:", err));
+
+      return { tempId };
+    },
+    mutationFn: async ({ text, replyToId, fileUrl, fileName }, context) => {
+      const isOnline = typeof navigator === "undefined" || navigator.onLine;
+      let sent = false;
+      const tempId = context?.tempId;
+
+      if (isOnline && wsClient.isConnected) {
+        sent = wsCreateMessage(activeId, text, replyToId, fileUrl, fileName, tempId);
+      }
+
       if (!sent) {
-        return sendMessage({ conversationId: activeId, text, replyToId, fileUrl, fileName });
+        try {
+          const res = await sendMessage({ conversationId: activeId, text, replyToId, fileUrl, fileName, clientMessageId: tempId });
+          return { res, sentViaRest: true };
+        } catch (err) {
+          console.warn("[Send] Dispatch failed, remaining queued offline:", err);
+          return { offline: true, error: err };
+        }
+      }
+      return { sentViaWs: true };
+    },
+    onSuccess: async (data, variables, context) => {
+      const tempId = context?.tempId;
+      if (data?.offline) {
+        if (tempId) {
+          await updateOfflineMessageStatus(tempId, "offline");
+          qc.setQueryData(["messages", activeId], (old) => {
+            if (!old?.pages) return old;
+            return {
+              ...old,
+              pages: old.pages.map((p) => ({
+                ...p,
+                items: p.items.map((m) =>
+                  String(m.id) === String(tempId) ? { ...m, status: "offline" } : m
+                ),
+              })),
+            };
+          });
+        }
+        return;
+      }
+
+      if (data?.sentViaRest && data?.res) {
+        if (tempId) {
+          await removeOfflineMessage(tempId);
+          qc.setQueryData(["messages", activeId], (old) => {
+            if (!old?.pages) return old;
+            return {
+              ...old,
+              pages: old.pages.map((p) => ({
+                ...p,
+                items: p.items.map((m) =>
+                  String(m.id) === String(tempId)
+                    ? { ...m, id: data.res.id || m.id, status: "sent", isOptimistic: false }
+                    : m
+                ),
+              })),
+            };
+          });
+        }
       }
     },
-    onSuccess: (res) => {
-      if (res) {
-        qc.invalidateQueries({ queryKey: ["messages", activeId] });
-        qc.invalidateQueries({ queryKey: ["conversations"] });
+    onError: async (err, variables, context) => {
+      console.warn("[SendMut] Mutation error:", err);
+      const tempId = context?.tempId;
+      if (tempId) {
+        await updateOfflineMessageStatus(tempId, "offline");
+        qc.setQueryData(["messages", activeId], (old) => {
+          if (!old?.pages) return old;
+          return {
+            ...old,
+            pages: old.pages.map((p) => ({
+              ...p,
+              items: p.items.map((m) =>
+                String(m.id) === String(tempId) ? { ...m, status: "offline" } : m
+              ),
+            })),
+          };
+        });
       }
     },
-    onError: (err) => toast.error(err.message || "Failed to send"),
   });
 
   const editMut = useMutation({
@@ -988,7 +1233,7 @@ export function ChatPane() {
 
   return (
     <main
-      className="flex flex-col bg-background overflow-hidden w-full relative"
+      className="flex flex-col bg-background overflow-hidden overflow-x-hidden w-full max-w-full relative"
       style={{ height: viewportHeight }}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -1170,7 +1415,7 @@ export function ChatPane() {
         <Composer
           onSend={(text, replyToId, fileUrl, fileName) => sendMut.mutate({ text, replyToId, fileUrl, fileName })}
           onEdit={(editing, newText) => editMut.mutate({ msg: editing, newText })}
-          disabled={sendMut.isPending}
+          disabled={false}
         />
       )}
 

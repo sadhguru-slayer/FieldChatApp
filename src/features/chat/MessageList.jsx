@@ -184,7 +184,7 @@ export function MessageList({
     <div
       ref={scrollRef}
       onClick={() => setActiveActionMsgId(null)}
-      className="scroll-slim flex-1 overflow-y-auto py-1"
+      className="scroll-slim flex-1 overflow-y-auto overflow-x-hidden w-full max-w-full py-1"
       style={{ overscrollBehavior: "contain" }}
     >
       {/* Invisible element at the top to trigger infinite loading */}

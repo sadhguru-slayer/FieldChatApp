@@ -2,6 +2,7 @@ import { memo, useState, useRef } from "react";
 import {
   Check,
   CheckCheck,
+  Clock,
   Copy,
   Pencil,
   Reply,
@@ -16,7 +17,17 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
 // ─── Delivery Ticks ────────────────────────────────────────────────────────
-function Ticks({ delivered, read, mine }) {
+function Ticks({ delivered, read, mine, status }) {
+  if (status === "sending" || status === "offline") {
+    return (
+      <span
+        className="inline-flex items-center justify-center rounded-full bg-white/10 p-[2px] border border-white/15 shrink-0 select-none"
+        title={status === "offline" ? "Queued offline" : "Sending..."}
+      >
+        <Clock className={cn("size-2.5 text-white/70", status === "sending" && "animate-pulse")} />
+      </span>
+    );
+  }
   if (read) {
     return (
       <span className="inline-flex items-center justify-center rounded-full bg-white/20 p-[2px] border border-white/30 shrink-0 select-none">
@@ -49,13 +60,13 @@ function ReplyPreview({ replyTo, mine, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "mb-1.5 flex w-full items-stretch overflow-hidden rounded-lg text-left text-[11px] transition-all active:opacity-75",
-        mine ? "bg-black/25" : "bg-black/20"
+        "mb-1.5 flex w-full items-stretch overflow-hidden rounded-xl text-left text-[11px] transition-all active:opacity-75",
+        mine ? "bg-black/20 hover:bg-black/30 text-white" : "bg-white/[0.06] hover:bg-white/[0.1] text-zinc-200"
       )}
     >
       <span
         className={cn(
-          "w-[3px] shrink-0 rounded-l-lg",
+          "w-[3px] shrink-0 rounded-l-xl",
           mine ? "bg-white/80" : "bg-accent"
         )}
       />
@@ -63,7 +74,7 @@ function ReplyPreview({ replyTo, mine, onClick }) {
         <span className={cn("block font-bold text-[10.5px] leading-tight truncate", mine ? "text-white" : "text-accent")}>
           {displayName}
         </span>
-        <span className="mt-0.5 line-clamp-1 text-[11px] leading-snug opacity-70">
+        <span className="mt-0.5 line-clamp-1 text-[11px] leading-snug opacity-75">
           {replyTo.isDeleted ? <span className="italic">Message unavailable</span> : replyTo.text}
         </span>
       </span>
@@ -178,11 +189,11 @@ function MessageRowBase({
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const touchCurrentX = useRef(0);
-  const rowRef = useRef(null);
+  const bubbleWrapperRef = useRef(null);
   const [swipeHint, setSwipeHint] = useState(false);
   const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
 
-  const SWIPE_THRESHOLD = 150;
+  const SWIPE_THRESHOLD = 45;
 
   const startPress = (e) => {
     if (isMultiSelectMode) return;
@@ -198,28 +209,35 @@ function MessageRowBase({
     const diffX = touchCurrentX.current - touchStartX.current;
     const diffY = currentY - touchStartY.current;
 
-    const isHoriz = Math.abs(diffX) > Math.abs(diffY) * 1.5;
-    const absX = Math.abs(diffX);
+    // Only allow swipe to the right (diffX > 0)
+    const isHoriz = diffX > 0 && Math.abs(diffX) > Math.abs(diffY) * 1.2;
 
-    if (rowRef.current && absX < 130 && isHoriz) {
-      rowRef.current.style.transition = "none";
-      rowRef.current.style.transform = `translateX(${diffX * 0.45}px)`;
-      setSwipeHint(absX > SWIPE_THRESHOLD * 0.55);
+    if (bubbleWrapperRef.current && isHoriz) {
+      const translate = Math.min(diffX * 0.4, 52);
+      bubbleWrapperRef.current.style.transition = "none";
+      bubbleWrapperRef.current.style.transform = `translateX(${translate}px)`;
+      setSwipeHint(translate >= SWIPE_THRESHOLD * 0.7);
     }
   };
 
-  const endTouch = (e) => {
+  const endTouch = () => {
     if (isMultiSelectMode) return;
     const diffX = touchCurrentX.current - touchStartX.current;
 
-    if (rowRef.current) {
-      rowRef.current.style.transition = "transform 0.22s cubic-bezier(0.25,0.46,0.45,0.94)";
-      rowRef.current.style.transform = "translateX(0px)";
-      setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = ""; }, 220);
+    if (bubbleWrapperRef.current) {
+      bubbleWrapperRef.current.style.transition = "transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+      bubbleWrapperRef.current.style.transform = "translateX(0px)";
+      setTimeout(() => {
+        if (bubbleWrapperRef.current) bubbleWrapperRef.current.style.transition = "";
+      }, 230);
     }
     setSwipeHint(false);
 
-    if (Math.abs(diffX) > SWIPE_THRESHOLD) {
+    const translate = Math.min(Math.max(0, diffX) * 0.4, 52);
+    if (translate >= SWIPE_THRESHOLD * 0.7) {
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(15);
+      }
       onReply(m);
     }
   };
@@ -281,27 +299,35 @@ function MessageRowBase({
   return (
     <div
       id={`msg-${m.id}`}
-      ref={rowRef}
       className={cn(
-        "group/msg relative flex gap-2 px-3 py-0.5 md:px-4 items-stretch cursor-pointer md:cursor-default",
+        "group/msg relative flex gap-2 px-3 py-0.5 md:px-4 items-stretch cursor-pointer md:cursor-default overflow-x-clip select-none md:select-text max-w-full",
         mine ? "justify-end" : "justify-start"
       )}
+      style={{ touchAction: "pan-y" }}
       onClick={handleRowClick}
       onTouchStart={startPress}
       onTouchEnd={endTouch}
       onTouchMove={moveTouch}
     >
       {/* ── Swipe-to-reply visual hint ── */}
-      <span
+      <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full size-7 bg-zinc-700/80 text-white transition-all duration-150 z-10",
-          mine ? "-left-1" : "-right-1",
-          swipeHint ? "opacity-100 scale-100" : "opacity-0 scale-75"
+          "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 z-0 flex items-center justify-center size-7 rounded-full transition-all duration-150",
+          swipeHint ? "bg-accent text-white scale-100 opacity-100 shadow-sm" : "bg-zinc-800/80 text-zinc-400 scale-75 opacity-0"
         )}
       >
-        <CornerUpLeft className="size-3.5" />
-      </span>
+        <Reply className="size-3.5" />
+      </div>
+
+      {/* ── Inner content that translates on swipe ── */}
+      <div
+        ref={bubbleWrapperRef}
+        className={cn(
+          "relative z-10 flex items-end gap-2 max-w-full min-w-0 transition-transform",
+          mine ? "justify-end ml-auto" : "justify-start"
+        )}
+      >
       {/* ── Multi-select check ── */}
       {isMultiSelectMode && (
         <div
@@ -345,7 +371,7 @@ function MessageRowBase({
       )}
 
       {/* ── Bubble column ── */}
-      <div className={cn("flex max-w-[80%] flex-col md:max-w-[65%]", mine && "items-end")}>
+      <div className={cn("flex max-w-[22rem] flex-col md:max-w-[26rem]", mine && "items-end")}>
         {showName && !mine && isGroup && senderDisplayName && (
           <button
             type="button"
@@ -359,8 +385,8 @@ function MessageRowBase({
           </button>
         )}
 
-        <div className="relative flex items-end gap-1">
-          {/* Action button — left for my messages */}
+        <div className="relative flex items-end">
+          {/* Action button — LEFT of my bubble. Hidden on mobile, invisible (space reserved) on desktop so hover doesn't shift layout */}
           {mine && !isMultiSelectMode && (
             <button
               type="button"
@@ -370,8 +396,10 @@ function MessageRowBase({
                 onOpenActions(m, e);
               }}
               className={cn(
-                "size-6 place-items-center rounded-md text-muted-foreground/60 transition-all hover:text-foreground hover:bg-elevated",
-                isActionActive ? "grid text-foreground bg-elevated border border-border/40" : "hidden group-hover/msg:grid"
+                "size-6 place-items-center rounded-md text-muted-foreground/60 transition-all hover:text-foreground hover:bg-elevated shrink-0",
+                isActionActive
+                  ? "grid text-foreground bg-elevated border border-border/40"
+                  : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
               )}
             >
               <span className="text-[11px] leading-none">···</span>
@@ -391,7 +419,7 @@ function MessageRowBase({
                 <div
                   onClick={handleBubbleClick}
                   className={cn(
-                    "relative overflow-hidden cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 rounded-2xl max-w-[230px] sm:max-w-[280px]",
+                    "relative overflow-hidden cursor-pointer select-none md:select-text shadow-md transition-all duration-150 rounded-2xl max-w-[20rem] sm:max-w-[24rem]",
                     getBubbleRadiusClass(),
                     (isActionActive || isSelected) && "ring-1.5 ring-accent/60 shadow-xs"
                   )}
@@ -434,10 +462,10 @@ function MessageRowBase({
                     />
                   )}
                   {/* Overlay meta */}
-                  <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 text-white/90 text-[10px] flex items-center gap-1 backdrop-blur-xs font-mono select-none">
+                  <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-black/65 text-white/95 text-[10.5px] flex items-center gap-1 backdrop-blur-md font-mono select-none whitespace-nowrap shrink-0">
                     {m.edited && <span className="italic opacity-70 text-[9px]">edited</span>}
                     {formatTime(m.createdAt)}
-                    {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} />}
+                    {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} status={m.status} />}
                   </div>
                 </div>
               );
@@ -448,7 +476,7 @@ function MessageRowBase({
                 <div
                   onClick={handleBubbleClick}
                   className={cn(
-                    "relative text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150 p-0 overflow-hidden max-w-[230px] sm:max-w-[280px]",
+                    "relative text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150 p-0 overflow-hidden max-w-[20rem] sm:max-w-[24rem] md:max-w-[26rem]",
                     mine
                       ? "bg-accent/80 text-white font-normal"
                       : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
@@ -511,13 +539,13 @@ function MessageRowBase({
                     {/* Inline meta */}
                     <span
                       className={cn(
-                        "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono",
+                        "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono whitespace-nowrap",
                         mine ? "text-accent-foreground/80 font-medium" : "text-muted-foreground/75"
                       )}
                     >
                       {m.edited && <span className="italic opacity-70">edited</span>}
                       {formatTime(m.createdAt)}
-                      {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} />}
+                      {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} status={m.status} />}
                     </span>
                     <span className="block clear-both h-0" />
                   </div>
@@ -530,7 +558,7 @@ function MessageRowBase({
               <div
                 onClick={handleBubbleClick}
                 className={cn(
-                  "relative px-3.5 py-2.5 text-[13px] leading-[1.45] cursor-pointer select-none md:select-text shadow-md transition-all duration-150 max-w-[280px] sm:max-w-xs",
+                  "relative px-3.5 py-2.5 text-[13px] leading-[1.45] cursor-pointer select-none md:select-text shadow-md transition-all duration-150 max-w-[20rem] sm:max-w-[24rem] md:max-w-[26rem]",
                   mine
                     ? "bg-accent/85 text-white"
                     : "bg-zinc-800/60 text-zinc-100 border border-zinc-700/40",
@@ -562,20 +590,20 @@ function MessageRowBase({
                 {/* Inline meta — time + ticks */}
                 <span
                   className={cn(
-                    "ml-3 inline-flex translate-y-[3px] items-center gap-1 text-[10px] tabular-nums float-right mt-0.5 font-mono",
+                    "ml-3 inline-flex translate-y-[3px] items-center gap-1 text-[10px] tabular-nums float-right mt-0.5 font-mono whitespace-nowrap",
                     mine ? "text-white/65" : "text-zinc-400"
                   )}
                 >
                   {m.edited && <span className="italic opacity-70">edited</span>}
                   {formatTime(m.createdAt)}
-                  {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} />}
+                  {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} status={m.status} />}
                 </span>
                 <span className="block clear-both h-0" />
               </div>
             );
           })()}
 
-          {/* Action button — right for incoming */}
+          {/* Action button — RIGHT of incoming bubble. Hidden on mobile, invisible (space reserved) on desktop */}
           {!mine && !isMultiSelectMode && (
             <button
               type="button"
@@ -585,8 +613,10 @@ function MessageRowBase({
                 onOpenActions(m, e);
               }}
               className={cn(
-                "size-6 place-items-center rounded-md text-muted-foreground/60 transition-all hover:text-foreground hover:bg-elevated",
-                isActionActive ? "grid text-foreground bg-elevated border border-border/40" : "hidden group-hover/msg:grid"
+                "size-6 place-items-center rounded-md text-muted-foreground/60 transition-all hover:text-foreground hover:bg-elevated shrink-0",
+                isActionActive
+                  ? "grid text-foreground bg-elevated border border-border/40"
+                  : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
               )}
             >
               <span className="text-[11px] leading-none">···</span>
@@ -618,6 +648,7 @@ function MessageRowBase({
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { wsClient, joinConversation } from "@/services/ws";
 import { Avatar } from "@/components/Avatar";
 import { markNotificationAsRead, getMyUserId } from "@/services/api";
+import { removeOfflineMessage, flushOfflineQueue } from "@/services/offline/offlineQueue";
 import { cn } from "@/lib/utils";
 
 let lastPopPlayedAt = 0;
@@ -425,15 +426,25 @@ export function useRealtimeSync(authed) {
 
     wsClient.connect();
 
-    // Invalidate and refetch queries on connection/reconnection to sync missed messages
-    const unsubOpen = wsClient.on("open", () => {
-      console.log("[WS] Connected/reconnected. Refetching active conversation to sync missed messages...");
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      const activeId = useAppStore.getState().activeId;
-      if (activeId) {
-        queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
-      }
-    });
+    // Invalidate and refetch queries on connection/reconnection to sync missed messages and flush offline queue
+    const unsubOpen = () => {
+      wsClient.on("open", () => {
+        console.log("[WS] Connected/reconnected. Refetching active conversation and flushing offline queue...");
+        flushOfflineQueue(queryClient);
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        const activeId = useAppStore.getState().activeId;
+        if (activeId) {
+          queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
+        }
+      });
+    };
+    unsubOpen();
+
+    const handleOnline = () => {
+      console.log("[Network] Online event received. Flushing offline queue...");
+      flushOfflineQueue(queryClient);
+    };
+    window.addEventListener("online", handleOnline);
 
     // Handle incoming real-time events from backend
     const unsub = wsClient.on("*", (payload) => {
@@ -778,7 +789,7 @@ export function useRealtimeSync(authed) {
               }
             }
 
-            // Only add new message if it's the first page
+            // Only add or reconcile new message if it's the first page
             if (payload.event === "message.created" && pageIndex === 0 && !found) {
               const isMine = payload.sender_id && meId && String(payload.sender_id) === String(meId);
               const msgSenderName = isMine ? "You" : (payload.display_name || payload.username || payload.sender || "Someone");
@@ -810,8 +821,41 @@ export function useRealtimeSync(authed) {
                 } : null,
                 reactions: [],
               };
-              items.unshift(newMsg);
-              found = true;
+
+              if (isMine) {
+                const clientMsgId = payload.client_message_id || payload.clientMessageId;
+                // Find matching optimistic message to reconcile (exact client_message_id match first)
+                let optIdx = -1;
+                if (clientMsgId) {
+                  optIdx = items.findIndex((item) =>
+                    String(item.tempId || item.id) === String(clientMsgId)
+                  );
+                }
+                if (optIdx === -1) {
+                  optIdx = items.findIndex((item) =>
+                    item.isOptimistic ||
+                    String(item.id).startsWith("temp-") ||
+                    item.status === "sending" ||
+                    item.status === "offline"
+                  );
+                }
+
+                if (optIdx !== -1) {
+                  const optMsg = items[optIdx];
+                  items[optIdx] = newMsg;
+                  found = true;
+                  removeOfflineMessage(clientMsgId || optMsg.tempId || optMsg.id).catch(() => {});
+                } else {
+                  items.unshift(newMsg);
+                  found = true;
+                  if (clientMsgId) {
+                    removeOfflineMessage(clientMsgId).catch(() => {});
+                  }
+                }
+              } else {
+                items.unshift(newMsg);
+                found = true;
+              }
             }
 
             return { ...page, items };
@@ -831,7 +875,8 @@ export function useRealtimeSync(authed) {
     return () => {
       clearInterval(timer);
       unsub();
-      unsubOpen();
+      if (typeof unsubOpen === "function") unsubOpen();
+      window.removeEventListener("online", handleOnline);
     };
   }, [authed, queryClient]);
 

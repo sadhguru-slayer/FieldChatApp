@@ -340,14 +340,17 @@ export function Composer({ onSend, onEdit }) {
 
       {/* Reply / Edit banner */}
       {context && (
-        <div className="mb-2 flex items-center gap-2 rounded-lg border-l-2 border-accent bg-elevated/70 px-3 py-1.5 shadow-2xs">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
-              {context.label}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {context.preview}
-            </p>
+        <div className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-elevated/80 px-3 py-2 shadow-xs fc-slide-up-sm">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <span className="w-[3px] h-7 rounded-full bg-accent shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold text-accent leading-tight truncate">
+                {context.label}
+              </p>
+              <p className="truncate text-xs text-muted-foreground mt-0.5 leading-tight">
+                {context.preview}
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -355,16 +358,16 @@ export function Composer({ onSend, onEdit }) {
             onTouchStart={preventFocusLoss}
             onClick={context.clear}
             aria-label="Cancel"
-            className="shrink-0 text-base leading-none text-muted-foreground transition-colors hover:text-foreground opacity-60 hover:opacity-100"
+            className="grid size-6 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
           >
-            ×
+            <X className="size-3.5" />
           </button>
         </div>
       )}
 
       {/* Emoji Picker */}
       {emojiOpen && (
-        <div className="mb-2 flex flex-wrap gap-1 rounded-xl border border-border/60 bg-surface p-2 shadow-xl fc-scale-in">
+        <div className="mb-2 flex flex-wrap gap-1 rounded-2xl border border-border/60 bg-surface/95 backdrop-blur-md p-2 shadow-xl fc-scale-in">
           {EMOJIS.map((e) => (
             <button
               key={e}
@@ -375,7 +378,7 @@ export function Composer({ onSend, onEdit }) {
                 setText((t) => t + e);
                 ref.current?.focus();
               }}
-              className="grid size-8 place-items-center rounded-lg text-base transition-all hover:bg-elevated hover:scale-110 active:scale-95"
+              className="grid size-8 place-items-center rounded-xl text-base transition-all hover:bg-elevated hover:scale-110 active:scale-95"
             >
               {e}
             </button>
@@ -384,7 +387,7 @@ export function Composer({ onSend, onEdit }) {
       )}
 
       {/* Input row */}
-      <div className="flex items-end gap-1.5 rounded-2xl border border-border/50 bg-elevated/60 px-2 py-1 transition-all focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/30">
+      <div className="flex items-end gap-1.5 rounded-[22px] border border-border/40 bg-elevated/50 px-2 py-1 transition-all focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20">
         {/* Emoji */}
         <button
           type="button"

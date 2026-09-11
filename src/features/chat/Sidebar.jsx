@@ -524,17 +524,17 @@ export function Sidebar({ onOpenSettings }) {
 
       {/* ── Filter Tabs ──────────────────────────────────────────────────── */}
       <div className="px-3 py-2 shrink-0">
-        <div className="flex gap-1 rounded-xl bg-surface/50 p-0.5 border border-border/30">
+        <div className="flex gap-1 rounded-xl bg-surface/60 p-1 border border-border/30">
           {tabs.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setFilter(t.id)}
               className={cn(
-                "flex-1 rounded-lg py-1.5 text-[11.5px] font-medium transition-all duration-200 no-tap-highlight",
+                "flex-1 rounded-lg py-1.5 text-[12px] font-medium transition-all duration-150 no-tap-highlight",
                 filter === t.id
-                  ? "bg-accent/20 text-accent font-semibold border border-accent/30 shadow-xs"
-                  : "text-muted-foreground hover:text-foreground hover:bg-elevated/40"
+                  ? "bg-elevated text-foreground font-semibold shadow-xs border border-border/50"
+                  : "text-muted-foreground hover:text-foreground hover:bg-elevated/30"
               )}
             >
               {t.label}
