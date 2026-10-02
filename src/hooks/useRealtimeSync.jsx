@@ -9,13 +9,35 @@ import { markNotificationAsRead, getMyUserId } from "@/services/api";
 import { removeOfflineMessage, flushOfflineQueue } from "@/services/offline/offlineQueue";
 import { cn } from "@/lib/utils";
 
+// ─── Settings localStorage helpers ────────────────────────────────────────────
+const FC_SETTINGS_KEY = "fc_settings";
+
+export function cacheSettingsToStorage(settings) {
+  try {
+    if (settings) localStorage.setItem(FC_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {}
+}
+
+function getCachedSettings(queryClient) {
+  const qc = queryClient || globalQueryClient;
+  // Prefer React Query cache (most up-to-date in current session)
+  const fromQc = qc?.getQueryData(["settings"]);
+  if (fromQc) return fromQc;
+  // Fall back to localStorage (persisted across reloads)
+  try {
+    const raw = localStorage.getItem(FC_SETTINGS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
 let globalQueryClient = null;
 let lastPopPlayedAt = 0;
 
 function playPopSound(queryClient) {
-  const qc = queryClient || globalQueryClient;
-  const settings = qc?.getQueryData(["settings"]);
-  const soundEnabled = settings?.sound_enabled ?? true;
+  const settings = getCachedSettings(queryClient);
+  // Default to false when settings haven't loaded — safer than blasting sound when user has it off
+  const soundEnabled = settings ? (settings.sound_enabled ?? true) : false;
   if (!soundEnabled) return;
 
   const now = Date.now();

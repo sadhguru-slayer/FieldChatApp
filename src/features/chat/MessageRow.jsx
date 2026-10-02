@@ -372,8 +372,34 @@ function MessageRowBase({
     return (
       <div
         id={`msg-${m.id}`}
-        className={cn("flex px-4 py-0.5", mine ? "justify-end" : "justify-start")}
+        className={cn(
+          "flex px-4 py-0.5 transition-colors duration-150",
+          mine ? "justify-end" : "justify-start",
+          isSelected && "bg-accent/[0.08] dark:bg-white/[0.04] rounded-xl"
+        )}
+        onContextMenu={(e) => { e.preventDefault(); onOpenActions?.(m, e); }}
+        onTouchStart={startPress}
+        onTouchEnd={endTouch}
+        onTouchMove={moveTouch}
+        onClick={() => {
+          if (isMultiSelectMode && onToggleAction) onToggleAction(m.id);
+        }}
       >
+        {isMultiSelectMode && (
+          <div className={cn(
+            "mr-2 flex items-center self-center",
+            mine && "order-last ml-2 mr-0"
+          )}>
+            <div className={cn(
+              "size-4.5 rounded-full border-2 flex items-center justify-center transition-all",
+              isSelected
+                ? "border-primary bg-primary text-white"
+                : "border-muted-foreground/40 bg-transparent"
+            )}>
+              {isSelected && <Check className="size-2.5" />}
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 max-w-[75%] rounded-2xl border border-dashed border-border/40 bg-surface/30 px-3.5 py-1.5 text-[11.5px] italic text-muted-foreground select-none">
           Message removed
         </div>

@@ -139,22 +139,29 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
 
   const isImgMsg = message.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(message.mediaName || message.mediaUrl || "");
   const isMediaGroup = Array.isArray(message.groupMessages) && message.groupMessages.length > 1;
+  const isDeletedForAll = !!message.deletedForEveryone;
 
-  const items = [
-    ...(!isMediaGroup ? [{ id: "reply", label: "Reply", Icon: Reply }] : []),
-    ...(message.text ? [{ id: "copy", label: "Copy text", Icon: Copy }] : []),
-    ...(isImgMsg ? [{ id: "copy-image", label: "Copy image", Icon: Copy }] : []),
-    ...(mine && !isMediaGroup && !message.mediaUrl ? [{ id: "edit", label: "Edit message", Icon: Pencil }] : []),
-    { id: "forward", label: "Forward", Icon: Forward },
-    ...(message.mediaUrl || isMediaGroup ? [{ id: "download", label: isMediaGroup ? "Download all" : "Download", Icon: Download }] : []),
-    { id: "select", label: isMediaGroup ? "Select all" : "Select message", Icon: Check },
-    ...(isMediaGroup
-      ? [
-          { id: "delete-me", label: "Delete for me", Icon: Trash2, danger: true },
-          ...(mine ? [{ id: "delete-all", label: "Delete for everyone", Icon: Trash2, danger: true }] : []),
-        ]
-      : [{ id: "delete", label: "Delete", Icon: Trash2, danger: true }]),
-  ];
+  // For messages already deleted for everyone: only allow delete-for-me and select
+  const items = isDeletedForAll
+    ? [
+        { id: "delete", label: "Delete for me", Icon: Trash2, danger: true },
+        { id: "select", label: "Select message", Icon: Check },
+      ]
+    : [
+        ...(!isMediaGroup ? [{ id: "reply", label: "Reply", Icon: Reply }] : []),
+        ...(message.text ? [{ id: "copy", label: "Copy text", Icon: Copy }] : []),
+        ...(isImgMsg ? [{ id: "copy-image", label: "Copy image", Icon: Copy }] : []),
+        ...(mine && !isMediaGroup && !message.mediaUrl ? [{ id: "edit", label: "Edit message", Icon: Pencil }] : []),
+        { id: "forward", label: "Forward", Icon: Forward },
+        ...(message.mediaUrl || isMediaGroup ? [{ id: "download", label: isMediaGroup ? "Download all" : "Download", Icon: Download }] : []),
+        { id: "select", label: isMediaGroup ? "Select all" : "Select message", Icon: Check },
+        ...(isMediaGroup
+          ? [
+              { id: "delete-me", label: "Delete for me", Icon: Trash2, danger: true },
+              ...(mine ? [{ id: "delete-all", label: "Delete for everyone", Icon: Trash2, danger: true }] : []),
+            ]
+          : [{ id: "delete", label: "Delete", Icon: Trash2, danger: true }]),
+      ];
 
   return (
     <>
@@ -171,7 +178,7 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
         )}
         style={{ top, left, width: MENU_W }}
       >
-        {!isMediaGroup && (
+        {!isMediaGroup && !isDeletedForAll && (
           <div className="flex items-center justify-between px-2.5 py-2 border-b border-border/40">
             {QUICK_REACTIONS.map((e) => (
               <button
@@ -587,6 +594,7 @@ function DeleteConfirmModal({ target, onClose, onDeleteForMe, onDeleteForEveryon
   if (!target) return null;
   const count = target.ids.length;
   const canDeleteEveryone = target.canDeleteEveryone;
+  const hasDeletedForAll = target.hasDeletedForAll;
 
   return (
     <Dialog open={!!target} onOpenChange={(open) => !open && onClose()}>
@@ -600,7 +608,13 @@ function DeleteConfirmModal({ target, onClose, onDeleteForMe, onDeleteForEveryon
           </p>
         </DialogHeader>
 
-        <div className="space-y-2 pt-3">
+        {hasDeletedForAll && (
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-400/90 leading-snug">
+            ⚠ {count > 1 ? "One or more messages are" : "This message is"} already deleted for everyone — you can only delete it for yourself.
+          </div>
+        )}
+
+        <div className="space-y-2 pt-1">
           {/* Delete for me */}
           <button
             type="button"
@@ -1387,8 +1401,13 @@ export function ChatPane() {
       handleToggleSelect(groupIds);
     } else if (action === "delete") {
       const msgsToDelete = isGroupMsg ? msg.groupMessages : [msg];
-      const canDeleteEveryone = msgsToDelete.every((m) => m.isMine || m.senderId === me?.id);
-      setDeleteConfirmTarget({ ids: groupIds, canDeleteEveryone });
+      const anyAlreadyDeletedForAll = msgsToDelete.some((m) => m.deletedForEveryone);
+      const canDeleteEveryone = !anyAlreadyDeletedForAll && msgsToDelete.every((m) => m.isMine || m.senderId === me?.id);
+      setDeleteConfirmTarget({
+        ids: groupIds,
+        canDeleteEveryone,
+        hasDeletedForAll: anyAlreadyDeletedForAll,
+      });
     } else if (action === "delete-me") {
       handleDeleteMessages(groupIds, "for_me");
     } else if (action === "delete-all") {
@@ -1633,9 +1652,11 @@ export function ChatPane() {
                   <button
                     type="button"
                     onClick={() => {
+                      const anyAlreadyDeletedForAll = selectedMsgs.some((m) => m.deletedForEveryone);
                       setDeleteConfirmTarget({
                         ids: Array.from(selectedMsgIds),
-                        canDeleteEveryone: allMine,
+                        canDeleteEveryone: !anyAlreadyDeletedForAll && allMine,
+                        hasDeletedForAll: anyAlreadyDeletedForAll,
                       });
                     }}
                     className="flex items-center gap-1.5 rounded-xl bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-500/20 transition-colors border border-rose-500/20 cursor-pointer"

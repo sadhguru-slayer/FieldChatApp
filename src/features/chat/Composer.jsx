@@ -10,6 +10,23 @@ import { sendTyping } from "@/services/ws";
 import { FilePreviewModal, getFileCategory } from "./FilePreviewModal";
 import { extractFirstUrl } from "@/components/LinkPreview";
 
+// Helper: read sound setting from localStorage cache (set by useRealtimeSync / SettingsScreen)
+function getSoundEnabled(queryClient) {
+  // Try React Query cache first (most up-to-date in session)
+  const fromQc = queryClient?.getQueryData(["settings"]);
+  if (fromQc) return fromQc.sound_enabled ?? true;
+  // Fall back to localStorage
+  try {
+    const raw = localStorage.getItem("fc_settings");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed.sound_enabled ?? true;
+    }
+  } catch {}
+  // If nothing cached yet, default to false (don't play unexpected sound)
+  return false;
+}
+
 const EMOJIS = [
   "😀","😂","🙌","🔥","❤️","👍","🎉","😅","🤔","🙏","✅","👀","😎","🤝","💯","😊",
 ];
@@ -261,10 +278,7 @@ export function Composer({ onSend, onEdit }) {
       return;
     }
 
-    const settings = queryClient.getQueryData(["settings"]);
-    const soundEnabled = settings?.sound_enabled ?? true;
-
-    if (soundEnabled) {
+    if (getSoundEnabled(queryClient)) {
       try {
         const audio = new Audio("/pop.mp3");
         audio.volume = 0.4;
@@ -325,10 +339,7 @@ export function Composer({ onSend, onEdit }) {
     if (editing) {
       onEdit(editing, value);
     } else {
-      const settings = queryClient.getQueryData(["settings"]);
-      const soundEnabled = settings?.sound_enabled ?? true;
-
-      if (soundEnabled) {
+      if (getSoundEnabled(queryClient)) {
         try {
           const audio = new Audio("/pop.mp3");
           audio.volume = 0.4;

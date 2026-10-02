@@ -19,12 +19,14 @@ import {
   Sparkles,
   Pencil,
   User,
+  CloudCog,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/useAppStore";
 import { getMe, getSettings, updateSettings } from "@/services/api";
+import { cacheSettingsToStorage } from "@/hooks/useRealtimeSync";
 import { cn } from "@/lib/utils";
 
 export function SettingsScreen({ onClose }) {
@@ -38,6 +40,7 @@ export function SettingsScreen({ onClose }) {
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: getSettings });
+  console.log(settings)
 
   // Settings State
   const [notifs, setNotifs] = useState(true);
@@ -53,13 +56,18 @@ export function SettingsScreen({ onClose }) {
       setReadReceipts(settings.read_receipts_enabled ?? true);
       setEnterToSend(settings.enter_to_send ?? true);
       setMediaAuto(settings.media_auto_download ?? true);
+      // Persist to localStorage so notification sound check is correct across reloads
+      cacheSettingsToStorage(settings);
     }
   }, [settings]);
 
   const updateSettingsMut = useMutation({
     mutationFn: (patch) => updateSettings(patch),
     onSuccess: (data, patch) => {
-      qc.setQueryData(["settings"], (old) => ({ ...old, ...(data || {}), ...patch }));
+      const merged = { ...qc.getQueryData(["settings"]), ...(data || {}), ...patch };
+      qc.setQueryData(["settings"], merged);
+      // Keep localStorage in sync so sound check is immediately accurate
+      cacheSettingsToStorage(merged);
       toast.success("Settings updated");
     },
     onError: () => toast.error("Failed to update setting"),
