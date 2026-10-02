@@ -186,3 +186,13 @@ export const getCommonGroups = async (targetUserId) => {
   }
 };
 
+/** GET /api/chat/link-preview?url=... */
+export const getLinkPreview = async (url) => {
+  if (!url) return { success: false };
+  try {
+    return await request(`/api/chat/link-preview?url=${encodeURIComponent(url)}`);
+  } catch (err) {
+    return { success: false };
+  }
+};
+

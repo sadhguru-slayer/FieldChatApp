@@ -61,8 +61,9 @@ export const useAppStore = create((set, get) => ({
   editing: null,
   setEditing: (editing) => set({ editing, reply: null }),
 
-  // right panel: null | 'details' | 'profile'
+  // right panel: null | 'details' | 'mld' | 'profile'
   panel: null,
+  openPanel: (panel) => set({ panel }),
   togglePanel: (panel) => set({ panel: get().panel === panel ? null : panel }),
   closePanel: () => set({ panel: null }),
 

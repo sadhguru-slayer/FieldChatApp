@@ -26,6 +26,7 @@ import { Avatar } from "@/components/Avatar";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { FullscreenLightbox } from "./FullscreenLightbox";
+import { PdfViewerModal } from "./PdfViewerModal";
 import { useAppStore } from "@/store/useAppStore";
 import { useAnimatePresence } from "@/hooks/useAnimatePresence";
 import { formatLastSeen } from "@/lib/format";
@@ -612,6 +613,7 @@ export function ChatPane() {
   const viewportHeight = useVisualViewportHeight();
   const activeId = useAppStore((s) => s.activeId);
   const togglePanel = useAppStore((s) => s.togglePanel);
+  const openPanel = useAppStore((s) => s.openPanel);
   const setMobileView = useAppStore((s) => s.setMobileView);
   const reply = useAppStore((s) => s.reply);
   const setReply = useAppStore((s) => s.setReply);
@@ -655,6 +657,7 @@ export function ChatPane() {
   const [ctxMenu, setCtxMenu] = useState(null);
   const [reactionsDetailMsg, setReactionsDetailMsg] = useState(null);
   const [selectedMediaMessage, setSelectedMediaMessage] = useState(null);
+  const [selectedPdfMessage, setSelectedPdfMessage] = useState(null);
   const [headerAvatarViewerOpen, setHeaderAvatarViewerOpen] = useState(false);
   const [clearChatConfirmOpen, setClearChatConfirmOpen] = useState(false);
 
@@ -1424,7 +1427,7 @@ export function ChatPane() {
             }
           }}
           onCreateGroup={() => setCreateGroupOpen(true)}
-          onOpenMLD={() => togglePanel("details")}
+          onOpenMLD={() => openPanel("mld")}
           onClearChat={() => setClearChatConfirmOpen(true)}
           onAddMember={() => setGroupAddMemberOpen(true)}
           onLeaveGroup={() => leaveGroupMut.mutate()}
@@ -1448,6 +1451,7 @@ export function ChatPane() {
         onReact={(msg, emoji) => handleAction("react", msg, emoji)}
         onOpenReactionsDetail={(msg) => setReactionsDetailMsg(msg)}
         onMediaClick={(msg) => setSelectedMediaMessage(msg)}
+        onPdfClick={(pdf) => setSelectedPdfMessage(pdf)}
         isMultiSelectMode={isMultiSelectMode}
         selectedMsgIds={selectedMsgIds}
         onToggleSelect={handleToggleSelect}
@@ -1619,6 +1623,16 @@ export function ChatPane() {
           </div>
         </div>
       )}
+      {/* ── PDF Fullscreen Navigation Viewer Modal ── */}
+      {selectedPdfMessage && (
+        <PdfViewerModal
+          open={!!selectedPdfMessage}
+          pdfUrl={selectedPdfMessage.mediaUrl}
+          title={selectedPdfMessage.mediaName || "Document.pdf"}
+          onClose={() => setSelectedPdfMessage(null)}
+        />
+      )}
+
       {/* ── Clear Chat Confirmation Dialog ── */}
       <AlertDialog open={clearChatConfirmOpen} onOpenChange={setClearChatConfirmOpen}>
         <AlertDialogContent className="bg-sidebar border-border/40 text-foreground max-w-sm">

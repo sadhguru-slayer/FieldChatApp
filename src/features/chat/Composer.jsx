@@ -1,15 +1,21 @@
-import { useEffect, useRef, useState } from "react";
-import { Paperclip, SendHorizonal, Smile, Loader2, X } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { Paperclip, SendHorizonal, Smile, Loader2, X, Globe, FileText, Image as ImageIcon } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { uploadFileWithProgress } from "@/services/api/attachments";
+import { getLinkPreview } from "@/services/api";
 import { sendTyping } from "@/services/ws";
+import { FilePreviewModal, getFileCategory } from "./FilePreviewModal";
+import { extractFirstUrl } from "@/components/LinkPreview";
 
 const EMOJIS = [
   "😀","😂","🙌","🔥","❤️","👍","🎉","😅","🤔","🙏","✅","👀","😎","🤝","💯","😊",
 ];
+
+const MAX_FILE_COUNT = 10;
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 
 const isMobileDevice = () => {
   if (typeof window === "undefined") return false;
@@ -20,6 +26,57 @@ const isMobileDevice = () => {
   );
 };
 
+// ─── Composer URL Preview Bar ───────────────────────────────────────────────
+function ComposerUrlPreview({ url, onDismiss }) {
+  const { data: preview, isLoading } = useQuery({
+    queryKey: ["link-preview", url],
+    queryFn: () => getLinkPreview(url),
+    enabled: !!url,
+    staleTime: 1000 * 60 * 60 * 24,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  if (!url || isLoading || !preview || !preview.success) return null;
+  if (!preview.title && !preview.description && !preview.image) return null;
+
+  return (
+    <div className="mb-2 relative flex items-center gap-2.5 rounded-xl border border-border/50 bg-elevated/80 p-2 shadow-xs fc-slide-up-sm select-none">
+      {preview.image && (
+        <img
+          src={preview.image}
+          alt=""
+          className="size-12 rounded-lg object-cover border border-border/50 shrink-0 bg-black/40"
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        />
+      )}
+      <div className="min-w-0 flex-1 pr-6">
+        <p className="text-xs font-semibold text-foreground truncate leading-tight">
+          {preview.title || url}
+        </p>
+        {preview.description && (
+          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5 leading-snug">
+            {preview.description}
+          </p>
+        )}
+        <div className="mt-1 flex items-center gap-1 text-[10px] text-accent font-mono truncate">
+          <Globe className="size-2.5 shrink-0" />
+          <span className="truncate">{preview.domain || url}</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss link preview"
+        className="absolute top-2 right-2 grid size-5 place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+      >
+        <X className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Composer Main Component ────────────────────────────────────────────────
 export function Composer({ onSend, onEdit }) {
   const queryClient = useQueryClient();
   const activeId = useAppStore((s) => s.activeId);
@@ -29,7 +86,12 @@ export function Composer({ onSend, onEdit }) {
   const setEditing = useAppStore((s) => s.setEditing);
 
   const [text, setText] = useState("");
+  const [caption, setCaption] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [dismissedUrls, setDismissedUrls] = useState(new Set());
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
   const ref = useRef(null);
   const fileInputRef = useRef(null);
   const lastTypingTimeRef = useRef(0);
@@ -37,26 +99,30 @@ export function Composer({ onSend, onEdit }) {
 
   const [selectedFiles, setSelectedFiles] = useState([]);
 
-  const handleFileChange = (e) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    if (!files.length) return;
+  // Detect first URL in input text
+  const detectedUrl = useMemo(() => {
+    const url = extractFirstUrl(text);
+    if (!url || dismissedUrls.has(url)) return null;
+    return url;
+  }, [text, dismissedUrls]);
 
-    if (selectedFiles.length + files.length > 5) {
-      toast.error("You can upload a maximum of 5 files at a time.");
+  const processIncomingFiles = (incomingFiles) => {
+    if (!incomingFiles || !incomingFiles.length) return;
+
+    if (selectedFiles.length + incomingFiles.length > MAX_FILE_COUNT) {
+      toast.error(`You can select a maximum of ${MAX_FILE_COUNT} files at a time.`);
       return;
     }
 
     const newFiles = [];
-    for (const file of files) {
-      // 100MB check
-      if (file.size > 100 * 1024 * 1024) {
-        toast.error(`File "${file.name}" exceeds the 100MB size limit.`);
+    for (const file of incomingFiles) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`File "${file.name}" exceeds the 200MB size limit.`);
         continue;
       }
 
-      const isImg = file.type.startsWith("image/");
-      const previewUrl = isImg ? URL.createObjectURL(file) : null;
-      
+      const previewUrl = URL.createObjectURL(file);
+
       newFiles.push({
         id: Math.random().toString(36).substring(7),
         file,
@@ -68,10 +134,25 @@ export function Composer({ onSend, onEdit }) {
       });
     }
 
-    setSelectedFiles((prev) => [...prev, ...newFiles]);
+    if (newFiles.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
+      setPreviewModalOpen(true);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (!files.length) return;
+
+    processIncomingFiles(files);
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  const handleAddFiles = (moreFiles) => {
+    processIncomingFiles(moreFiles);
   };
 
   const removeSelectedFile = (id) => {
@@ -79,7 +160,13 @@ export function Composer({ onSend, onEdit }) {
     if (item && item.previewUrl) {
       URL.revokeObjectURL(item.previewUrl);
     }
-    setSelectedFiles((prev) => prev.filter((f) => f.id !== id));
+    setSelectedFiles((prev) => {
+      const next = prev.filter((f) => f.id !== id);
+      if (next.length === 0) {
+        setPreviewModalOpen(false);
+      }
+      return next;
+    });
   };
 
   const clearAllSelectedFiles = () => {
@@ -89,6 +176,8 @@ export function Composer({ onSend, onEdit }) {
       }
     });
     setSelectedFiles([]);
+    setPreviewModalOpen(false);
+    setCaption("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -96,7 +185,7 @@ export function Composer({ onSend, onEdit }) {
 
   useEffect(() => {
     return () => {
-      // Clean up previews ONLY on component unmount
+      // Clean up previews ONLY on unmount
       selectedFiles.forEach((f) => {
         if (f.previewUrl) {
           URL.revokeObjectURL(f.previewUrl);
@@ -139,58 +228,95 @@ export function Composer({ onSend, onEdit }) {
     el.style.height = `${newHeight}px`;
   }, [text]);
 
-  const submit = async () => {
-    const value = text.trim();
-    if ((!value && selectedFiles.length === 0) || isSubmittingRef.current) return;
+  const handleSendFiles = async (customFiles) => {
+    const filesToUpload = customFiles && Array.isArray(customFiles) ? customFiles : selectedFiles;
+    if (filesToUpload.length === 0 || isSubmittingRef.current || isUploading) return;
 
     isSubmittingRef.current = true;
+    setIsUploading(true);
     const uploadedFiles = [];
 
-    if (selectedFiles.length > 0) {
+    try {
+      // Upload all selected files in parallel
+      await Promise.all(
+        filesToUpload.map(async (fileItem) => {
+          const res = await uploadFileWithProgress(fileItem.file, (progress) => {
+            setSelectedFiles((prev) =>
+              prev.map((f) =>
+                f.id === fileItem.id ? { ...f, progress } : f
+              )
+            );
+          });
+          uploadedFiles.push({ url: res.url, name: fileItem.name });
+        })
+      );
+    } catch (err) {
+      toast.error(err.message || "Failed to upload file(s)");
+      isSubmittingRef.current = false;
+      setIsUploading(false);
+      return;
+    }
+
+    const settings = queryClient.getQueryData(["settings"]);
+    const soundEnabled = settings?.sound_enabled ?? true;
+
+    if (soundEnabled) {
       try {
-        // Upload all selected files in parallel
-        await Promise.all(
-          selectedFiles.map(async (fileItem) => {
-            if (fileItem.status === "done") {
-              uploadedFiles.push({ url: fileItem.url, name: fileItem.name });
-              return;
-            }
+        const audio = new Audio("/pop.mp3");
+        audio.volume = 0.4;
+        audio.play().catch(() => {});
+      } catch {}
+    }
 
-            setSelectedFiles((prev) =>
-              prev.map((f) =>
-                f.id === fileItem.id ? { ...f, status: "uploading", progress: 0 } : f
-              )
-            );
+    const effectiveText = caption.trim() || text.trim();
 
-            const res = await uploadFileWithProgress(fileItem.file, (progress) => {
-              setSelectedFiles((prev) =>
-                prev.map((f) =>
-                  f.id === fileItem.id ? { ...f, progress } : f
-                )
-              );
-            });
+    if (uploadedFiles.length > 0) {
+      if (effectiveText) {
+        // First file sent with caption / text + reply context
+        const first = uploadedFiles[0];
+        onSend(effectiveText, reply?.id ?? null, first.url, first.name);
 
-            setSelectedFiles((prev) =>
-              prev.map((f) =>
-                f.id === fileItem.id ? { ...f, status: "done", url: res.url } : f
-              )
-            );
-            
-            uploadedFiles.push({ url: res.url, name: fileItem.name });
-          })
-        );
-      } catch (err) {
-        toast.error(err.message || "Failed to upload file(s)");
-        isSubmittingRef.current = false;
-        // Reset uploading statuses back to idle
-        setSelectedFiles((prev) =>
-          prev.map((f) =>
-            f.status === "uploading" ? { ...f, status: "idle", progress: 0 } : f
-          )
-        );
-        return;
+        // Subsequent files sent as separate messages
+        for (let i = 1; i < uploadedFiles.length; i++) {
+          onSend("", null, uploadedFiles[i].url, uploadedFiles[i].name);
+        }
+      } else {
+        // Each file sent as separate message
+        uploadedFiles.forEach((item, idx) => {
+          const replyId = idx === 0 ? (reply?.id ?? null) : null;
+          onSend("", replyId, item.url, item.name);
+        });
       }
     }
+
+    setText("");
+    setCaption("");
+    clearAllSelectedFiles();
+    setReply(null);
+    setEditing(null);
+    setEmojiOpen(false);
+    setIsUploading(false);
+    lastTypingTimeRef.current = 0;
+
+    setTimeout(() => {
+      isSubmittingRef.current = false;
+    }, 100);
+
+    requestAnimationFrame(() => {
+      ref.current?.focus({ preventScroll: true });
+    });
+  };
+
+  const submit = async () => {
+    const value = text.trim();
+    if (!value || isSubmittingRef.current) return;
+
+    if (selectedFiles.length > 0) {
+      handleSendFiles();
+      return;
+    }
+
+    isSubmittingRef.current = true;
 
     if (editing) {
       onEdit(editing, value);
@@ -206,31 +332,12 @@ export function Composer({ onSend, onEdit }) {
         } catch {}
       }
 
-      if (uploadedFiles.length > 0) {
-        if (value) {
-          // If there is text, send the first file with the text and reply context
-          const first = uploadedFiles[0];
-          onSend(value, reply?.id ?? null, first.url, first.name);
-
-          // Send subsequent files as separate empty messages
-          for (let i = 1; i < uploadedFiles.length; i++) {
-            onSend("", null, uploadedFiles[i].url, uploadedFiles[i].name);
-          }
-        } else {
-          // If no text, send each file as a separate message
-          uploadedFiles.forEach((item, idx) => {
-            const replyId = idx === 0 ? (reply?.id ?? null) : null;
-            onSend("", replyId, item.url, item.name);
-          });
-        }
-      } else {
-        // Normal text message
-        onSend(value, reply?.id ?? null, null, null);
-      }
+      onSend(value, reply?.id ?? null, null, null);
     }
 
-    // Clear the composer state
+    // Clear composer state
     setText("");
+    setCaption("");
     clearAllSelectedFiles();
     setReply(null);
     setEditing(null);
@@ -249,9 +356,7 @@ export function Composer({ onSend, onEdit }) {
   const onKeyDown = (e) => {
     if (e.key === "Enter") {
       const isMobile = isMobileDevice();
-      if (isMobile) {
-        return;
-      }
+      if (isMobile) return;
       if (!e.shiftKey) {
         e.preventDefault();
         submit();
@@ -265,8 +370,7 @@ export function Composer({ onSend, onEdit }) {
     }
   };
 
-  const isUploading = selectedFiles.some((f) => f.status === "uploading");
-  const canSend = (text.trim().length > 0 || selectedFiles.length > 0) && !isUploading;
+  const canSend = text.trim().length > 0 || selectedFiles.length > 0;
 
   const context = editing
     ? { label: "Editing", preview: editing.text, clear: () => { setEditing(null); setText(""); } }
@@ -280,7 +384,11 @@ export function Composer({ onSend, onEdit }) {
 
   const handleSendPress = () => {
     if (canSend) {
-      submit();
+      if (selectedFiles.length > 0) {
+        handleSendFiles();
+      } else {
+        submit();
+      }
     }
   };
 
@@ -291,51 +399,28 @@ export function Composer({ onSend, onEdit }) {
         paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))",
       }}
     >
-      {/* File attachments list */}
-      {selectedFiles.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2 max-h-36 overflow-y-auto scroll-slim py-1">
-          {selectedFiles.map((fileItem) => (
-            <div 
-              key={fileItem.id} 
-              className="relative flex items-center gap-2 rounded-xl border border-border/50 bg-elevated/40 p-2 pr-8 shadow-xs min-w-[150px] max-w-[240px] flex-1 transition-all animate-in fade-in slide-in-from-bottom-2 duration-250"
-            >
-              {fileItem.previewUrl ? (
-                <img src={fileItem.previewUrl} alt="Preview" className="size-10 rounded-lg object-cover border border-border/50 shrink-0" />
-              ) : (
-                <div className="grid size-10 place-items-center rounded-lg bg-surface border border-border/50 text-muted-foreground shrink-0">
-                  <Paperclip className="size-4" />
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold truncate text-foreground/90">
-                  {fileItem.name}
-                </p>
-                {fileItem.status === "uploading" ? (
-                  <div className="mt-1 w-full bg-border/40 rounded-full h-1.5 overflow-hidden">
-                    <div 
-                      className="bg-accent h-1.5 rounded-full transition-all duration-200" 
-                      style={{ width: `${fileItem.progress}%` }}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {(fileItem.size / (1024 * 1024)).toFixed(2)} MB
-                  </p>
-                )}
-              </div>
-              
-              {fileItem.status !== "uploading" && (
-                <button
-                  type="button"
-                  onClick={() => removeSelectedFile(fileItem.id)}
-                  className="absolute top-1/2 right-1.5 -translate-y-1/2 grid size-6 place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-surface/85 transition-colors"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+      {/* ── WhatsApp-style File Selection Preview Modal ────────────────────── */}
+      <FilePreviewModal
+        open={previewModalOpen && selectedFiles.length > 0}
+        files={selectedFiles}
+        caption={caption || text}
+        onCaptionChange={(val) => {
+          setCaption(val);
+          setText(val);
+        }}
+        onAddFiles={handleAddFiles}
+        onRemoveFile={removeSelectedFile}
+        onClose={() => clearAllSelectedFiles()}
+        onSend={handleSendFiles}
+        isUploading={isUploading}
+      />
+
+      {/* ── URL Preview Above Input (WhatsApp/Telegram style) ──────────────── */}
+      {detectedUrl && (
+        <ComposerUrlPreview
+          url={detectedUrl}
+          onDismiss={() => setDismissedUrls((prev) => new Set(prev).add(detectedUrl))}
+        />
       )}
 
       {/* Reply / Edit banner */}
@@ -405,7 +490,7 @@ export function Composer({ onSend, onEdit }) {
           <Smile className="size-5" />
         </button>
 
-        {/* Attach (Label wrapper with overlayed invisible input for bulletproof mobile support) */}
+        {/* Attach (Label wrapper with overlayed invisible input supporting any format up to 10 files and 200MB) */}
         <label className="relative grid size-9 shrink-0 place-items-center rounded-xl transition-colors text-muted-foreground hover:text-foreground hover:bg-surface/60 mb-0.5 cursor-pointer no-tap-highlight">
           <Paperclip className="size-5" />
           <input
@@ -413,7 +498,6 @@ export function Composer({ onSend, onEdit }) {
             ref={fileInputRef}
             onChange={handleFileChange}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
             multiple
           />
         </label>
@@ -436,10 +520,10 @@ export function Composer({ onSend, onEdit }) {
         <button
           type="button"
           onClick={handleSendPress}
-          disabled={!canSend}
+          disabled={!canSend || isUploading}
           aria-label="Send"
           className={cn(
-            "grid size-9 shrink-0 place-items-center rounded-xl text-accent-foreground transition-all disabled:opacity-30 active:scale-95 mb-0.5 shadow-xs no-tap-highlight",
+            "grid size-9 shrink-0 place-items-center rounded-xl text-accent-foreground transition-all disabled:opacity-30 active:scale-95 mb-0.5 shadow-xs no-tap-highlight cursor-pointer",
             canSend
               ? "bg-accent hover:opacity-90 shadow-accent/25"
               : "bg-muted/50 text-muted-foreground"

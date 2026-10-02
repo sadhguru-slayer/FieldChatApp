@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Download,
@@ -49,35 +49,53 @@ export function MediaLinksDocsView({
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
+  const qc = useQueryClient();
+
+  const cachedData = qc.getQueryData(["messages", conversationId]);
 
   const { data: msgData, isLoading } = useQuery({
     queryKey: ["messages", conversationId],
     queryFn: () => getMessages({ conversationId }),
     enabled: !!conversationId,
+    initialData: cachedData,
   });
 
   const allMessages = useMemo(() => {
-    return msgData?.items || [];
-  }, [msgData]);
+    const raw = msgData || cachedData;
+    if (!raw) return [];
+    if (Array.isArray(raw.pages)) {
+      return raw.pages.flatMap((p) => p.items || []);
+    }
+    if (Array.isArray(raw.items)) {
+      return raw.items;
+    }
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+    return [];
+  }, [msgData, cachedData]);
 
   // 1. Media (Images and Videos)
   const mediaItems = useMemo(() => {
     return allMessages
       .filter((m) => {
-        if (!m.mediaUrl || m.deletedForEveryone) return false;
-        const name = (m.mediaName || m.mediaUrl || "").toLowerCase();
+        const mediaUrl = m.mediaUrl || m.media_url || m.fileUrl || m.file_url;
+        if (!mediaUrl || m.deletedForEveryone || m.is_deleted_for_everyone) return false;
+        const name = (m.mediaName || m.media_name || m.fileName || m.file_name || mediaUrl).toLowerCase();
         return /\.(jpeg|jpg|gif|png|webp|svg|mp4|webm|ogg|mov|m4v)$/i.test(name);
       })
       .map((m) => {
-        const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
+        const mediaUrl = m.mediaUrl || m.media_url || m.fileUrl || m.file_url;
+        const mediaName = m.mediaName || m.media_name || m.fileName || m.file_name || "";
+        const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(mediaName || mediaUrl || "");
         return {
-          id: m.id,
-          url: getFullMediaUrl(m.mediaUrl),
-          rawUrl: m.mediaUrl,
-          name: m.mediaName || (isVideo ? "Video" : "Image"),
+          id: m.id || m.message_id,
+          url: getFullMediaUrl(mediaUrl),
+          rawUrl: mediaUrl,
+          name: mediaName || (isVideo ? "Video" : "Image"),
           isVideo,
-          createdAt: m.createdAt,
-          senderName: m.senderName || "User",
+          createdAt: m.createdAt || m.created_at || m.timestamp,
+          senderName: m.senderName || m.display_name || m.username || "User",
           message: m,
         };
       });
@@ -87,20 +105,23 @@ export function MediaLinksDocsView({
   const docItems = useMemo(() => {
     return allMessages
       .filter((m) => {
-        if (!m.mediaUrl || m.deletedForEveryone) return false;
-        const name = (m.mediaName || m.mediaUrl || "").toLowerCase();
+        const mediaUrl = m.mediaUrl || m.media_url || m.fileUrl || m.file_url;
+        if (!mediaUrl || m.deletedForEveryone || m.is_deleted_for_everyone) return false;
+        const name = (m.mediaName || m.media_name || m.fileName || m.file_name || mediaUrl).toLowerCase();
         return !/\.(jpeg|jpg|gif|png|webp|svg|mp4|webm|ogg|mov|m4v)$/i.test(name);
       })
       .map((m) => {
-        const isPdf = /\.pdf$/i.test(m.mediaName || m.mediaUrl || "");
+        const mediaUrl = m.mediaUrl || m.media_url || m.fileUrl || m.file_url;
+        const mediaName = m.mediaName || m.media_name || m.fileName || m.file_name || "Document";
+        const isPdf = /\.pdf$/i.test(mediaName || mediaUrl || "");
         return {
-          id: m.id,
-          url: getFullMediaUrl(m.mediaUrl),
-          rawUrl: m.mediaUrl,
-          name: m.mediaName || "Document",
+          id: m.id || m.message_id,
+          url: getFullMediaUrl(mediaUrl),
+          rawUrl: mediaUrl,
+          name: mediaName,
           isPdf,
-          createdAt: m.createdAt,
-          senderName: m.senderName || "User",
+          createdAt: m.createdAt || m.created_at || m.timestamp,
+          senderName: m.senderName || m.display_name || m.username || "User",
         };
       });
   }, [allMessages]);
@@ -109,18 +130,19 @@ export function MediaLinksDocsView({
   const linkItems = useMemo(() => {
     const items = [];
     for (const m of allMessages) {
-      if (!m.text || m.deletedForEveryone) continue;
-      const urls = extractUrlsFromText(m.text);
+      const text = m.text || m.content || m.message || "";
+      if (!text || m.deletedForEveryone || m.is_deleted_for_everyone) continue;
+      const urls = extractUrlsFromText(text);
       for (const u of urls) {
         items.push({
-          id: `${m.id}-${u.raw}`,
-          messageId: m.id,
+          id: `${m.id || m.message_id}-${u.raw}`,
+          messageId: m.id || m.message_id,
           url: u.href,
           rawUrl: u.raw,
           domain: u.domain,
-          fullText: m.text,
-          createdAt: m.createdAt,
-          senderName: m.senderName || "User",
+          fullText: text,
+          createdAt: m.createdAt || m.created_at || m.timestamp,
+          senderName: m.senderName || m.display_name || m.username || "User",
         });
       }
     }

@@ -1,4 +1,4 @@
-import { memo, useState, useRef } from "react";
+import { memo, useState, useRef, useEffect } from "react";
 import {
   Check,
   CheckCheck,
@@ -15,6 +15,9 @@ import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { FormattedMessageText } from "@/components/FormattedMessageText";
+import { LinkPreview } from "@/components/LinkPreview";
+import { renderPdfPage1Thumbnail } from "@/lib/pdfThumbnail";
+import { LazyGif } from "./LazyGif";
 
 // ─── Delivery Ticks ────────────────────────────────────────────────────────
 function Ticks({ delivered, read, mine, status }) {
@@ -130,7 +133,93 @@ function getFullMediaUrl(url) {
   return `http://localhost:9000${url}`;
 }
 
-function MediaAttachment({ mediaUrl, mediaName, mine }) {
+function PdfAttachmentPreview({ mediaUrl, mediaName, mine, onPdfClick }) {
+  const [thumbnailUrl, setThumbnailUrl] = useState(null);
+  const fullUrl = getFullMediaUrl(mediaUrl);
+
+  useEffect(() => {
+    let active = true;
+    if (fullUrl) {
+      renderPdfPage1Thumbnail(fullUrl).then((thumb) => {
+        if (active && thumb) setThumbnailUrl(thumb);
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [fullUrl]);
+
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onPdfClick) {
+          onPdfClick({ mediaUrl, mediaName });
+        } else {
+          window.open(fullUrl, "_blank");
+        }
+      }}
+      className={cn(
+        "mb-1.5 w-full max-w-sm rounded-xl overflow-hidden border transition-all select-none cursor-pointer group/pdf shadow-sm",
+        mine
+          ? "bg-black/30 border-white/15 hover:bg-black/40 text-white"
+          : "bg-surface border-border/60 hover:bg-elevated/70 text-foreground"
+      )}
+    >
+      {/* Page 1 Static Thumbnail Preview */}
+      {thumbnailUrl ? (
+        <div className="relative w-full aspect-[4/3] max-h-48 bg-zinc-950/80 overflow-hidden flex items-center justify-center border-b border-white/10">
+          <img
+            src={thumbnailUrl}
+            alt="PDF Page 1"
+            loading="lazy"
+            className="size-full object-contain bg-white transition-transform duration-300 group-hover/pdf:scale-[1.02]"
+          />
+          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/75 backdrop-blur-md text-white font-mono font-bold text-[9px] border border-white/10 shadow-xs">
+            PAGE 1
+          </div>
+        </div>
+      ) : (
+        <div className="w-full h-20 bg-zinc-900/40 flex flex-col items-center justify-center gap-1 border-b border-white/10">
+          <FileText className="size-6 text-red-400 opacity-80" />
+          <span className="text-[10px] text-muted-foreground font-mono">PDF Document</span>
+        </div>
+      )}
+
+      {/* WhatsApp-style Red PDF Footer Badge */}
+      <div className="p-2 flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="relative grid size-8.5 place-items-center rounded-lg bg-red-500/20 border border-red-500/30 text-red-500 shrink-0">
+            <FileText className="size-4" />
+            <span className="absolute -bottom-1 -right-1 px-1 py-0.2 rounded bg-red-600 text-[7.5px] font-extrabold uppercase text-white font-mono leading-none shadow-xs">
+              PDF
+            </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold truncate leading-tight group-hover/pdf:underline">
+              {mediaName || "Document.pdf"}
+            </p>
+            <p className="text-[10px] opacity-75 mt-0.5 font-medium">
+              Click to view full PDF
+            </p>
+          </div>
+        </div>
+
+        <a
+          href={fullUrl}
+          download={mediaName || "document.pdf"}
+          onClick={(e) => e.stopPropagation()}
+          className="grid size-7 place-items-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 shrink-0"
+          title="Download PDF"
+        >
+          <Download className="size-3.5" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function MediaAttachment({ mediaUrl, mediaName, mine, onPdfClick }) {
   const isImage = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(mediaName || mediaUrl || "");
   const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(mediaName || mediaUrl || "");
   if (isImage || isVideo) return null; // Handled directly in bubble code for edge-to-edge look
@@ -139,54 +228,13 @@ function MediaAttachment({ mediaUrl, mediaName, mine }) {
   const fullUrl = getFullMediaUrl(mediaUrl);
 
   if (isPdf) {
-    // ── WhatsApp-style PDF Preview Card with sleek, minimal bezels ──
     return (
-      <div className="mb-1 w-full min-w-[200px] sm:min-w-[240px]">
-        <a
-          href={fullUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className={cn(
-            "flex items-center gap-3 rounded-xl p-2.5 transition-all select-none group/pdf",
-            mine
-              ? "bg-black/25 hover:bg-black/35 text-white border border-white/10"
-              : "bg-surface/90 hover:bg-surface text-foreground border border-border/40 shadow-xs"
-          )}
-        >
-          {/* Red PDF Icon Badge */}
-          <div className="relative grid size-10 place-items-center rounded-lg bg-red-500/15 border border-red-500/25 shrink-0 text-red-500">
-            <FileText className="size-5" />
-            <span className="absolute -bottom-1 -right-1 px-1 py-[1px] rounded bg-red-600 text-[8.5px] font-extrabold uppercase text-white tracking-tighter leading-none shadow-xs">
-              PDF
-            </span>
-          </div>
-
-          <div className="min-w-0 flex-1 pr-1">
-            <p className="text-[12px] font-semibold truncate leading-tight group-hover/pdf:underline">
-              {mediaName || "Document.pdf"}
-            </p>
-            <p className="text-[10px] opacity-75 mt-0.5 flex items-center gap-1.5 font-medium">
-              <span className="uppercase text-red-400 font-bold">PDF</span>
-              <span>•</span>
-              <span>Document</span>
-              <span>•</span>
-              <span>Tap to open</span>
-            </p>
-          </div>
-
-          <div
-            className={cn(
-              "grid size-8 place-items-center rounded-lg shrink-0 transition-all active:scale-95",
-              mine
-                ? "bg-white/10 text-white group-hover/pdf:bg-white/20"
-                : "bg-elevated text-muted-foreground group-hover/pdf:text-foreground border border-border/40"
-            )}
-          >
-            <Download className="size-3.5" />
-          </div>
-        </a>
-      </div>
+      <PdfAttachmentPreview
+        mediaUrl={mediaUrl}
+        mediaName={mediaName}
+        mine={mine}
+        onPdfClick={onPdfClick}
+      />
     );
   }
 
@@ -241,6 +289,7 @@ function MessageRowBase({
   onOpenReactionsDetail,
   onJumpTo,
   onMediaClick,
+  onPdfClick,
   isMultiSelectMode = false,
   isSelected = false,
 }) {
@@ -466,9 +515,10 @@ function MessageRowBase({
 
             {/* ── Bubble ── */}
             {(() => {
-              const isImageMedia = m.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "");
-              const isVideoMedia = m.mediaUrl && /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
-              const isMedia = isImageMedia || isVideoMedia;
+              const isGifMedia = m.mediaUrl && (/\.gif$/i.test(m.mediaName || m.mediaUrl || "") || m.isGif || m.type === "gif");
+              const isImageMedia = m.mediaUrl && !isGifMedia && /\.(jpeg|jpg|png|webp|svg|bmp)$/i.test(m.mediaName || m.mediaUrl || "");
+              const isVideoMedia = m.mediaUrl && !isGifMedia && /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
+              const isMedia = isGifMedia || isImageMedia || isVideoMedia;
               const isMediaOnly = isMedia && !m.text && !m.replyTo;
               const isMediaWithText = isMedia && m.text;
 
@@ -484,7 +534,18 @@ function MessageRowBase({
                       isSelected && "ring-2 ring-accent shadow-xs"
                     )}
                   >
-                    {isVideoMedia ? (
+                    {isGifMedia ? (
+                      <LazyGif
+                        src={m.mediaUrl}
+                        alt={m.mediaName || "GIF"}
+                        className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onMediaClick) onMediaClick(m);
+                          else window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                        }}
+                      />
+                    ) : isVideoMedia ? (
                       <div
                         className="relative w-full max-h-[220px] sm:max-h-[300px] md:max-h-[340px] aspect-[4/3] min-w-[180px] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
                         onClick={(e) => {
@@ -547,7 +608,18 @@ function MessageRowBase({
                     )}
                   >
                     <div className="relative w-full overflow-hidden">
-                      {isVideoMedia ? (
+                      {isGifMedia ? (
+                        <LazyGif
+                          src={m.mediaUrl}
+                          alt={m.mediaName || "GIF"}
+                          className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onMediaClick) onMediaClick(m);
+                            else window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                          }}
+                        />
+                      ) : isVideoMedia ? (
                         <div
                           className="relative w-full max-h-[180px] sm:max-h-[240px] md:max-h-[260px] aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
                           onClick={(e) => {
@@ -599,6 +671,9 @@ function MessageRowBase({
                       {/* Formatted Text with link, IP, phone auto-detection */}
                       <FormattedMessageText text={m.text} mine={mine} />
 
+                      {/* WhatsApp-style Link Preview */}
+                      <LinkPreview text={m.text} mine={mine} />
+
                       {/* Inline meta */}
                       <span
                         className={cn(
@@ -647,11 +722,15 @@ function MessageRowBase({
                       mediaUrl={m.mediaUrl}
                       mediaName={m.mediaName}
                       mine={mine}
+                      onPdfClick={onPdfClick}
                     />
                   )}
 
                   {/* Formatted Text with link, IP, phone auto-detection */}
                   {m.text && <FormattedMessageText text={m.text} mine={mine} />}
+
+                  {/* WhatsApp-style Link Preview */}
+                  {m.text && <LinkPreview text={m.text} mine={mine} />}
 
                   {/* Inline meta — time + ticks */}
                   <span

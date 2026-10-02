@@ -161,7 +161,7 @@ function ChatApp() {
 
   useRealtimeSync(authed);
 
-  const isDetailsOpen = panel === "details" && activeScreen === "chat";
+  const isDetailsOpen = (panel === "details" || panel === "mld") && activeScreen === "chat";
   const { shouldRender: showDetails, isClosing: isClosingDetails } = useAnimatePresence(isDetailsOpen, 180);
 
   if (!hydrated) {
@@ -214,7 +214,7 @@ function ChatApp() {
       <div
         className={cn(
           "relative flex h-full flex-1 flex-col min-w-0 bg-[#09090b] overflow-hidden",
-          activeScreen !== "chat" || mobileView === "chat" || panel === "details" ? "flex" : "hidden md:flex"
+          activeScreen !== "chat" || mobileView === "chat" || panel === "details" || panel === "mld" ? "flex" : "hidden md:flex"
         )}
       >
         {/* Base Screens */}

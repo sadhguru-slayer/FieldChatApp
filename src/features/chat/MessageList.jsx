@@ -92,6 +92,7 @@ export function MessageList({
   onReact,
   onOpenReactionsDetail,
   onMediaClick,
+  onPdfClick,
   isMultiSelectMode = false,
   selectedMsgIds = new Set(),
   onToggleSelect,
@@ -245,6 +246,7 @@ export function MessageList({
                 onOpenReactionsDetail={onOpenReactionsDetail}
                 onJumpTo={jumpTo}
                 onMediaClick={onMediaClick}
+                onPdfClick={onPdfClick}
                 isMultiSelectMode={isMultiSelectMode}
                 isSelected={selectedMsgIds.has(m.id)}
               />

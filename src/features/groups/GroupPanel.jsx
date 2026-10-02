@@ -74,6 +74,7 @@ import { FullscreenLightbox } from "@/features/chat/FullscreenLightbox";
 
 export function GroupPanel() {
   const activeId = useAppStore((s) => s.activeId);
+  const panel = useAppStore((s) => s.panel);
   const closePanel = useAppStore((s) => s.closePanel);
   const setActiveId = useAppStore((s) => s.setActiveId);
   const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
@@ -81,8 +82,16 @@ export function GroupPanel() {
 
   const qc = useQueryClient();
 
-  const [panelView, setPanelView] = useState("info"); // "info" | "mld"
+  const [panelView, setPanelView] = useState(panel === "mld" ? "mld" : "info"); // "info" | "mld"
   const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    if (panel === "mld") {
+      setPanelView("mld");
+    } else if (panel === "details") {
+      setPanelView("info");
+    }
+  }, [panel]);
   const [editOpen, setEditOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [clearChatConfirmOpen, setClearChatConfirmOpen] = useState(false);
@@ -246,7 +255,13 @@ export function GroupPanel() {
       <MediaLinksDocsView
         conversationId={activeId}
         title={activeConv.title}
-        onClose={() => setPanelView("info")}
+        onClose={() => {
+          if (panel === "mld") {
+            closePanel();
+          } else {
+            setPanelView("info");
+          }
+        }}
         onMediaClick={(msg) => setLightboxMessage(msg)}
       />
     );
