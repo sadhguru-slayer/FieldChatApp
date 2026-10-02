@@ -369,39 +369,128 @@ function MessageRowBase({
 
   // ── Deleted-for-everyone stub ─────────────────────────────────────────────
   if (m.deletedForEveryone) {
+    const senderDisplayName = m.display_name || m.senderName || "?";
     return (
       <div
         id={`msg-${m.id}`}
         className={cn(
-          "flex px-4 py-0.5 transition-colors duration-150",
+          "group/msg relative flex gap-2 px-3 py-0.5 md:px-4 items-stretch cursor-pointer select-none md:select-text max-w-full transition-colors duration-150",
           mine ? "justify-end" : "justify-start",
-          isSelected && "bg-accent/[0.08] dark:bg-white/[0.04] rounded-xl"
+          isActionActive && "bg-accent/[0.05] dark:bg-white/[0.03] rounded-xl"
         )}
+        onClick={handleRowClick}
         onContextMenu={(e) => { e.preventDefault(); onOpenActions?.(m, e); }}
         onTouchStart={startPress}
         onTouchEnd={endTouch}
         onTouchMove={moveTouch}
-        onClick={() => {
-          if (isMultiSelectMode && onToggleAction) onToggleAction(m.id);
-        }}
       >
-        {isMultiSelectMode && (
-          <div className={cn(
-            "mr-2 flex items-center self-center",
-            mine && "order-last ml-2 mr-0"
-          )}>
-            <div className={cn(
-              "size-4.5 rounded-full border-2 flex items-center justify-center transition-all",
-              isSelected
-                ? "border-primary bg-primary text-white"
-                : "border-muted-foreground/40 bg-transparent"
-            )}>
-              {isSelected && <Check className="size-2.5" />}
+        <div
+          ref={bubbleWrapperRef}
+          className={cn(
+            "relative z-10 flex items-end gap-1.5 sm:gap-2 max-w-full min-w-0 transition-transform",
+            mine ? "justify-end ml-auto" : "justify-start"
+          )}
+        >
+          {/* Multi-select check */}
+          {isMultiSelectMode && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onToggleAction) onToggleAction(m.id);
+              }}
+              className="mr-2 self-center flex items-center justify-center shrink-0 cursor-pointer select-none"
+            >
+              <div
+                className={cn(
+                  "size-5 rounded-full border flex items-center justify-center transition-all",
+                  isSelected
+                    ? "bg-accent border-accent text-white"
+                    : "border-zinc-700 bg-zinc-900/60 hover:border-zinc-500"
+                )}
+              >
+                {isSelected && <Check className="size-3.5 stroke-[3]" />}
+              </div>
+            </div>
+          )}
+
+          {/* Avatar column for incoming group message */}
+          {!mine && isGroup && (
+            <div className="w-7 shrink-0 self-end mb-[2px]">
+              {showAvatar ? (
+                <button
+                  type="button"
+                  className="hover:opacity-80 transition-opacity cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (m.senderId) setProfileModalUserId(m.senderId);
+                  }}
+                >
+                  <Avatar src={m.senderAvatar} name={senderDisplayName} size="sm" />
+                </button>
+              ) : (
+                <span className="block w-7" />
+              )}
+            </div>
+          )}
+
+          {/* Stub bubble column */}
+          <div className={cn("flex max-w-[22rem] flex-col md:max-w-[26rem]", mine && "items-end")}>
+            <div className="relative flex items-center gap-1">
+              {/* 3-Dot Action button — LEFT of my bubble */}
+              {mine && !isMultiSelectMode && (
+                <button
+                  type="button"
+                  aria-label="More message options"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenActions?.(m, e);
+                  }}
+                  className={cn(
+                    "size-7 place-items-center rounded-lg text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-elevated hover:scale-105 active:scale-95 shrink-0 cursor-pointer shadow-2xs",
+                    isActionActive
+                      ? "grid text-foreground bg-elevated border border-border/60 scale-100 opacity-100"
+                      : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
+                  )}
+                  title="More options"
+                >
+                  <MoreHorizontal className="size-3.5" />
+                </button>
+              )}
+
+              {/* Message removed pill */}
+              <div
+                onClick={handleBubbleClick}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-2xl border border-dashed border-border/40 bg-surface/30 px-3.5 py-1.5 text-[11.5px] italic text-muted-foreground select-none transition-all cursor-pointer",
+                  isActionActive && "ring-2 ring-accent ring-offset-1 ring-offset-background shadow-md",
+                  isSelected && "ring-2 ring-accent shadow-xs"
+                )}
+              >
+                Message removed
+              </div>
+
+              {/* 3-Dot Action button — RIGHT of incoming bubble */}
+              {!mine && !isMultiSelectMode && (
+                <button
+                  type="button"
+                  aria-label="More message options"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenActions?.(m, e);
+                  }}
+                  className={cn(
+                    "size-7 place-items-center rounded-lg text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-elevated hover:scale-105 active:scale-95 shrink-0 cursor-pointer shadow-2xs",
+                    isActionActive
+                      ? "grid text-foreground bg-elevated border border-border/60 scale-100 opacity-100"
+                      : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
+                  )}
+                  title="More options"
+                >
+                  <MoreHorizontal className="size-3.5" />
+                </button>
+              )}
             </div>
           </div>
-        )}
-        <div className="flex items-center gap-1.5 max-w-[75%] rounded-2xl border border-dashed border-border/40 bg-surface/30 px-3.5 py-1.5 text-[11.5px] italic text-muted-foreground select-none">
-          Message removed
         </div>
       </div>
     );
