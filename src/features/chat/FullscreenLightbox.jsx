@@ -23,6 +23,7 @@ import {
   Trash2,
   Smile,
   Send,
+  MoreVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -238,6 +239,7 @@ export function FullscreenLightbox({
   const [showChrome, setShowChrome] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
   const replyInputRef = useRef(null);
@@ -365,6 +367,8 @@ export function FullscreenLightbox({
     setZoomLevel(1);
     setIsReplying(false);
     setReplyText("");
+    setReactionPickerOpen(false);
+    setMobileMenuOpen(false);
 
     const activeMsg = mediaMessages[snap];
     if (activeMsg && onSelect) {
@@ -496,46 +500,44 @@ export function FullscreenLightbox({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Zoom toggle (images only) */}
+          {/* ── Desktop-only Viewer Controls ── */}
           {!isCurrentVideo && (
             <button
               type="button"
               onClick={toggleZoom}
               title={zoomLevel === 1 ? "Zoom in" : "Reset zoom"}
-              className="grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer"
+              className="hidden md:grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer"
             >
               {zoomLevel === 1 ? <ZoomIn className="size-4" /> : <ZoomOut className="size-4" />}
             </button>
           )}
 
-          {/* Focus Mode Toggle (Hide/Show extra UI) */}
           <button
             type="button"
             onClick={() => setShowChrome(false)}
             title="Focus Mode (Hide UI) — Press F or click"
-            className="grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer"
+            className="hidden md:grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer"
           >
             <EyeOff className="size-4" />
           </button>
 
-          {/* Download button */}
           <a
             href={fullUrl}
             download={filename}
             target="_blank"
             rel="noopener noreferrer"
             title="Download / Open full resolution"
-            className="grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer"
+            className="hidden md:grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer"
           >
             <Download className="size-4" />
           </a>
 
-          {/* ── Vertical Divider ── */}
-          <div className="h-5 w-[1px] bg-white/20 mx-0.5 sm:mx-1 shrink-0" />
+          {/* Desktop-only Vertical Divider */}
+          <div className="hidden md:block h-5 w-[1px] bg-white/20 mx-0.5 sm:mx-1 shrink-0" />
 
           {/* Existing Reaction Pills Display */}
           {Array.isArray(currentMsg?.reactions) && currentMsg.reactions.length > 0 && (
-            <div className="flex items-center gap-1 max-w-[140px] sm:max-w-[200px] overflow-x-auto py-0.5 scroll-slim shrink-0">
+            <div className="flex items-center gap-1 max-w-[120px] sm:max-w-[200px] overflow-x-auto py-0.5 scroll-slim shrink-0">
               {currentMsg.reactions.map((r) => (
                 <button
                   key={r.emoji}
@@ -556,11 +558,14 @@ export function FullscreenLightbox({
             </div>
           )}
 
-          {/* Reaction Picker Button & Popover */}
+          {/* Reaction Picker Button & Popover (Mobile + Desktop) */}
           <div className="relative">
             <button
               type="button"
-              onClick={() => setReactionPickerOpen((p) => !p)}
+              onClick={() => {
+                setReactionPickerOpen((p) => !p);
+                setMobileMenuOpen(false);
+              }}
               title="Add Reaction"
               className={cn(
                 "grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer",
@@ -595,41 +600,137 @@ export function FullscreenLightbox({
             )}
           </div>
 
-          {/* Reply */}
+          {/* Desktop-only Reply, Forward, Delete */}
           <button
             type="button"
             onClick={() => setIsReplying((prev) => !prev)}
             title="Reply"
             className={cn(
-              "grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer",
+              "hidden md:grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer",
               isReplying && "bg-white/25 ring-1 ring-white/30 text-white"
             )}
           >
             <Reply className="size-4" />
           </button>
 
-          {/* Forward */}
           <button
             type="button"
             onClick={() => onForward && onForward(currentMsg)}
             title="Forward"
-            className="grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer"
+            className="hidden md:grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer"
           >
             <Forward className="size-4" />
           </button>
 
-          {/* Common Delete button (opens Delete modal) */}
           <button
             type="button"
             onClick={() => onDelete && onDelete(currentMsg)}
             title="Delete"
-            className="grid size-9 place-items-center rounded-full bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 hover:text-rose-300 transition-all active:scale-95 border border-rose-500/20 cursor-pointer"
+            className="hidden md:grid size-9 place-items-center rounded-full bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 hover:text-rose-300 transition-all active:scale-95 border border-rose-500/20 cursor-pointer"
           >
             <Trash2 className="size-4" />
           </button>
 
-          {/* ── Vertical Divider ── */}
-          <div className="h-5 w-[1px] bg-white/20 mx-0.5 sm:mx-1 shrink-0" />
+          {/* ── Mobile-only Three-Dots Menu Button & Dropdown ── */}
+          <div className="relative md:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen((p) => !p);
+                setReactionPickerOpen(false);
+              }}
+              title="More options"
+              className={cn(
+                "grid size-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 cursor-pointer",
+                mobileMenuOpen && "bg-white/25 ring-1 ring-white/30 text-white"
+              )}
+            >
+              <MoreVertical className="size-4" />
+            </button>
+
+            {mobileMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-44 rounded-2xl bg-zinc-900/95 border border-white/15 py-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100 flex flex-col text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsReplying((p) => !p);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/10 transition-colors cursor-pointer text-white/90"
+                >
+                  <Reply className="size-3.5 text-white/70" />
+                  <span>Reply</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onForward) onForward(currentMsg);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/10 transition-colors cursor-pointer text-white/90"
+                >
+                  <Forward className="size-3.5 text-white/70" />
+                  <span>Forward</span>
+                </button>
+
+                <a
+                  href={fullUrl}
+                  download={filename}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/10 transition-colors cursor-pointer text-white/90"
+                >
+                  <Download className="size-3.5 text-white/70" />
+                  <span>Download</span>
+                </a>
+
+                {!isCurrentVideo && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleZoom();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/10 transition-colors cursor-pointer text-white/90"
+                  >
+                    {zoomLevel === 1 ? <ZoomIn className="size-3.5 text-white/70" /> : <ZoomOut className="size-3.5 text-white/70" />}
+                    <span>{zoomLevel === 1 ? "Zoom in" : "Reset zoom"}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChrome(false);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/10 transition-colors cursor-pointer text-white/90"
+                >
+                  <EyeOff className="size-3.5 text-white/70" />
+                  <span>Focus mode</span>
+                </button>
+
+                <div className="my-1 border-t border-white/10" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onDelete) onDelete(currentMsg);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-rose-500/15 text-rose-400 transition-colors cursor-pointer font-medium"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop-only Vertical Divider */}
+          <div className="hidden md:block h-5 w-[1px] bg-white/20 mx-0.5 sm:mx-1 shrink-0" />
 
           {/* Close button */}
           <button

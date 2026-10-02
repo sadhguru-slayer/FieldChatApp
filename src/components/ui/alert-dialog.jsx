@@ -11,7 +11,7 @@ function AlertDialogOverlay({ className, ...props }) {
   return (
     <AlertDialogPrimitive.Overlay
       className={cn(
-        "fc-dialog-overlay fixed inset-0 z-50 bg-black/70 backdrop-blur-xs",
+        "fc-dialog-overlay fixed inset-0 z-[100000] bg-black/70 backdrop-blur-xs",
         className
       )}
       {...props}
@@ -23,10 +23,10 @@ function AlertDialogContent({ className, ...props }) {
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4">
         <AlertDialogPrimitive.Content
           className={cn(
-            "fc-dialog-content relative z-50 grid w-full max-w-lg gap-4 border border-border/50 bg-sidebar/95 backdrop-blur-2xl p-5 md:p-6 shadow-2xl rounded-2xl",
+            "fc-dialog-content relative z-[100001] grid w-full max-w-lg gap-4 border border-border/50 bg-sidebar/95 backdrop-blur-2xl p-5 md:p-6 shadow-2xl rounded-2xl",
             className
           )}
           {...props}
