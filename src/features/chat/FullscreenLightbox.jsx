@@ -413,9 +413,10 @@ export function FullscreenLightbox({ message, messages = [], onClose, onSelect }
 
   const currentMsg = mediaMessages[currentIndex] || mediaMessages[0];
   const senderName = currentMsg?.senderName || currentMsg?.display_name || currentMsg?.username || "Someone";
+  const isCurrentGif = Boolean(currentMsg?.isGif || currentMsg?.type === "gif" || (currentMsg?.mediaName && currentMsg?.mediaName.startsWith("[GIF]")) || /\.gif$/i.test(currentMsg?.mediaName || currentMsg?.mediaUrl || ""));
+  const isCurrentVideo = !isCurrentGif && /\.(mp4|webm|ogg|mov|m4v)$/i.test(currentMsg?.mediaName || currentMsg?.mediaUrl || "");
   const caption = currentMsg?.text || "";
-  const isCurrentVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(currentMsg?.mediaName || currentMsg?.mediaUrl || "");
-  const filename = currentMsg?.mediaName || (isCurrentVideo ? "video.mp4" : "image.jpg");
+  const filename = currentMsg?.mediaName || (isCurrentGif ? "animation.gif" : isCurrentVideo ? "video.mp4" : "image.jpg");
   const fullUrl = getFullMediaUrl(currentMsg?.mediaUrl);
 
   const toggleZoom = () => {
@@ -529,7 +530,8 @@ export function FullscreenLightbox({ message, messages = [], onClose, onSelect }
           <div className="flex h-full touch-pan-y">
             {mediaMessages.map((m, idx) => {
               const itemUrl = getFullMediaUrl(m.mediaUrl);
-              const isVideoItem = /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
+              const isGifItem = Boolean(m.isGif || m.type === "gif" || (m.mediaName && m.mediaName.startsWith("[GIF]")) || /\.gif$/i.test(m.mediaName || m.mediaUrl || ""));
+              const isVideoItem = !isGifItem && /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
 
               return (
                 <div
@@ -537,7 +539,26 @@ export function FullscreenLightbox({ message, messages = [], onClose, onSelect }
                   className="embla__slide flex-[0_0_100%] min-w-0 h-full relative flex items-center justify-center p-2 md:p-6 overflow-hidden select-none"
                 >
                   <div className="embla__parallax__layer relative w-full h-full flex items-center justify-center will-change-transform">
-                    {isVideoItem ? (
+                    {isGifItem ? (
+                      <div className="relative max-w-full max-h-[82vh] flex items-center justify-center">
+                        {/\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "") || m.isGif ? (
+                          <video
+                            src={itemUrl}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="max-w-full max-h-[80vh] md:max-h-[82vh] object-contain rounded-2xl shadow-2xl ring-1 ring-white/10 select-none"
+                          />
+                        ) : (
+                          <img
+                            src={itemUrl}
+                            alt={m.mediaName || "GIF"}
+                            className="max-w-full max-h-[80vh] md:max-h-[82vh] object-contain rounded-2xl shadow-2xl ring-1 ring-white/10 select-none"
+                          />
+                        )}
+                      </div>
+                    ) : isVideoItem ? (
                       <CustomVideoPlayer
                         src={itemUrl}
                         isActive={currentIndex === idx}

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { formatTime } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn, getFullMediaUrl } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { FormattedMessageText } from "@/components/FormattedMessageText";
 import { LinkPreview } from "@/components/LinkPreview";
@@ -116,23 +116,6 @@ function SystemMessage({ text }) {
 }
 
 // ─── Media Attachment Rendering ──────────────────────────────────────────────
-function getFullMediaUrl(url) {
-  if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-
-  const storageUrl = import.meta.env.VITE_STORAGE_URL;
-  if (storageUrl) {
-    return `${storageUrl.replace(/\/$/, "")}${url}`;
-  }
-
-  if (typeof window !== "undefined") {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    return `${protocol}//${hostname}:9000${url}`;
-  }
-  return `http://localhost:9000${url}`;
-}
-
 function PdfAttachmentPreview({ mediaUrl, mediaName, mine, onPdfClick }) {
   const [thumbnailUrl, setThumbnailUrl] = useState(null);
   const fullUrl = getFullMediaUrl(mediaUrl);
@@ -222,7 +205,8 @@ function PdfAttachmentPreview({ mediaUrl, mediaName, mine, onPdfClick }) {
 function MediaAttachment({ mediaUrl, mediaName, mine, onPdfClick }) {
   const isImage = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(mediaName || mediaUrl || "");
   const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(mediaName || mediaUrl || "");
-  if (isImage || isVideo) return null; // Handled directly in bubble code for edge-to-edge look
+  const isGif = (mediaName && mediaName.startsWith("[GIF]")) || /\.gif$/i.test(mediaName || mediaUrl || "");
+  if (isImage || isVideo || isGif) return null; // Handled directly in bubble code for edge-to-edge look
 
   const isPdf = /\.pdf$/i.test(mediaName || mediaUrl || "");
   const fullUrl = getFullMediaUrl(mediaUrl);
@@ -515,12 +499,12 @@ function MessageRowBase({
 
             {/* ── Bubble ── */}
             {(() => {
-              const isGifMedia = m.mediaUrl && (/\.gif$/i.test(m.mediaName || m.mediaUrl || "") || m.isGif || m.type === "gif");
+              const isGifMedia = m.mediaUrl && (Boolean(m.isGif) || /\.gif$/i.test(m.mediaName || m.mediaUrl || "") || m.type === "gif" || (m.mediaName && m.mediaName.startsWith("[GIF]")));
               const isImageMedia = m.mediaUrl && !isGifMedia && /\.(jpeg|jpg|png|webp|svg|bmp)$/i.test(m.mediaName || m.mediaUrl || "");
               const isVideoMedia = m.mediaUrl && !isGifMedia && /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
               const isMedia = isGifMedia || isImageMedia || isVideoMedia;
               const isMediaOnly = isMedia && !m.text && !m.replyTo;
-              const isMediaWithText = isMedia && m.text;
+              const isMediaWithText = isMedia && (m.text || m.replyTo);
 
               if (isMediaOnly) {
                 return (
@@ -538,6 +522,7 @@ function MessageRowBase({
                       <LazyGif
                         src={m.mediaUrl}
                         alt={m.mediaName || "GIF"}
+                        isVideo={!/\.(png|jpe?g|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "")}
                         className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -612,6 +597,7 @@ function MessageRowBase({
                         <LazyGif
                           src={m.mediaUrl}
                           alt={m.mediaName || "GIF"}
+                          isVideo={!/\.(png|jpe?g|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "")}
                           className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full"
                           onClick={(e) => {
                             e.stopPropagation();

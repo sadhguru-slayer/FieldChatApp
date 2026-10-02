@@ -54,6 +54,7 @@ function normalizeEvents(events) {
 
       mediaUrl: data.media_url || null,
       mediaName: data.media_name || null,
+      isGif: Boolean(data.is_gif || (data.media_name && (data.media_name.startsWith("[GIF]") || /\.gif$/i.test(data.media_name)))),
 
       replyTo: data.reply_to
         ? {
@@ -106,7 +107,7 @@ export const getMessages = async ({ conversationId, pageParam = null }) => {
 };
 
 /** POST /api/messages/create-message */
-export const sendMessage = async ({ conversationId, text, replyToId = null, fileUrl = null, fileName = null, clientMessageId = null }) => {
+export const sendMessage = async ({ conversationId, text, replyToId = null, fileUrl = null, fileName = null, clientMessageId = null, isGif = false }) => {
   const params = new URLSearchParams({
     conversation_id: conversationId,
     content: text || "",
@@ -114,6 +115,7 @@ export const sendMessage = async ({ conversationId, text, replyToId = null, file
   if (replyToId) params.set("reply_to_message_id", replyToId);
   if (fileUrl) params.set("media_url", fileUrl);
   if (fileName) params.set("media_name", fileName);
+  if (isGif) params.set("is_gif", "true");
   if (clientMessageId) params.set("client_message_id", clientMessageId);
   return request(`/api/messages/create-message?${params}`, { method: "POST" });
 };

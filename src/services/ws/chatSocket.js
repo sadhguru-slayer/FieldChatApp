@@ -50,7 +50,7 @@ export function sendTyping(conversationId) {
 /**
  * Create a new message via WebSocket
  */
-export function createMessage(conversationId, content, replyToMessageId = null, fileUrl = null, fileName = null, clientMessageId = null) {
+export function createMessage(conversationId, content, replyToMessageId = null, fileUrl = null, fileName = null, clientMessageId = null, isGif = false) {
   if (!conversationId || (!content && !fileUrl)) return false;
   return wsClient.send({
     event: MessageEvent.MESSAGE_CREATED,
@@ -59,6 +59,7 @@ export function createMessage(conversationId, content, replyToMessageId = null, 
     reply_to_message_id: replyToMessageId ? String(replyToMessageId) : null,
     media_url: fileUrl,
     media_name: fileName,
+    is_gif: Boolean(isGif),
     client_message_id: clientMessageId,
   });
 }

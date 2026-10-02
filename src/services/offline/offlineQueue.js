@@ -212,6 +212,7 @@ export async function clearOutbox() {
 }
 
 const inFlightSends = new Set();
+let isFlushing = false;
 
 /**
  * Flushes the offline message queue by attempting to send all pending messages in FIFO order.

@@ -845,6 +845,7 @@ export function useRealtimeSync(authed) {
                 deletedForEveryone: false,
                 mediaUrl: payload.media_url || null,
                 mediaName: payload.media_name || null,
+                isGif: Boolean(payload.is_gif || (payload.media_name && (payload.media_name.startsWith("[GIF]") || /\.gif$/i.test(payload.media_name)))),
                 replyTo: payload.reply_to ? {
                   id: payload.reply_to.message_id,
                   senderId: payload.reply_to.sender_id,

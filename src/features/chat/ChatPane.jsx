@@ -869,7 +869,7 @@ export function ChatPane() {
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const sendMut = useMutation({
-    onMutate: async ({ text, replyToId, fileUrl, fileName }) => {
+    onMutate: async ({ text, replyToId, fileUrl, fileName, isGif }) => {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       const createdAt = new Date().toISOString();
 
@@ -923,6 +923,7 @@ export function ChatPane() {
         deletedForEveryone: false,
         mediaUrl: fileUrl || null,
         mediaName: fileName || null,
+        isGif: Boolean(isGif),
         replyTo: replyContext,
         reactions: [],
       };
@@ -957,11 +958,12 @@ export function ChatPane() {
             senderName: "You",
             display_name: me?.display_name || me?.username || "You",
             username: me?.username || "You",
-            text: text || (fileUrl ? "Attachment" : ""),
+            text: text || (isGif ? "👾 GIF" : fileUrl ? "Attachment" : ""),
             deletedForEveryone: false,
             createdAt,
             mediaUrl: fileUrl || null,
             mediaName: fileName || null,
+            isGif: Boolean(isGif),
           },
         };
         return [updated, ...old.filter((c) => String(c.id) !== String(activeId))];
@@ -983,20 +985,20 @@ export function ChatPane() {
         }).catch((err) => console.warn("[OfflineDB] Save error:", err));
       }
 
-      return { tempId, text, replyToId, fileUrl, fileName, createdAt, replyContext };
+      return { tempId, text, replyToId, fileUrl, fileName, isGif, createdAt, replyContext };
     },
-    mutationFn: async ({ text, replyToId, fileUrl, fileName }, context) => {
+    mutationFn: async ({ text, replyToId, fileUrl, fileName, isGif }, context) => {
       const isOnline = typeof navigator === "undefined" || navigator.onLine;
       let sent = false;
       const tempId = context?.tempId;
 
       if (isOnline && wsClient.isConnected) {
-        sent = wsCreateMessage(activeId, text, replyToId, fileUrl, fileName, tempId);
+        sent = wsCreateMessage(activeId, text, replyToId, fileUrl, fileName, tempId, isGif);
       }
 
       if (!sent) {
         try {
-          const res = await sendMessage({ conversationId: activeId, text, replyToId, fileUrl, fileName, clientMessageId: tempId });
+          const res = await sendMessage({ conversationId: activeId, text, replyToId, fileUrl, fileName, clientMessageId: tempId, isGif });
           return { res, sentViaRest: true };
         } catch (err) {
           console.warn("[Send] Dispatch failed, remaining queued offline:", err);
@@ -1536,7 +1538,7 @@ export function ChatPane() {
         </div>
       ) : (
         <Composer
-          onSend={(text, replyToId, fileUrl, fileName) => sendMut.mutate({ text, replyToId, fileUrl, fileName })}
+          onSend={(text, replyToId, fileUrl, fileName, isGif) => sendMut.mutate({ text, replyToId, fileUrl, fileName, isGif })}
           onEdit={(editing, newText) => editMut.mutate({ msg: editing, newText })}
           disabled={false}
         />

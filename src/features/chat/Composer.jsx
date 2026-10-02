@@ -247,7 +247,11 @@ export function Composer({ onSend, onEdit }) {
               )
             );
           });
-          uploadedFiles.push({ url: res.url, name: fileItem.name });
+          uploadedFiles.push({
+            url: res.url,
+            name: fileItem.isGif ? `[GIF] ${fileItem.name}` : fileItem.name,
+            isGif: Boolean(fileItem.isGif),
+          });
         })
       );
     } catch (err) {
@@ -274,17 +278,17 @@ export function Composer({ onSend, onEdit }) {
       if (effectiveText) {
         // First file sent with caption / text + reply context
         const first = uploadedFiles[0];
-        onSend(effectiveText, reply?.id ?? null, first.url, first.name);
+        onSend(effectiveText, reply?.id ?? null, first.url, first.name, first.isGif);
 
         // Subsequent files sent as separate messages
         for (let i = 1; i < uploadedFiles.length; i++) {
-          onSend("", null, uploadedFiles[i].url, uploadedFiles[i].name);
+          onSend("", null, uploadedFiles[i].url, uploadedFiles[i].name, uploadedFiles[i].isGif);
         }
       } else {
         // Each file sent as separate message
         uploadedFiles.forEach((item, idx) => {
           const replyId = idx === 0 ? (reply?.id ?? null) : null;
-          onSend("", replyId, item.url, item.name);
+          onSend("", replyId, item.url, item.name, item.isGif);
         });
       }
     }
