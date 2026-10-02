@@ -117,10 +117,10 @@ export function MessageList({
       setActiveActionMsgId(null);
     } else {
       setActiveActionMsgId(msgId);
-      // Auto-clear active action highlight after 4.5 seconds of inactivity
+      // Auto-clear active action highlight after 7.5 seconds of inactivity
       inactivityTimerRef.current = setTimeout(() => {
         setActiveActionMsgId(null);
-      }, 4500);
+      }, 7500);
     }
   };
 

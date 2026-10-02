@@ -20,6 +20,7 @@ import {
   X,
   Check,
   ZoomIn,
+  Layers,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { MessageList } from "./MessageList";
@@ -29,6 +30,16 @@ import { useAppStore } from "@/store/useAppStore";
 import { useAnimatePresence } from "@/hooks/useAnimatePresence";
 import { formatLastSeen } from "@/lib/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   deleteMessageForEveryone,
@@ -48,6 +59,7 @@ import {
   addMembers as addMembersApi,
   getGroupMembers,
   getUsers,
+  clearChat as clearChatApi,
 } from "@/services/api";
 import {
   saveOfflineMessage,
@@ -190,7 +202,16 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
 }
 
 // ─── Header Three-Dot Action Menu ─────────────────────────────────────────────
-function ConversationHeaderMenu({ isGroup, onToggleDetails, onAddMember, onLeaveGroup }) {
+function ConversationHeaderMenu({
+  isGroup,
+  onToggleDetails,
+  onOpenUserInfo,
+  onCreateGroup,
+  onOpenMLD,
+  onClearChat,
+  onAddMember,
+  onLeaveGroup,
+}) {
   const [open, setOpen] = useState(false);
   const { shouldRender, isClosing } = useAnimatePresence(open, 150);
 
@@ -200,7 +221,7 @@ function ConversationHeaderMenu({ isGroup, onToggleDetails, onAddMember, onLeave
         type="button"
         onClick={() => setOpen((p) => !p)}
         aria-label="Actions menu"
-        className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors no-tap-highlight"
+        className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors no-tap-highlight cursor-pointer"
       >
         <MoreVertical className="size-4.5" />
       </button>
@@ -213,7 +234,7 @@ function ConversationHeaderMenu({ isGroup, onToggleDetails, onAddMember, onLeave
           />
           <div
             className={cn(
-              "absolute right-0 top-11 z-50 w-48 rounded-2xl border border-border/50 bg-sidebar/95 backdrop-blur-xl p-1.5 shadow-2xl ring-1 ring-white/5",
+              "absolute right-0 top-11 z-50 w-52 rounded-2xl border border-border/50 bg-sidebar/95 backdrop-blur-xl p-1.5 shadow-2xl ring-1 ring-white/5",
               isClosing ? "fc-scale-out" : "fc-scale-in"
             )}
           >
@@ -222,7 +243,7 @@ function ConversationHeaderMenu({ isGroup, onToggleDetails, onAddMember, onLeave
                 <button
                   type="button"
                   onClick={() => { onToggleDetails(); setOpen(false); }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors cursor-pointer"
                 >
                   <Users className="size-3.5 text-accent shrink-0" />
                   <span>Group Info</span>
@@ -231,32 +252,81 @@ function ConversationHeaderMenu({ isGroup, onToggleDetails, onAddMember, onLeave
                 <button
                   type="button"
                   onClick={() => { onAddMember(); setOpen(false); }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors cursor-pointer"
                 >
                   <UserPlus className="size-3.5 text-emerald-400 shrink-0" />
                   <span>Add Member</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { onOpenMLD(); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <Layers className="size-3.5 text-indigo-400 shrink-0" />
+                  <span>Media, Links & Docs</span>
                 </button>
 
                 <div className="my-1 border-t border-border/30" />
 
                 <button
                   type="button"
+                  onClick={() => { onClearChat(); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:bg-elevated hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <Trash2 className="size-3.5 shrink-0" />
+                  <span>Clear Chat</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => { onLeaveGroup(); setOpen(false); }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                 >
                   <LogOut className="size-3.5 shrink-0" />
                   <span>Exit Group</span>
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                onClick={() => { onToggleDetails(); setOpen(false); }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors"
-              >
-                <User className="size-3.5 text-accent shrink-0" />
-                <span>User Info</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => { onCreateGroup(); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <Users className="size-3.5 text-emerald-400 shrink-0" />
+                  <span>New Group</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { onOpenUserInfo(); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <User className="size-3.5 text-accent shrink-0" />
+                  <span>User Info</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { onOpenMLD(); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground/90 hover:bg-elevated hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <Layers className="size-3.5 text-indigo-400 shrink-0" />
+                  <span>Media, Links & Docs</span>
+                </button>
+
+                <div className="my-1 border-t border-border/30" />
+
+                <button
+                  type="button"
+                  onClick={() => { onClearChat(); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="size-3.5 shrink-0" />
+                  <span>Clear Chat</span>
+                </button>
+              </>
             )}
           </div>
         </>
@@ -554,6 +624,7 @@ export function ChatPane() {
   const setActiveId = useAppStore((s) => s.setActiveId);
   const closePanel = useAppStore((s) => s.closePanel);
   const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
+  const setCreateGroupOpen = useAppStore((s) => s.setCreateGroupOpen);
 
   const qc = useQueryClient();
   const [isFocused, setIsFocused] = useState(
@@ -585,6 +656,7 @@ export function ChatPane() {
   const [reactionsDetailMsg, setReactionsDetailMsg] = useState(null);
   const [selectedMediaMessage, setSelectedMediaMessage] = useState(null);
   const [headerAvatarViewerOpen, setHeaderAvatarViewerOpen] = useState(false);
+  const [clearChatConfirmOpen, setClearChatConfirmOpen] = useState(false);
 
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedMsgIds, setSelectedMsgIds] = useState(new Set());
@@ -624,6 +696,17 @@ export function ChatPane() {
       closePanel();
     },
     onError: (err) => toast.error(err.message || "Failed to leave group"),
+  });
+
+  const clearChatMut = useMutation({
+    mutationFn: () => clearChatApi(activeId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messages", activeId] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success("Chat history cleared");
+      setClearChatConfirmOpen(false);
+    },
+    onError: (err) => toast.error(err.message || "Failed to clear chat"),
   });
 
   useEffect(() => {
@@ -1288,41 +1371,23 @@ export function ChatPane() {
             <ArrowLeft className="size-5" />
           </button>
 
-          {/* Avatar — clicking opens full-screen image viewer */}
+          {/* Avatar — clicking opens Chat/Group Info */}
           <button
             type="button"
-            onClick={() => {
-              if (activeConv.avatar) {
-                setHeaderAvatarViewerOpen(true);
-              } else if (isGroup) {
-                togglePanel("details");
-              }
-            }}
+            onClick={() => togglePanel("details")}
             className={cn(
-              "relative group shrink-0 rounded-full no-tap-highlight transition-opacity",
-              activeConv.avatar ? "cursor-pointer hover:opacity-90" : "cursor-default"
+              "relative group shrink-0 rounded-full no-tap-highlight transition-opacity cursor-pointer hover:opacity-90"
             )}
-            title={activeConv.avatar ? "Click to view photo" : ""}
+            title="View chat info"
           >
             <Avatar src={activeConv.avatar} name={activeConv.title} size="md" />
-            {activeConv.avatar && (
-              <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ZoomIn className="size-3.5 text-white" />
-              </span>
-            )}
           </button>
 
-          {/* Name + status — clicking opens profile modal (DM) or group info (group) */}
+          {/* Name + status — clicking opens Chat Info (DM) or Group Info (group) */}
           <button
             type="button"
-            onClick={() => {
-              if (isGroup) {
-                togglePanel("details");
-              } else if (activeConv.otherUserId) {
-                setProfileModalUserId(activeConv.otherUserId);
-              }
-            }}
-            className="flex flex-col min-w-0 text-left ml-2.5 hover:opacity-80 transition-opacity no-tap-highlight"
+            onClick={() => togglePanel("details")}
+            className="flex flex-col min-w-0 text-left ml-2.5 hover:opacity-80 transition-opacity no-tap-highlight cursor-pointer"
           >
             <h1 className="truncate text-[13.5px] font-semibold text-foreground tracking-tight leading-tight">
               {activeConv.title}
@@ -1352,13 +1417,15 @@ export function ChatPane() {
         {/* Header Action Three-Dot Menu (⋮) */}
         <ConversationHeaderMenu
           isGroup={isGroup}
-          onToggleDetails={() => {
-            if (isGroup) {
-              togglePanel("details");
-            } else if (activeConv.otherUserId) {
+          onToggleDetails={() => togglePanel("details")}
+          onOpenUserInfo={() => {
+            if (activeConv.otherUserId) {
               setProfileModalUserId(activeConv.otherUserId);
             }
           }}
+          onCreateGroup={() => setCreateGroupOpen(true)}
+          onOpenMLD={() => togglePanel("details")}
+          onClearChat={() => setClearChatConfirmOpen(true)}
           onAddMember={() => setGroupAddMemberOpen(true)}
           onLeaveGroup={() => leaveGroupMut.mutate()}
         />
@@ -1552,6 +1619,27 @@ export function ChatPane() {
           </div>
         </div>
       )}
+      {/* ── Clear Chat Confirmation Dialog ── */}
+      <AlertDialog open={clearChatConfirmOpen} onOpenChange={setClearChatConfirmOpen}>
+        <AlertDialogContent className="bg-sidebar border-border/40 text-foreground max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm font-bold">Clear Chat History?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground">
+              Are you sure you want to clear this chat history? Messages will be deleted for you. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2 flex items-center justify-end gap-2">
+            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => clearChatMut.mutate()}
+              disabled={clearChatMut.isPending}
+              className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {clearChatMut.isPending ? "Clearing..." : "Clear Chat"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

@@ -175,3 +175,14 @@ export const deleteGroup = async ({ conversationId }) =>
   request(`/api/chat/delete-group?group_id=${conversationId}`, {
     method: "DELETE",
   });
+
+/** GET /api/chat/common-groups/:targetUserId */
+export const getCommonGroups = async (targetUserId) => {
+  try {
+    return await request(`/api/chat/common-groups/${targetUserId}`);
+  } catch (err) {
+    console.warn("Failed to fetch common groups", err);
+    return [];
+  }
+};
+

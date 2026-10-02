@@ -9,10 +9,12 @@ import { markNotificationAsRead, getMyUserId } from "@/services/api";
 import { removeOfflineMessage, flushOfflineQueue } from "@/services/offline/offlineQueue";
 import { cn } from "@/lib/utils";
 
+let globalQueryClient = null;
 let lastPopPlayedAt = 0;
 
 function playPopSound(queryClient) {
-  const settings = queryClient.getQueryData(["settings"]);
+  const qc = queryClient || globalQueryClient;
+  const settings = qc?.getQueryData(["settings"]);
   const soundEnabled = settings?.sound_enabled ?? true;
   if (!soundEnabled) return;
 
@@ -174,7 +176,7 @@ async function dispatchGroupedNotification(tag, buffer) {
     ? newMessages.join('\n')
     : buffer.body;
 
-  // 1. Dispatch custom in-app toast notification
+  // 1. Dispatch custom in-app toast notification (always displayed for in-app alert)
   dispatchGroupedToast(
     tag,
     buffer.title,
@@ -185,8 +187,11 @@ async function dispatchGroupedNotification(tag, buffer) {
     buffer.action
   );
 
-  // 2. Dispatch native OS notification if permission is granted
-  if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+  // 2. Dispatch native OS notification ONLY if push notifications are enabled in user settings
+  const settings = globalQueryClient?.getQueryData(["settings"]);
+  const pushEnabled = settings?.notifications_enabled ?? true;
+
+  if (pushEnabled && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
     let baseTitle = buffer.title;
     baseTitle = baseTitle.replace(/\s*\(\d+\s*new messages?\)/i, "");
     const cleanedTitle = baseTitle.replace('New message from ', '');
@@ -260,17 +265,20 @@ function queueGroupedNotification(notif, targetConvId, notifData) {
 
 export function useRealtimeSync(authed) {
   const queryClient = useQueryClient();
+  globalQueryClient = queryClient;
 
   // Request native Web Notification permission on mount / authentication
   useEffect(() => {
     if (authed && typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission === "default") {
+      const settings = queryClient.getQueryData(["settings"]);
+      const pushEnabled = settings?.notifications_enabled ?? true;
+      if (pushEnabled && Notification.permission === "default") {
         Notification.requestPermission().catch((err) => {
           console.warn("[Notifications] Permission request error:", err);
         });
       }
     }
-  }, [authed]);
+  }, [authed, queryClient]);
 
   // Handle App resume / visibility change (e.g. mobile app opened from background/homescreen after idle time)
   useEffect(() => {

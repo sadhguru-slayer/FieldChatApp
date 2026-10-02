@@ -199,12 +199,12 @@ function ChatApp() {
       {/* ── Desktop Drawer (Hamburger triggered) ───────────────────────── */}
       <DesktopMenuDrawer isOpen={menuOpen} me={me} onClose={() => setMenuOpen(false)} />
 
-      {/* ── Sidebar — On Mobile: shown in list view. On Desktop: compact sidebar panel ── */}
+      {/* ── Sidebar — On Mobile: shown in list view only when activeScreen is chat. On Desktop: compact sidebar panel ── */}
       <div
         className={cn(
           "h-full shrink-0 border-r border-border/30",
           "md:w-[320px] md:block",
-          mobileView === "list" ? "w-full block" : "hidden md:block"
+          mobileView === "list" && activeScreen === "chat" ? "w-full block" : "hidden md:block"
         )}
       >
         <Sidebar onOpenSettings={() => setActiveScreen("settings")} />
@@ -214,7 +214,7 @@ function ChatApp() {
       <div
         className={cn(
           "relative flex h-full flex-1 flex-col min-w-0 bg-[#09090b] overflow-hidden",
-          mobileView === "chat" || panel === "details" ? "flex" : "hidden md:flex"
+          activeScreen !== "chat" || mobileView === "chat" || panel === "details" ? "flex" : "hidden md:flex"
         )}
       >
         {/* Base Screens */}

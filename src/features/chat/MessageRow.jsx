@@ -3,18 +3,18 @@ import {
   Check,
   CheckCheck,
   Clock,
-  Copy,
-  Pencil,
   Reply,
-  Trash2,
   Paperclip,
   Play,
-  CornerUpLeft,
+  FileText,
+  Download,
+  MoreHorizontal,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
+import { FormattedMessageText } from "@/components/FormattedMessageText";
 
 // ─── Delivery Ticks ────────────────────────────────────────────────────────
 function Ticks({ delivered, read, mine, status }) {
@@ -60,8 +60,8 @@ function ReplyPreview({ replyTo, mine, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "mb-1.5 flex w-full items-stretch overflow-hidden rounded-xl text-left text-[11px] transition-all active:opacity-75",
-        mine ? "bg-black/20 hover:bg-black/30 text-white" : "bg-white/[0.06] hover:bg-white/[0.1] text-zinc-200"
+        "mb-1.5 flex w-full items-stretch overflow-hidden rounded-xl text-left text-[11px] transition-all active:opacity-75 select-none",
+        mine ? "bg-black/25 hover:bg-black/35 text-white" : "bg-white/[0.06] hover:bg-white/[0.1] text-zinc-200"
       )}
     >
       <span
@@ -89,9 +89,9 @@ function ReactionPill({ emoji, count, reactedByMe, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all active:scale-95 shadow-2xs",
+        "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all active:scale-95 shadow-2xs select-none",
         reactedByMe
-          ? "border-accent/40 bg-accent/10 text-accent"
+          ? "border-accent/40 bg-accent/15 text-accent"
           : "border-border/60 bg-elevated/80 text-muted-foreground hover:text-foreground hover:bg-elevated"
       )}
     >
@@ -133,33 +133,91 @@ function getFullMediaUrl(url) {
 function MediaAttachment({ mediaUrl, mediaName, mine }) {
   const isImage = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(mediaName || mediaUrl || "");
   const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(mediaName || mediaUrl || "");
-  if (isImage || isVideo) return null; // Handled directly in bubble code for premium look
+  if (isImage || isVideo) return null; // Handled directly in bubble code for edge-to-edge look
+
+  const isPdf = /\.pdf$/i.test(mediaName || mediaUrl || "");
   const fullUrl = getFullMediaUrl(mediaUrl);
 
+  if (isPdf) {
+    // ── WhatsApp-style PDF Preview Card with sleek, minimal bezels ──
+    return (
+      <div className="mb-1 w-full min-w-[200px] sm:min-w-[240px]">
+        <a
+          href={fullUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "flex items-center gap-3 rounded-xl p-2.5 transition-all select-none group/pdf",
+            mine
+              ? "bg-black/25 hover:bg-black/35 text-white border border-white/10"
+              : "bg-surface/90 hover:bg-surface text-foreground border border-border/40 shadow-xs"
+          )}
+        >
+          {/* Red PDF Icon Badge */}
+          <div className="relative grid size-10 place-items-center rounded-lg bg-red-500/15 border border-red-500/25 shrink-0 text-red-500">
+            <FileText className="size-5" />
+            <span className="absolute -bottom-1 -right-1 px-1 py-[1px] rounded bg-red-600 text-[8.5px] font-extrabold uppercase text-white tracking-tighter leading-none shadow-xs">
+              PDF
+            </span>
+          </div>
+
+          <div className="min-w-0 flex-1 pr-1">
+            <p className="text-[12px] font-semibold truncate leading-tight group-hover/pdf:underline">
+              {mediaName || "Document.pdf"}
+            </p>
+            <p className="text-[10px] opacity-75 mt-0.5 flex items-center gap-1.5 font-medium">
+              <span className="uppercase text-red-400 font-bold">PDF</span>
+              <span>•</span>
+              <span>Document</span>
+              <span>•</span>
+              <span>Tap to open</span>
+            </p>
+          </div>
+
+          <div
+            className={cn(
+              "grid size-8 place-items-center rounded-lg shrink-0 transition-all active:scale-95",
+              mine
+                ? "bg-white/10 text-white group-hover/pdf:bg-white/20"
+                : "bg-elevated text-muted-foreground group-hover/pdf:text-foreground border border-border/40"
+            )}
+          >
+            <Download className="size-3.5" />
+          </div>
+        </a>
+      </div>
+    );
+  }
+
+  // ── Generic File Attachment ──
   return (
-    <div className="mb-1.5">
+    <div className="mb-1 w-full min-w-[190px]">
       <a
         href={fullUrl}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "flex items-center gap-2.5 rounded-xl border p-2.5 transition-all hover:bg-white/5",
+          "flex items-center gap-2.5 rounded-xl border p-2.5 transition-all hover:bg-white/5 select-none",
           mine
-            ? "bg-black/15 border-white/10 text-white"
-            : "bg-surface border-border text-foreground"
+            ? "bg-black/20 border-white/10 text-white"
+            : "bg-surface border-border text-foreground shadow-2xs"
         )}
       >
         <div className={cn("grid size-9 place-items-center rounded-lg shrink-0", mine ? "bg-white/10" : "bg-elevated")}>
-          <Paperclip className="size-4.5" />
+          <Paperclip className="size-4" />
         </div>
-        <div className="min-w-0 flex-1 pr-2">
-          <p className="text-[11.5px] font-semibold truncate leading-tight">
+        <div className="min-w-0 flex-1 pr-1">
+          <p className="text-[12px] font-semibold truncate leading-tight">
             {mediaName || "Attachment"}
           </p>
           <p className="text-[9.5px] opacity-75 mt-0.5">
             Click to view / download
           </p>
+        </div>
+        <div className={cn("grid size-7 place-items-center rounded-md shrink-0", mine ? "text-white/80" : "text-muted-foreground")}>
+          <Download className="size-3.5" />
         </div>
       </a>
     </div>
@@ -242,9 +300,9 @@ function MessageRowBase({
     }
   };
 
+  // Tap on message highlights the bubble (Teams style) and reveals 3-dot button
   const handleRowClick = (e) => {
     e.stopPropagation();
-    if (isMultiSelectMode) return;
     if (onToggleAction) {
       onToggleAction(m.id);
     }
@@ -252,12 +310,9 @@ function MessageRowBase({
 
   const handleBubbleClick = (e) => {
     e.stopPropagation();
-    if (isMultiSelectMode) {
-      if (onToggleAction) onToggleAction(m.id);
-      return;
+    if (onToggleAction) {
+      onToggleAction(m.id);
     }
-    // Single click/tap opens the context menu
-    onOpenActions(m, e);
   };
 
   const getBubbleRadiusClass = () => {
@@ -300,8 +355,10 @@ function MessageRowBase({
     <div
       id={`msg-${m.id}`}
       className={cn(
-        "group/msg relative flex gap-2 px-3 py-0.5 md:px-4 items-stretch cursor-pointer md:cursor-default overflow-x-clip select-none md:select-text max-w-full",
-        mine ? "justify-end" : "justify-start"
+        "group/msg relative flex gap-2 px-3 py-0.5 md:px-4 items-stretch cursor-pointer select-none md:select-text max-w-full transition-colors duration-150",
+        mine ? "justify-end" : "justify-start",
+        // MS Teams-inspired message row highlight wash when active
+        isActionActive && "bg-accent/[0.05] dark:bg-white/[0.03] rounded-xl"
       )}
       style={{ touchAction: "pan-y" }}
       onClick={handleRowClick}
@@ -324,170 +381,112 @@ function MessageRowBase({
       <div
         ref={bubbleWrapperRef}
         className={cn(
-          "relative z-10 flex items-end gap-2 max-w-full min-w-0 transition-transform",
+          "relative z-10 flex items-end gap-1.5 sm:gap-2 max-w-full min-w-0 transition-transform",
           mine ? "justify-end ml-auto" : "justify-start"
         )}
       >
-      {/* ── Multi-select check ── */}
-      {isMultiSelectMode && (
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onToggleAction) onToggleAction(m.id);
-          }}
-          className="mr-3 self-center flex items-center justify-center shrink-0 cursor-pointer select-none"
-        >
+        {/* ── Multi-select check ── */}
+        {isMultiSelectMode && (
           <div
-            className={cn(
-              "size-5 rounded-full border flex items-center justify-center transition-all",
-              isSelected
-                ? "bg-accent border-accent text-white"
-                : "border-zinc-700 bg-zinc-900/60 hover:border-zinc-500"
-            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onToggleAction) onToggleAction(m.id);
+            }}
+            className="mr-2 self-center flex items-center justify-center shrink-0 cursor-pointer select-none"
           >
-            {isSelected && <Check className="size-3.5 stroke-[3]" />}
+            <div
+              className={cn(
+                "size-5 rounded-full border flex items-center justify-center transition-all",
+                isSelected
+                  ? "bg-accent border-accent text-white"
+                  : "border-zinc-700 bg-zinc-900/60 hover:border-zinc-500"
+              )}
+            >
+              {isSelected && <Check className="size-3.5 stroke-[3]" />}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Avatar column ── */}
-      {!mine && isGroup && (
-        <div className="w-7 shrink-0 self-end mb-[2px]">
-          {showAvatar ? (
+        {/* ── Avatar column ── */}
+        {!mine && isGroup && (
+          <div className="w-7 shrink-0 self-end mb-[2px]">
+            {showAvatar ? (
+              <button
+                type="button"
+                className="hover:opacity-80 transition-opacity cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (m.senderId) setProfileModalUserId(m.senderId);
+                }}
+              >
+                <Avatar src={m.senderAvatar} name={senderDisplayName} size="sm" />
+              </button>
+            ) : (
+              <span className="block w-7" />
+            )}
+          </div>
+        )}
+
+        {/* ── Bubble column ── */}
+        <div className={cn("flex max-w-[22rem] flex-col md:max-w-[26rem]", mine && "items-end")}>
+          {showName && !mine && isGroup && senderDisplayName && (
             <button
               type="button"
-              className="hover:opacity-80 transition-opacity"
+              className="mb-0.5 ml-1 text-left text-[10.5px] font-semibold text-zinc-400 hover:text-zinc-200 transition-colors w-fit cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
                 if (m.senderId) setProfileModalUserId(m.senderId);
               }}
             >
-              <Avatar src={m.senderAvatar} name={senderDisplayName} size="sm" />
-            </button>
-          ) : (
-            <span className="block w-7" />
-          )}
-        </div>
-      )}
-
-      {/* ── Bubble column ── */}
-      <div className={cn("flex max-w-[22rem] flex-col md:max-w-[26rem]", mine && "items-end")}>
-        {showName && !mine && isGroup && senderDisplayName && (
-          <button
-            type="button"
-            className="mb-0.5 ml-1 text-left text-[10px] font-semibold text-zinc-400 hover:text-zinc-200 transition-colors w-fit"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (m.senderId) setProfileModalUserId(m.senderId);
-            }}
-          >
-            {senderDisplayName}
-          </button>
-        )}
-
-        <div className="relative flex items-end">
-          {/* Action button — LEFT of my bubble. Hidden on mobile, invisible (space reserved) on desktop so hover doesn't shift layout */}
-          {mine && !isMultiSelectMode && (
-            <button
-              type="button"
-              aria-label="Actions"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenActions(m, e);
-              }}
-              className={cn(
-                "size-6 place-items-center rounded-md text-muted-foreground/60 transition-all hover:text-foreground hover:bg-elevated shrink-0",
-                isActionActive
-                  ? "grid text-foreground bg-elevated border border-border/40"
-                  : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
-              )}
-            >
-              <span className="text-[11px] leading-none">···</span>
+              {senderDisplayName}
             </button>
           )}
 
-          {/* ── Bubble ── */}
-          {(() => {
-            const isImageMedia = m.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "");
-            const isVideoMedia = m.mediaUrl && /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
-            const isMedia = isImageMedia || isVideoMedia;
-            const isMediaOnly = isMedia && !m.text && !m.replyTo;
-            const isMediaWithText = isMedia && m.text;
+          <div className="relative flex items-center gap-1">
+            {/* ── 3-Dot Action button — LEFT of my bubble. Click on this button opens the context menu ── */}
+            {mine && !isMultiSelectMode && (
+              <button
+                type="button"
+                aria-label="More message options"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenActions(m, e);
+                }}
+                className={cn(
+                  "size-7 place-items-center rounded-lg text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-elevated hover:scale-105 active:scale-95 shrink-0 cursor-pointer shadow-2xs",
+                  isActionActive
+                    ? "grid text-foreground bg-elevated border border-border/60 scale-100 opacity-100"
+                    : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
+                )}
+                title="More options"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </button>
+            )}
 
-            if (isMediaOnly) {
-              return (
-                <div
-                  onClick={handleBubbleClick}
-                  className={cn(
-                    "relative overflow-hidden cursor-pointer select-none md:select-text shadow-md transition-all duration-150 rounded-2xl max-w-[20rem] sm:max-w-[24rem]",
-                    getBubbleRadiusClass(),
-                    (isActionActive || isSelected) && "ring-1.5 ring-accent/60 shadow-xs"
-                  )}
-                >
-                  {isVideoMedia ? (
-                    <div
-                      className="relative w-full max-h-[220px] sm:max-h-[300px] md:max-h-[340px] aspect-[4/3] min-w-[180px] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onMediaClick) onMediaClick(m);
-                        else window.open(getFullMediaUrl(m.mediaUrl), "_blank");
-                      }}
-                    >
-                      <video
-                        src={getFullMediaUrl(m.mediaUrl)}
-                        className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full object-cover"
-                        muted
-                        preload="metadata"
-                      />
-                      <div className="absolute inset-0 grid place-items-center bg-black/25 hover:bg-black/35 transition-colors">
-                        <span className="grid size-11 place-items-center rounded-full bg-black/60 text-white border border-white/10 shadow-lg backdrop-blur-xs transition-transform hover:scale-110 active:scale-95">
-                          <Play className="size-4.5 fill-white ml-0.5" />
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <img
-                      src={getFullMediaUrl(m.mediaUrl)}
-                      alt={m.mediaName || "Image attachment"}
-                      loading="lazy"
-                      className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onMediaClick) {
-                          onMediaClick(m);
-                        } else {
-                          window.open(getFullMediaUrl(m.mediaUrl), "_blank");
-                        }
-                      }}
-                    />
-                  )}
-                  {/* Overlay meta */}
-                  <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-black/65 text-white/95 text-[10.5px] flex items-center gap-1 backdrop-blur-md font-mono select-none whitespace-nowrap shrink-0">
-                    {m.edited && <span className="italic opacity-70 text-[9px]">edited</span>}
-                    {formatTime(m.createdAt)}
-                    {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} status={m.status} />}
-                  </div>
-                </div>
-              );
-            }
+            {/* ── Bubble ── */}
+            {(() => {
+              const isImageMedia = m.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "");
+              const isVideoMedia = m.mediaUrl && /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
+              const isMedia = isImageMedia || isVideoMedia;
+              const isMediaOnly = isMedia && !m.text && !m.replyTo;
+              const isMediaWithText = isMedia && m.text;
 
-            if (isMediaWithText) {
-              return (
-                <div
-                  onClick={handleBubbleClick}
-                  className={cn(
-                    "relative text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-md transition-all duration-150 p-0 overflow-hidden max-w-[20rem] sm:max-w-[24rem] md:max-w-[26rem]",
-                    mine
-                      ? "bg-accent/80 text-white font-normal"
-                      : "bg-zinc-800/40 text-zinc-300 border border-zinc-800/30 font-normal",
-                    getBubbleRadiusClass(),
-                    (isActionActive || isSelected) && "ring-1.5 ring-accent/60 shadow-xs"
-                  )}
-                >
-                  <div className="relative w-full overflow-hidden">
+              if (isMediaOnly) {
+                return (
+                  <div
+                    onClick={handleBubbleClick}
+                    className={cn(
+                      "relative overflow-hidden cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 rounded-2xl max-w-[20rem] sm:max-w-[24rem]",
+                      getBubbleRadiusClass(),
+                      // Teams-style highlight outline when active
+                      isActionActive && "ring-2 ring-accent ring-offset-1 ring-offset-background shadow-md",
+                      isSelected && "ring-2 ring-accent shadow-xs"
+                    )}
+                  >
                     {isVideoMedia ? (
                       <div
-                        className="relative w-full max-h-[180px] sm:max-h-[240px] md:max-h-[260px] aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
+                        className="relative w-full max-h-[220px] sm:max-h-[300px] md:max-h-[340px] aspect-[4/3] min-w-[180px] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (onMediaClick) onMediaClick(m);
@@ -496,7 +495,7 @@ function MessageRowBase({
                       >
                         <video
                           src={getFullMediaUrl(m.mediaUrl)}
-                          className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full object-cover"
+                          className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full object-cover"
                           muted
                           preload="metadata"
                         />
@@ -511,7 +510,7 @@ function MessageRowBase({
                         src={getFullMediaUrl(m.mediaUrl)}
                         alt={m.mediaName || "Image attachment"}
                         loading="lazy"
-                        className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                        className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (onMediaClick) {
@@ -522,133 +521,200 @@ function MessageRowBase({
                         }}
                       />
                     )}
-                  </div>
-                  <div className="px-3.5 pb-2.5 pt-2 text-[13px] leading-[17px]">
-                    {m.replyTo && (
-                      <ReplyPreview
-                        replyTo={m.replyTo}
-                        mine={mine}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onJumpTo(m.replyTo.id);
-                        }}
-                      />
-                    )}
-                    <span className="break-words whitespace-pre-wrap">{m.text}</span>
-
-                    {/* Inline meta */}
-                    <span
-                      className={cn(
-                        "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono whitespace-nowrap",
-                        mine ? "text-accent-foreground/80 font-medium" : "text-muted-foreground/75"
-                      )}
-                    >
-                      {m.edited && <span className="italic opacity-70">edited</span>}
+                    {/* Overlay meta with zero unnecessary bezels */}
+                    <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-md bg-black/65 text-white/95 text-[10px] flex items-center gap-1 backdrop-blur-md font-mono select-none whitespace-nowrap shrink-0">
+                      {m.edited && <span className="italic opacity-70 text-[9px]">edited</span>}
                       {formatTime(m.createdAt)}
                       {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} status={m.status} />}
-                    </span>
-                    <span className="block clear-both h-0" />
+                    </div>
                   </div>
-                </div>
-              );
-            }
+                );
+              }
 
-            // Standard layout for text or file attachment
-            return (
-              <div
-                onClick={handleBubbleClick}
-                className={cn(
-                  "relative px-3.5 py-2.5 text-[13px] leading-[1.45] cursor-pointer select-none md:select-text shadow-md transition-all duration-150 max-w-[20rem] sm:max-w-[24rem] md:max-w-[26rem]",
-                  mine
-                    ? "bg-accent/85 text-white"
-                    : "bg-zinc-800/60 text-zinc-100 border border-zinc-700/40",
-                  getBubbleRadiusClass(),
-                  (isActionActive || isSelected) && "ring-2 ring-accent/50"
-                )}
-              >
-                {m.replyTo && (
-                  <ReplyPreview
-                    replyTo={m.replyTo}
-                    mine={mine}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onJumpTo(m.replyTo.id);
-                    }}
-                  />
-                )}
+              if (isMediaWithText) {
+                return (
+                  <div
+                    onClick={handleBubbleClick}
+                    className={cn(
+                      "relative text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 p-0 overflow-hidden max-w-[20rem] sm:max-w-[24rem] md:max-w-[26rem]",
+                      mine
+                        ? "bg-accent/85 text-white font-normal"
+                        : "bg-zinc-800/60 text-zinc-200 border border-zinc-700/40 font-normal",
+                      getBubbleRadiusClass(),
+                      // Teams-style highlight outline when active
+                      isActionActive && "ring-2 ring-accent ring-offset-1 ring-offset-background shadow-md",
+                      isSelected && "ring-2 ring-accent shadow-xs"
+                    )}
+                  >
+                    <div className="relative w-full overflow-hidden">
+                      {isVideoMedia ? (
+                        <div
+                          className="relative w-full max-h-[180px] sm:max-h-[240px] md:max-h-[260px] aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onMediaClick) onMediaClick(m);
+                            else window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                          }}
+                        >
+                          <video
+                            src={getFullMediaUrl(m.mediaUrl)}
+                            className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full object-cover"
+                            muted
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 grid place-items-center bg-black/25 hover:bg-black/35 transition-colors">
+                            <span className="grid size-11 place-items-center rounded-full bg-black/60 text-white border border-white/10 shadow-lg backdrop-blur-xs transition-transform hover:scale-110 active:scale-95">
+                              <Play className="size-4.5 fill-white ml-0.5" />
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <img
+                          src={getFullMediaUrl(m.mediaUrl)}
+                          alt={m.mediaName || "Image attachment"}
+                          loading="lazy"
+                          className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onMediaClick) {
+                              onMediaClick(m);
+                            } else {
+                              window.open(getFullMediaUrl(m.mediaUrl), "_blank");
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div className="px-3 pb-2 pt-1.5 text-[13px] leading-[17px]">
+                      {m.replyTo && (
+                        <ReplyPreview
+                          replyTo={m.replyTo}
+                          mine={mine}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onJumpTo(m.replyTo.id);
+                          }}
+                        />
+                      )}
+                      {/* Formatted Text with link, IP, phone auto-detection */}
+                      <FormattedMessageText text={m.text} mine={mine} />
 
-                {m.mediaUrl && (
-                  <MediaAttachment
-                    mediaUrl={m.mediaUrl}
-                    mediaName={m.mediaName}
-                    mine={mine}
-                  />
-                )}
+                      {/* Inline meta */}
+                      <span
+                        className={cn(
+                          "ml-2.5 inline-flex translate-y-[2px] items-center gap-1 text-[10px] tabular-nums float-right mt-1 font-mono whitespace-nowrap",
+                          mine ? "text-white/80 font-medium" : "text-muted-foreground/80"
+                        )}
+                      >
+                        {m.edited && <span className="italic opacity-70">edited</span>}
+                        {formatTime(m.createdAt)}
+                        {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} status={m.status} />}
+                      </span>
+                      <span className="block clear-both h-0" />
+                    </div>
+                  </div>
+                );
+              }
 
-                {m.text && <span className="break-words whitespace-pre-wrap">{m.text}</span>}
-
-                {/* Inline meta — time + ticks */}
-                <span
+              // Standard layout for text or file attachment (Sleek, minimal bezels)
+              return (
+                <div
+                  onClick={handleBubbleClick}
                   className={cn(
-                    "ml-3 inline-flex translate-y-[3px] items-center gap-1 text-[10px] tabular-nums float-right mt-0.5 font-mono whitespace-nowrap",
-                    mine ? "text-white/65" : "text-zinc-400"
+                    "relative px-3 py-1.5 sm:px-3.5 sm:py-2 text-[13px] leading-[1.45] cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 max-w-[20rem] sm:max-w-[24rem] md:max-w-[26rem]",
+                    mine
+                      ? "bg-accent/85 text-white"
+                      : "bg-zinc-800/60 text-zinc-100 border border-zinc-700/40",
+                    getBubbleRadiusClass(),
+                    // Teams-style highlight outline when active
+                    isActionActive && "ring-2 ring-accent ring-offset-1 ring-offset-background shadow-md",
+                    isSelected && "ring-2 ring-accent shadow-xs"
                   )}
                 >
-                  {m.edited && <span className="italic opacity-70">edited</span>}
-                  {formatTime(m.createdAt)}
-                  {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} status={m.status} />}
-                </span>
-                <span className="block clear-both h-0" />
-              </div>
-            );
-          })()}
+                  {m.replyTo && (
+                    <ReplyPreview
+                      replyTo={m.replyTo}
+                      mine={mine}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onJumpTo(m.replyTo.id);
+                      }}
+                    />
+                  )}
 
-          {/* Action button — RIGHT of incoming bubble. Hidden on mobile, invisible (space reserved) on desktop */}
-          {!mine && !isMultiSelectMode && (
-            <button
-              type="button"
-              aria-label="Actions"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenActions(m, e);
-              }}
-              className={cn(
-                "size-6 place-items-center rounded-md text-muted-foreground/60 transition-all hover:text-foreground hover:bg-elevated shrink-0",
-                isActionActive
-                  ? "grid text-foreground bg-elevated border border-border/40"
-                  : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
-              )}
-            >
-              <span className="text-[11px] leading-none">···</span>
-            </button>
-          )}
-        </div>
+                  {m.mediaUrl && (
+                    <MediaAttachment
+                      mediaUrl={m.mediaUrl}
+                      mediaName={m.mediaName}
+                      mine={mine}
+                    />
+                  )}
 
-        {/* Reactions row */}
-        {m.reactions?.length > 0 && (
-          <div className={cn("mt-1 flex flex-wrap gap-1", mine ? "justify-end mr-0.5" : "ml-0.5")}>
-            {m.reactions.map((r) => (
-              <ReactionPill
-                key={r.emoji}
-                emoji={r.emoji}
-                count={r.count}
-                reactedByMe={r.reactedByMe}
+                  {/* Formatted Text with link, IP, phone auto-detection */}
+                  {m.text && <FormattedMessageText text={m.text} mine={mine} />}
+
+                  {/* Inline meta — time + ticks */}
+                  <span
+                    className={cn(
+                      "ml-3 inline-flex translate-y-[3px] items-center gap-1 text-[10px] tabular-nums float-right mt-0.5 font-mono whitespace-nowrap",
+                      mine ? "text-white/70" : "text-zinc-400"
+                    )}
+                  >
+                    {m.edited && <span className="italic opacity-70">edited</span>}
+                    {formatTime(m.createdAt)}
+                    {mine && <Ticks delivered={m.delivered} read={m.read} mine={mine} status={m.status} />}
+                  </span>
+                  <span className="block clear-both h-0" />
+                </div>
+              );
+            })()}
+
+            {/* ── 3-Dot Action button — RIGHT of incoming bubble. Click on this button opens the context menu ── */}
+            {!mine && !isMultiSelectMode && (
+              <button
+                type="button"
+                aria-label="More message options"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (r.reactedByMe) {
-                    // Direct tap on my own reaction removes it (WhatsApp style)
-                    onReact(m, r.emoji);
-                  } else if (onOpenReactionsDetail) {
-                    onOpenReactionsDetail(m);
-                  } else if (onReact) {
-                    onReact(m, r.emoji);
-                  }
+                  onOpenActions(m, e);
                 }}
-              />
-            ))}
+                className={cn(
+                  "size-7 place-items-center rounded-lg text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-elevated hover:scale-105 active:scale-95 shrink-0 cursor-pointer shadow-2xs",
+                  isActionActive
+                    ? "grid text-foreground bg-elevated border border-border/60 scale-100 opacity-100"
+                    : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
+                )}
+                title="More options"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </button>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Reactions row */}
+          {m.reactions?.length > 0 && (
+            <div className={cn("mt-1 flex flex-wrap gap-1", mine ? "justify-end mr-0.5" : "ml-0.5")}>
+              {m.reactions.map((r) => (
+                <ReactionPill
+                  key={r.emoji}
+                  emoji={r.emoji}
+                  count={r.count}
+                  reactedByMe={r.reactedByMe}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (r.reactedByMe) {
+                      onReact(m, r.emoji);
+                    } else if (onOpenReactionsDetail) {
+                      onOpenReactionsDetail(m);
+                    } else if (onReact) {
+                      onReact(m, r.emoji);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
