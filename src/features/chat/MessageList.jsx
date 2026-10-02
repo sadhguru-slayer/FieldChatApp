@@ -1,5 +1,5 @@
-import { Fragment, useLayoutEffect, useEffect, useRef, useState } from "react";
-import { MessageRow } from "./MessageRow";
+import { Fragment, useLayoutEffect, useEffect, useRef, useState, useMemo } from "react";
+import { MessageRow, MediaGridRow } from "./MessageRow";
 import { formatDayLabel } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -78,6 +78,19 @@ function EmptyState({ isGroup }) {
 
 // ─── Main MessageList ─────────────────────────────────────────────────────────
 const SAME_SENDER_GAP_MS = 5 * 60 * 1000; // 5 minutes
+
+function isVisualMediaOnlyMessage(m) {
+  if (!m || !m.mediaUrl || m.deletedForEveryone || m.type === "SYSTEM") return false;
+  if (m.text || m.replyTo) return false;
+  // Explicit constraint: Never group documents or PDFs into media grids
+  if (/\.(pdf|docx?|xlsx?|pptx?|zip|rar|tar|gz|7z|txt|csv|json)$/i.test(m.mediaName || m.mediaUrl || "")) {
+    return false;
+  }
+  const isGif = Boolean(m.isGif) || m.type === "gif" || (m.mediaName && m.mediaName.startsWith("[GIF]")) || /\.gif$/i.test(m.mediaName || m.mediaUrl || "");
+  const isImage = !isGif && /\.(jpeg|jpg|png|webp|svg|bmp)$/i.test(m.mediaName || m.mediaUrl || "");
+  const isVideo = !isGif && /\.(mp4|webm|ogg|mov|m4v)$/i.test(m.mediaName || m.mediaUrl || "");
+  return isGif || isImage || isVideo;
+}
 
 export function MessageList({
   messages = [],
@@ -176,6 +189,51 @@ export function MessageList({
     setTimeout(() => (el.style.background = ""), 700);
   };
 
+  // Group consecutive visual media messages from the same sender into WhatsApp-style multi-photo clusters
+  const renderedItems = useMemo(() => {
+    const items = [];
+    let i = 0;
+    while (i < messages.length) {
+      const current = messages[i];
+      if (isVisualMediaOnlyMessage(current)) {
+        const group = [current];
+        let j = i + 1;
+        while (
+          j < messages.length &&
+          isVisualMediaOnlyMessage(messages[j]) &&
+          messages[j].senderId === current.senderId &&
+          formatDayLabel(messages[j].createdAt) === formatDayLabel(current.createdAt) &&
+          Math.abs(new Date(messages[j].createdAt) - new Date(messages[j - 1].createdAt)) < 60000
+        ) {
+          group.push(messages[j]);
+          j++;
+        }
+        if (group.length > 1) {
+          items.push({
+            type: "media_group",
+            id: `group-${group[0].id}`,
+            messages: group,
+            createdAt: group[group.length - 1].createdAt,
+            senderId: current.senderId,
+            isMine: current.isMine,
+          });
+          i = j;
+          continue;
+        }
+      }
+      items.push({
+        type: "single",
+        message: current,
+        id: current.id,
+        createdAt: current.createdAt,
+        senderId: current.senderId,
+        isMine: current.isMine,
+      });
+      i++;
+    }
+    return items;
+  }, [messages]);
+
   if (loading) return <MessagesSkeleton />;
   if (!messages.length) return <EmptyState isGroup={isGroup} />;
 
@@ -200,32 +258,65 @@ export function MessageList({
         </div>
       )}
 
-      {messages.map((m, i) => {
-        const day = formatDayLabel(m.createdAt);
+      {renderedItems.map((item, i) => {
+        const day = formatDayLabel(item.createdAt);
         const showDay = day !== lastDay;
         lastDay = day;
 
         // Sender grouping logic
-        const prev = messages[i - 1];
-        const next = messages[i + 1];
+        const prev = renderedItems[i - 1];
+        const next = renderedItems[i + 1];
 
         const prevSameGroup =
           prev &&
-          prev.senderId === m.senderId &&
-          prev.deletedForEveryone === false &&
+          prev.senderId === item.senderId &&
           !showDay &&
-          new Date(m.createdAt) - new Date(prev.createdAt) < SAME_SENDER_GAP_MS;
+          Math.abs(new Date(item.createdAt) - new Date(prev.createdAt)) < SAME_SENDER_GAP_MS;
 
         const nextSameGroup =
           next &&
-          next.senderId === m.senderId &&
-          !formatDayLabel(next.createdAt) !== day &&
-          new Date(next.createdAt) - new Date(m.createdAt) < SAME_SENDER_GAP_MS;
+          next.senderId === item.senderId &&
+          formatDayLabel(next.createdAt) === day &&
+          Math.abs(new Date(next.createdAt) - new Date(item.createdAt)) < SAME_SENDER_GAP_MS;
 
         const showAvatar = !nextSameGroup;
         const showName = !prevSameGroup;
-        const mine = m.isMine || m.senderId === meId;
+        const mine = item.isMine || item.senderId === meId;
 
+        if (item.type === "media_group") {
+          const firstMsg = item.messages[0];
+          const groupIds = item.messages.map((m) => m.id);
+          const isSelected = item.messages.every((m) => selectedMsgIds.has(m.id));
+          return (
+            <Fragment key={item.id || i}>
+              {showDay && <DayDivider label={day} />}
+              <div className={prevSameGroup ? "mt-px" : "mt-2"}>
+                <MediaGridRow
+                  group={item}
+                  mine={mine}
+                  isGroup={isGroup}
+                  showAvatar={showAvatar}
+                  showName={showName}
+                  prevSameGroup={prevSameGroup}
+                  nextSameGroup={nextSameGroup}
+                  isActionActive={activeActionMsgId === firstMsg.id}
+                  onToggleAction={isMultiSelectMode ? (target) => onToggleSelect(target || groupIds) : (target) => handleToggleAction(Array.isArray(target) ? target[0] : target)}
+                  onReply={onReply}
+                  onOpenActions={onOpenActions}
+                  onReact={onReact}
+                  onOpenReactionsDetail={onOpenReactionsDetail}
+                  onJumpTo={jumpTo}
+                  onMediaClick={onMediaClick}
+                  onPdfClick={onPdfClick}
+                  isMultiSelectMode={isMultiSelectMode}
+                  isSelected={isSelected}
+                />
+              </div>
+            </Fragment>
+          );
+        }
+
+        const m = item.message;
         return (
           <Fragment key={m.id || i}>
             {showDay && <DayDivider label={day} />}
@@ -259,3 +350,4 @@ export function MessageList({
     </div>
   );
 }
+

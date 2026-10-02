@@ -149,22 +149,22 @@ function PdfAttachmentPreview({ mediaUrl, mediaName, mine, onPdfClick }) {
           : "bg-surface border-border/60 hover:bg-elevated/70 text-foreground"
       )}
     >
-      {/* Page 1 Static Thumbnail Preview */}
+      {/* Page 1 Static Thumbnail Preview (Half height) */}
       {thumbnailUrl ? (
-        <div className="relative w-full aspect-[4/3] max-h-48 bg-zinc-950/80 overflow-hidden flex items-center justify-center border-b border-white/10">
+        <div className="relative w-full h-24 sm:h-28 bg-zinc-950/80 overflow-hidden flex items-start justify-center border-b border-white/10">
           <img
             src={thumbnailUrl}
             alt="PDF Page 1"
             loading="lazy"
-            className="size-full object-contain bg-white transition-transform duration-300 group-hover/pdf:scale-[1.02]"
+            className="w-full h-full object-cover object-top bg-white transition-transform duration-300 group-hover/pdf:scale-[1.02]"
           />
           <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/75 backdrop-blur-md text-white font-mono font-bold text-[9px] border border-white/10 shadow-xs">
             PAGE 1
           </div>
         </div>
       ) : (
-        <div className="w-full h-20 bg-zinc-900/40 flex flex-col items-center justify-center gap-1 border-b border-white/10">
-          <FileText className="size-6 text-red-400 opacity-80" />
+        <div className="w-full h-16 bg-zinc-900/40 flex flex-col items-center justify-center gap-1 border-b border-white/10">
+          <FileText className="size-5 text-red-400 opacity-80" />
           <span className="text-[10px] text-muted-foreground font-mono">PDF Document</span>
         </div>
       )}
@@ -511,7 +511,7 @@ function MessageRowBase({
                   <div
                     onClick={handleBubbleClick}
                     className={cn(
-                      "relative overflow-hidden cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 rounded-2xl max-w-[20rem] sm:max-w-[24rem]",
+                      "relative overflow-hidden cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 rounded-2xl w-[70vw] min-w-[180px] max-w-[260px] sm:w-[280px] sm:max-w-[320px] md:max-w-[340px]",
                       getBubbleRadiusClass(),
                       // Teams-style highlight outline when active
                       isActionActive && "ring-2 ring-accent ring-offset-1 ring-offset-background shadow-md",
@@ -523,7 +523,7 @@ function MessageRowBase({
                         src={m.mediaUrl}
                         alt={m.mediaName || "GIF"}
                         isVideo={!/\.(png|jpe?g|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "")}
-                        className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full"
+                        className="max-h-[190px] sm:max-h-[240px] md:max-h-[280px] w-full aspect-[4/3] object-cover"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (onMediaClick) onMediaClick(m);
@@ -532,7 +532,7 @@ function MessageRowBase({
                       />
                     ) : isVideoMedia ? (
                       <div
-                        className="relative w-full max-h-[220px] sm:max-h-[300px] md:max-h-[340px] aspect-[4/3] min-w-[180px] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
+                        className="relative w-full max-h-[190px] sm:max-h-[240px] md:max-h-[280px] aspect-[4/3] min-w-[180px] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (onMediaClick) onMediaClick(m);
@@ -541,7 +541,7 @@ function MessageRowBase({
                       >
                         <video
                           src={getFullMediaUrl(m.mediaUrl)}
-                          className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full object-cover"
+                          className="size-full object-cover"
                           muted
                           preload="metadata"
                         />
@@ -556,7 +556,7 @@ function MessageRowBase({
                         src={getFullMediaUrl(m.mediaUrl)}
                         alt={m.mediaName || "Image attachment"}
                         loading="lazy"
-                        className="max-h-[220px] sm:max-h-[300px] md:max-h-[340px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                        className="max-h-[190px] sm:max-h-[240px] md:max-h-[280px] w-full aspect-[4/3] object-cover cursor-pointer hover:opacity-95 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (onMediaClick) {
@@ -582,7 +582,7 @@ function MessageRowBase({
                   <div
                     onClick={handleBubbleClick}
                     className={cn(
-                      "relative text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 p-0 overflow-hidden max-w-[20rem] sm:max-w-[24rem] md:max-w-[26rem]",
+                      "relative text-xs leading-relaxed cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 p-0 overflow-hidden w-[70vw] min-w-[180px] max-w-[260px] sm:w-[280px] sm:max-w-[320px] md:max-w-[340px]",
                       mine
                         ? "bg-accent/85 text-white font-normal"
                         : "bg-zinc-800/60 text-zinc-200 border border-zinc-700/40 font-normal",
@@ -598,7 +598,7 @@ function MessageRowBase({
                           src={m.mediaUrl}
                           alt={m.mediaName || "GIF"}
                           isVideo={!/\.(png|jpe?g|webp|svg)$/i.test(m.mediaName || m.mediaUrl || "")}
-                          className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full"
+                          className="max-h-[190px] sm:max-h-[240px] md:max-h-[260px] w-full aspect-[4/3] object-cover"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (onMediaClick) onMediaClick(m);
@@ -607,7 +607,7 @@ function MessageRowBase({
                         />
                       ) : isVideoMedia ? (
                         <div
-                          className="relative w-full max-h-[180px] sm:max-h-[240px] md:max-h-[260px] aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
+                          className="relative w-full max-h-[190px] sm:max-h-[240px] md:max-h-[260px] aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (onMediaClick) onMediaClick(m);
@@ -616,7 +616,7 @@ function MessageRowBase({
                         >
                           <video
                             src={getFullMediaUrl(m.mediaUrl)}
-                            className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full object-cover"
+                            className="size-full object-cover"
                             muted
                             preload="metadata"
                           />
@@ -631,7 +631,7 @@ function MessageRowBase({
                           src={getFullMediaUrl(m.mediaUrl)}
                           alt={m.mediaName || "Image attachment"}
                           loading="lazy"
-                          className="max-h-[180px] sm:max-h-[240px] md:max-h-[260px] w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                          className="max-h-[190px] sm:max-h-[240px] md:max-h-[260px] w-full aspect-[4/3] object-cover cursor-pointer hover:opacity-95 transition-opacity"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (onMediaClick) {
@@ -785,4 +785,295 @@ function MessageRowBase({
   );
 }
 
+// ─── Media Grid Tile Component ────────────────────────────────────────────────
+function MediaGridTile({ msg, onClick }) {
+  const fullUrl = getFullMediaUrl(msg.mediaUrl);
+  const isGif = Boolean(msg.isGif) || msg.type === "gif" || (msg.mediaName && msg.mediaName.startsWith("[GIF]")) || /\.gif$/i.test(msg.mediaName || msg.mediaUrl || "");
+  const isVideo = !isGif && /\.(mp4|webm|ogg|mov|m4v)$/i.test(msg.mediaName || msg.mediaUrl || "");
+
+  if (isGif) {
+    return (
+      <LazyGif
+        src={msg.mediaUrl}
+        alt={msg.mediaName || "GIF"}
+        isVideo={!/\.(png|jpe?g|webp|svg)$/i.test(msg.mediaName || msg.mediaUrl || "")}
+        className="size-full object-cover"
+        onClick={onClick}
+      />
+    );
+  }
+
+  if (isVideo) {
+    return (
+      <div
+        className="relative size-full overflow-hidden bg-black/40 flex items-center justify-center cursor-pointer"
+        onClick={onClick}
+      >
+        <video
+          src={fullUrl}
+          className="size-full object-cover"
+          muted
+          preload="metadata"
+        />
+        <div className="absolute inset-0 grid place-items-center bg-black/20 hover:bg-black/35 transition-colors">
+          <span className="grid size-8 place-items-center rounded-full bg-black/60 text-white border border-white/10 shadow-sm backdrop-blur-xs">
+            <Play className="size-3.5 fill-white ml-0.5" />
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={fullUrl}
+      alt={msg.mediaName || "Media"}
+      loading="lazy"
+      className="size-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+      onClick={onClick}
+    />
+  );
+}
+
+// ─── WhatsApp-style Media Grid Row ────────────────────────────────────────────
+function MediaGridRowBase({
+  group,
+  mine,
+  isGroup,
+  showAvatar,
+  showName,
+  prevSameGroup = false,
+  nextSameGroup = false,
+  isActionActive,
+  onToggleAction,
+  onReply,
+  onOpenActions,
+  onReact,
+  onOpenReactionsDetail,
+  onJumpTo,
+  onMediaClick,
+  onPdfClick,
+  isMultiSelectMode = false,
+  isSelected = false,
+}) {
+  const items = group.messages;
+  const firstMsg = items[0];
+  const lastMsg = items[items.length - 1];
+  const count = items.length;
+  const groupIds = items.map((m) => m.id);
+  const senderDisplayName = firstMsg.display_name || firstMsg.senderName || "?";
+  const setProfileModalUserId = useAppStore((s) => s.setProfileModalUserId);
+
+  const getBubbleRadiusClass = () => {
+    if (mine) {
+      if (prevSameGroup && nextSameGroup) return "rounded-2xl";
+      if (nextSameGroup && !prevSameGroup) return "rounded-2xl rounded-tr-md";
+      if (prevSameGroup && !nextSameGroup) return "rounded-2xl rounded-br-md";
+      return "rounded-2xl rounded-br-md";
+    } else {
+      if (prevSameGroup && nextSameGroup) return "rounded-2xl";
+      if (nextSameGroup && !prevSameGroup) return "rounded-2xl rounded-tl-md";
+      if (prevSameGroup && !nextSameGroup) return "rounded-2xl rounded-bl-md";
+      return "rounded-2xl rounded-tl-md";
+    }
+  };
+
+  const handleTileClick = (msg, e) => {
+    e.stopPropagation();
+    if (isMultiSelectMode) {
+      if (onToggleAction) onToggleAction(groupIds);
+    } else if (onMediaClick) {
+      onMediaClick(msg);
+    }
+  };
+
+  return (
+    <div
+      id={`msg-${firstMsg.id}`}
+      className={cn(
+        "group/msg relative flex gap-2 px-3 py-0.5 md:px-4 items-stretch cursor-pointer select-none md:select-text max-w-full transition-colors duration-150",
+        mine ? "justify-end" : "justify-start",
+        isActionActive && "bg-accent/[0.05] dark:bg-white/[0.03] rounded-xl"
+      )}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onToggleAction) onToggleAction(groupIds);
+      }}
+    >
+      <div
+        className={cn(
+          "relative z-10 flex items-end gap-1.5 sm:gap-2 max-w-full min-w-0",
+          mine ? "justify-end ml-auto" : "justify-start"
+        )}
+      >
+        {isMultiSelectMode && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onToggleAction) onToggleAction(groupIds);
+            }}
+            className="mr-2 self-center flex items-center justify-center shrink-0 cursor-pointer select-none"
+          >
+            <div
+              className={cn(
+                "size-5 rounded-full border flex items-center justify-center transition-all",
+                isSelected
+                  ? "bg-accent border-accent text-white"
+                  : "border-zinc-700 bg-zinc-900/60 hover:border-zinc-500"
+              )}
+            >
+              {isSelected && <Check className="size-3.5 stroke-[3]" />}
+            </div>
+          </div>
+        )}
+
+        {!mine && isGroup && (
+          <div className="w-7 shrink-0 self-end mb-[2px]">
+            {showAvatar ? (
+              <button
+                type="button"
+                className="hover:opacity-80 transition-opacity cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (firstMsg.senderId) setProfileModalUserId(firstMsg.senderId);
+                }}
+              >
+                <Avatar src={firstMsg.senderAvatar} name={senderDisplayName} size="sm" />
+              </button>
+            ) : (
+              <span className="block w-7" />
+            )}
+          </div>
+        )}
+
+        <div className={cn("flex flex-col", mine && "items-end")}>
+          {showName && !mine && isGroup && senderDisplayName && (
+            <button
+              type="button"
+              className="mb-0.5 ml-1 text-left text-[10.5px] font-semibold text-zinc-400 hover:text-zinc-200 transition-colors w-fit cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (firstMsg.senderId) setProfileModalUserId(firstMsg.senderId);
+              }}
+            >
+              {senderDisplayName}
+            </button>
+          )}
+
+          <div className="relative flex items-center gap-1">
+            {mine && !isMultiSelectMode && (
+              <button
+                type="button"
+                aria-label="More message options"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenActions({ ...firstMsg, groupMessages: items }, e);
+                }}
+                className={cn(
+                  "size-7 place-items-center rounded-lg text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-elevated hover:scale-105 active:scale-95 shrink-0 cursor-pointer shadow-2xs",
+                  isActionActive
+                    ? "grid text-foreground bg-elevated border border-border/60 scale-100 opacity-100"
+                    : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
+                )}
+                title="More options"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </button>
+            )}
+
+            <div
+              className={cn(
+                "relative overflow-hidden cursor-pointer select-none md:select-text shadow-sm transition-all duration-150 w-[72vw] min-w-[220px] max-w-[270px] sm:w-[320px] sm:max-w-[340px] p-0.5 bg-black/40",
+                getBubbleRadiusClass(),
+                isActionActive && "ring-2 ring-accent ring-offset-1 ring-offset-background shadow-md",
+                isSelected && "ring-2 ring-accent shadow-xs"
+              )}
+            >
+              {/* WhatsApp Grid: 2, 3, or 4+ items */}
+              {count === 2 && (
+                <div className="grid grid-cols-2 gap-0.5 w-full aspect-[4/3] rounded-xl overflow-hidden">
+                  <div className="relative size-full overflow-hidden">
+                    <MediaGridTile msg={items[0]} onClick={(e) => handleTileClick(items[0], e)} />
+                  </div>
+                  <div className="relative size-full overflow-hidden">
+                    <MediaGridTile msg={items[1]} onClick={(e) => handleTileClick(items[1], e)} />
+                  </div>
+                </div>
+              )}
+
+              {count === 3 && (
+                <div className="grid grid-cols-2 grid-rows-2 gap-0.5 w-full aspect-[4/3] rounded-xl overflow-hidden">
+                  <div className="row-span-2 relative size-full overflow-hidden">
+                    <MediaGridTile msg={items[0]} onClick={(e) => handleTileClick(items[0], e)} />
+                  </div>
+                  <div className="relative size-full overflow-hidden">
+                    <MediaGridTile msg={items[1]} onClick={(e) => handleTileClick(items[1], e)} />
+                  </div>
+                  <div className="relative size-full overflow-hidden">
+                    <MediaGridTile msg={items[2]} onClick={(e) => handleTileClick(items[2], e)} />
+                  </div>
+                </div>
+              )}
+
+              {count >= 4 && (
+                <div className="grid grid-cols-2 grid-rows-2 gap-0.5 w-full aspect-[4/3] rounded-xl overflow-hidden">
+                  <div className="relative size-full overflow-hidden">
+                    <MediaGridTile msg={items[0]} onClick={(e) => handleTileClick(items[0], e)} />
+                  </div>
+                  <div className="relative size-full overflow-hidden">
+                    <MediaGridTile msg={items[1]} onClick={(e) => handleTileClick(items[1], e)} />
+                  </div>
+                  <div className="relative size-full overflow-hidden">
+                    <MediaGridTile msg={items[2]} onClick={(e) => handleTileClick(items[2], e)} />
+                  </div>
+                  <div className="relative size-full overflow-hidden">
+                    <MediaGridTile msg={items[3]} onClick={(e) => handleTileClick(items[3], e)} />
+                    {count > 4 && (
+                      <div
+                        onClick={(e) => handleTileClick(items[3], e)}
+                        className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center font-bold text-lg sm:text-xl text-white font-mono select-none hover:bg-black/70 transition-colors"
+                      >
+                        +{count - 3}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Overlay meta bottom-right */}
+              <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/70 text-white/95 text-[10px] flex items-center gap-1 backdrop-blur-md font-mono select-none whitespace-nowrap shadow-sm pointer-events-none">
+                {lastMsg.edited && <span className="italic opacity-70 text-[9px]">edited</span>}
+                {formatTime(lastMsg.createdAt)}
+                {mine && <Ticks delivered={lastMsg.delivered} read={lastMsg.read} mine={mine} status={lastMsg.status} />}
+              </div>
+            </div>
+
+            {!mine && !isMultiSelectMode && (
+              <button
+                type="button"
+                aria-label="More message options"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenActions({ ...firstMsg, groupMessages: items }, e);
+                }}
+                className={cn(
+                  "size-7 place-items-center rounded-lg text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-elevated hover:scale-105 active:scale-95 shrink-0 cursor-pointer shadow-2xs",
+                  isActionActive
+                    ? "grid text-foreground bg-elevated border border-border/60 scale-100 opacity-100"
+                    : "hidden md:grid opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto"
+                )}
+                title="More options"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const MessageRow = memo(MessageRowBase);
+export const MediaGridRow = memo(MediaGridRowBase);
+

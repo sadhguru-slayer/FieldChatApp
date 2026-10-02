@@ -360,8 +360,8 @@ export function FilePreviewModal({
       </div>
 
       {/* ── Filmstrip ───────────────────────────────────────────────────────── */}
-      <div className="border-t border-white/[0.07] px-3 py-1.5 shrink-0">
-        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+      <div className="border-t border-white/[0.07] px-3 py-2 shrink-0 flex justify-center overflow-hidden">
+        <div className="flex items-center justify-center gap-2 overflow-x-auto py-1 max-w-full scroll-slim mx-auto">
           {files.map((fileItem, idx) => {
             const isSelected = idx === activeIndex;
             const cat = getFileCategory(fileItem.file);
@@ -372,52 +372,53 @@ export function FilePreviewModal({
                 key={fileItem.id}
                 onClick={() => setActiveIndex(idx)}
                 className={cn(
-                  "relative group shrink-0 size-11 rounded-lg overflow-hidden border cursor-pointer transition-all flex items-center justify-center",
+                  "relative group shrink-0 size-13.5 sm:size-14 md:size-12 rounded-xl overflow-hidden border cursor-pointer transition-all flex items-center justify-center bg-white/[0.03]",
                   isSelected
-                    ? "border-white/25 ring-1 ring-white/10 scale-105"
-                    : "border-white/[0.06] opacity-50 hover:opacity-80"
+                    ? "border-white/35 ring-2 ring-white/15 scale-105"
+                    : "border-white/[0.08] opacity-55 hover:opacity-85"
                 )}
               >
                 {cat === "image" && fileItem.previewUrl ? (
                   <img src={fileItem.previewUrl} alt="" className="size-full object-cover" />
                 ) : cat === "video" ? (
-                  <div className="size-full grid place-items-center bg-white/[0.03] text-white/30 relative">
-                    <Film className="size-3.5" />
+                  <div className="size-full grid place-items-center bg-white/[0.03] text-white/35 relative">
+                    <Film className="size-4" />
                     {isGif && (
-                      <span className="absolute bottom-0.5 left-0.5 text-[6px] bg-white/10 px-0.5 rounded font-mono font-bold text-white">
+                      <span className="absolute bottom-0.5 left-0.5 text-[7px] bg-white/10 px-0.5 rounded font-mono font-bold text-white">
                         GIF
                       </span>
                     )}
                   </div>
                 ) : cat === "audio" ? (
-                  <div className="size-full grid place-items-center text-white/30">
-                    <Music className="size-3.5" />
+                  <div className="size-full grid place-items-center text-white/35">
+                    <Music className="size-4" />
                   </div>
                 ) : cat === "pdf" ? (
                   pdfThumbnails[fileItem.id] ? (
                     <img src={pdfThumbnails[fileItem.id]} alt="" className="size-full object-cover" />
                   ) : (
                     <div className="size-full grid place-items-center text-red-400/35">
-                      <FileText className="size-3.5" />
+                      <FileText className="size-4" />
                     </div>
                   )
                 ) : (
-                  <div className="size-full flex flex-col items-center justify-center text-white/30">
-                    <File className="size-3.5" />
-                    <span className="text-[6px] font-bold font-mono truncate max-w-[36px]">
+                  <div className="size-full flex flex-col items-center justify-center text-white/35">
+                    <File className="size-4" />
+                    <span className="text-[7px] font-bold font-mono truncate max-w-[40px]">
                       {getFileExtension(fileItem.name)}
                     </span>
                   </div>
                 )}
 
-                {/* Hover-reveal remove */}
+                {/* Desktop-only hover-reveal remove (Mobile uses header delete/trash icon) */}
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onRemoveFile(fileItem.id); }}
                   disabled={isUploading}
-                  className="absolute top-0.5 right-0.5 grid size-3.5 place-items-center rounded-full bg-black/75 text-white/40 opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-all"
+                  className="hidden md:grid absolute top-0.5 right-0.5 size-4 place-items-center rounded-full bg-black/80 text-white/40 opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-all cursor-pointer"
+                  title="Remove"
                 >
-                  <X className="size-2" />
+                  <X className="size-2.5" />
                 </button>
               </div>
             );
@@ -428,18 +429,18 @@ export function FilePreviewModal({
               type="button"
               onClick={() => addFileInputRef.current?.click()}
               disabled={isUploading}
-              className="shrink-0 size-11 rounded-lg border border-dashed border-white/[0.08] hover:border-white/18 hover:bg-white/3 flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer text-white/20 hover:text-white/45"
+              className="shrink-0 size-13.5 sm:size-14 md:size-12 rounded-xl border border-dashed border-white/[0.12] hover:border-white/25 hover:bg-white/4 flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer text-white/30 hover:text-white/60"
               title="Add more (up to 10)"
             >
-              <Plus className="size-3" />
-              <span className="text-[7px] font-mono">{files.length}/10</span>
+              <Plus className="size-4" />
+              <span className="text-[8px] font-mono">{files.length}/10</span>
             </button>
           )}
         </div>
       </div>
 
       {/* ── Caption & Send ──────────────────────────────────────────────────── */}
-      <div className="relative border-t border-white/[0.07] px-3 py-2 shrink-0">
+      <div className="relative border-t border-white/[0.07] px-3 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-2 shrink-0">
         {emojiOpen && (
           <div className="absolute bottom-full left-3 mb-1.5 flex items-center gap-1 rounded-xl bg-zinc-900/95 p-1 border border-white/10 shadow-xl backdrop-blur-md">
             {EMOJIS.map((emoji) => (
@@ -475,7 +476,7 @@ export function FilePreviewModal({
             onChange={(e) => onCaptionChange(e.target.value)}
             placeholder="Add a caption…"
             disabled={isUploading}
-            className="flex-1 h-8 rounded-lg bg-white/[0.05] border border-white/[0.08] px-3 text-[12px] text-white placeholder:text-white/22 focus:outline-none focus:border-white/15"
+            className="flex-1 min-w-0 h-8 rounded-lg bg-white/[0.05] border border-white/[0.08] px-3 text-[12px] text-white placeholder:text-white/22 focus:outline-none focus:border-white/15"
           />
 
           <Button

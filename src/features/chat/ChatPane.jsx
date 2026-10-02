@@ -138,17 +138,22 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
   top = Math.max(8, top);
 
   const isImgMsg = message.mediaUrl && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(message.mediaName || message.mediaUrl || "");
+  const isMediaGroup = Array.isArray(message.groupMessages) && message.groupMessages.length > 1;
 
   const items = [
-    { id: "reply", label: "Reply", Icon: Reply },
+    ...(!isMediaGroup ? [{ id: "reply", label: "Reply", Icon: Reply }] : []),
     ...(message.text ? [{ id: "copy", label: "Copy text", Icon: Copy }] : []),
     ...(isImgMsg ? [{ id: "copy-image", label: "Copy image", Icon: Copy }] : []),
-    ...(mine ? [{ id: "edit", label: "Edit message", Icon: Pencil }] : []),
+    ...(mine && !isMediaGroup && !message.mediaUrl ? [{ id: "edit", label: "Edit message", Icon: Pencil }] : []),
     { id: "forward", label: "Forward", Icon: Forward },
-    ...(message.mediaUrl ? [{ id: "download", label: "Download", Icon: Download }] : []),
-    { id: "select", label: "Select message", Icon: Check },
-    { id: "delete-me", label: "Delete for me", Icon: Trash2, danger: true },
-    ...(mine ? [{ id: "delete-all", label: "Unsend for everyone", Icon: Trash2, danger: true }] : []),
+    ...(message.mediaUrl || isMediaGroup ? [{ id: "download", label: isMediaGroup ? "Download all" : "Download", Icon: Download }] : []),
+    { id: "select", label: isMediaGroup ? "Select all" : "Select message", Icon: Check },
+    ...(isMediaGroup
+      ? [
+          { id: "delete-me", label: "Delete for me", Icon: Trash2, danger: true },
+          ...(mine ? [{ id: "delete-all", label: "Delete for everyone", Icon: Trash2, danger: true }] : []),
+        ]
+      : [{ id: "delete", label: "Delete", Icon: Trash2, danger: true }]),
   ];
 
   return (
@@ -166,18 +171,20 @@ function MessageContextMenu({ message, mine, anchor, onAction, onClose }) {
         )}
         style={{ top, left, width: MENU_W }}
       >
-        <div className="flex items-center justify-between px-2.5 py-2 border-b border-border/40">
-          {QUICK_REACTIONS.map((e) => (
-            <button
-              key={e}
-              type="button"
-              onClick={() => { onAction("react", message, e); onClose(); }}
-              className="grid size-8 place-items-center rounded-lg text-[16px] transition-all hover:bg-elevated hover:scale-110 active:scale-95"
-            >
-              {e}
-            </button>
-          ))}
-        </div>
+        {!isMediaGroup && (
+          <div className="flex items-center justify-between px-2.5 py-2 border-b border-border/40">
+            {QUICK_REACTIONS.map((e) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => { onAction("react", message, e); onClose(); }}
+                className="grid size-8 place-items-center rounded-lg text-[16px] transition-all hover:bg-elevated hover:scale-110 active:scale-95"
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="py-1">
           {items.map(({ id, label, Icon, danger }) => (
@@ -575,6 +582,83 @@ const copyImageToClipboard = async (mediaUrl) => {
   }
 };
 
+// ─── Delete Confirmation Modal ──────────────────────────────────────────────
+function DeleteConfirmModal({ target, onClose, onDeleteForMe, onDeleteForEveryone }) {
+  if (!target) return null;
+  const count = target.ids.length;
+  const canDeleteEveryone = target.canDeleteEveryone;
+
+  return (
+    <Dialog open={!!target} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xs sm:max-w-sm bg-sidebar border border-border/40 text-foreground p-5 rounded-2xl shadow-2xl select-none">
+        <DialogHeader className="text-left space-y-1">
+          <DialogTitle className="text-sm font-bold text-foreground">
+            {count > 1 ? `Delete ${count} messages?` : "Delete message?"}
+          </DialogTitle>
+          <p className="text-[11.5px] text-muted-foreground">
+            Choose how you want to remove {count > 1 ? "these messages" : "this message"}.
+          </p>
+        </DialogHeader>
+
+        <div className="space-y-2 pt-3">
+          {/* Delete for me */}
+          <button
+            type="button"
+            onClick={() => {
+              onDeleteForMe(target.ids);
+              onClose();
+            }}
+            className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all bg-elevated/50 hover:bg-elevated border border-border/40 active:scale-[0.98] cursor-pointer"
+          >
+            <div className="grid size-8 place-items-center rounded-lg bg-muted/20 text-muted-foreground shrink-0">
+              <Trash2 className="size-4" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-semibold text-foreground">Delete for me</span>
+              <span className="text-[10.5px] text-muted-foreground leading-tight">
+                Remove from your chat history
+              </span>
+            </div>
+          </button>
+
+          {/* Delete for everyone */}
+          {canDeleteEveryone && (
+            <button
+              type="button"
+              onClick={() => {
+                onDeleteForEveryone(target.ids);
+                onClose();
+              }}
+              className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 active:scale-[0.98] cursor-pointer"
+            >
+              <div className="grid size-8 place-items-center rounded-lg bg-rose-500/20 text-rose-500 shrink-0">
+                <Trash2 className="size-4" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-rose-500">Delete for everyone</span>
+                <span className="text-[10.5px] text-rose-400/80 leading-tight">
+                  Remove for all participants in this chat
+                </span>
+              </div>
+            </button>
+          )}
+        </div>
+
+        <div className="pt-2 flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-elevated"
+          >
+            Cancel
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function NothingSelected() {
   return (
@@ -665,26 +749,31 @@ export function ChatPane() {
   const [selectedMsgIds, setSelectedMsgIds] = useState(new Set());
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
   const [singleForwardMsg, setSingleForwardMsg] = useState(null);
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
 
   const clearMultiSelect = () => {
     setIsMultiSelectMode(false);
     setSelectedMsgIds(new Set());
   };
 
-  const handleToggleSelect = (msgId) => {
+  const handleToggleSelect = (target) => {
+    const ids = Array.isArray(target) ? target : [target];
     setSelectedMsgIds((prev) => {
       const next = new Set(prev);
-      if (next.has(msgId)) {
-        next.delete(msgId);
+      const allPresent = ids.every((id) => next.has(id));
+
+      if (allPresent) {
+        ids.forEach((id) => next.delete(id));
         if (next.size === 0) {
           setIsMultiSelectMode(false);
         }
       } else {
-        if (next.size >= 20) {
+        if (next.size + ids.length > 20) {
           toast.error("You can select up to 20 messages maximum.");
           return prev;
         }
-        next.add(msgId);
+        ids.forEach((id) => next.add(id));
+        setIsMultiSelectMode(true);
       }
       return next;
     });
@@ -1254,28 +1343,56 @@ export function ChatPane() {
   };
 
   const handleAction = (action, msg, extra) => {
+    const isGroupMsg = Array.isArray(msg?.groupMessages) && msg.groupMessages.length > 1;
+    const groupIds = isGroupMsg ? msg.groupMessages.map((m) => m.id) : [msg.id];
+
     if (action === "reply") {
-      setReply({ ...msg, senderName: msg.senderName || (msg.isMine ? "You" : "Unknown") });
+      if (!isGroupMsg) {
+        setReply({ ...msg, senderName: msg.senderName || (msg.isMine ? "You" : "Unknown") });
+      }
     } else if (action === "edit") {
-      setEditing(msg);
+      if (!isGroupMsg && !msg.mediaUrl) {
+        setEditing(msg);
+      }
     } else if (action === "copy") {
-      navigator.clipboard.writeText(msg.text);
-      toast.success("Copied");
+      if (msg.text) {
+        navigator.clipboard.writeText(msg.text);
+        toast.success("Copied");
+      }
     } else if (action === "copy-image") {
       toast.info("Copying image...");
       copyImageToClipboard(msg.mediaUrl);
     } else if (action === "forward") {
-      setSingleForwardMsg(msg);
+      if (isGroupMsg) {
+        setIsMultiSelectMode(true);
+        setSelectedMsgIds(new Set(groupIds));
+        setForwardDialogOpen(true);
+      } else {
+        setSingleForwardMsg(msg);
+      }
     } else if (action === "download") {
-      toast.success("Downloading media file...");
-      triggerFileDownload(msg.mediaUrl, msg.mediaName);
+      if (isGroupMsg) {
+        msg.groupMessages.forEach((m, idx) => {
+          if (m.mediaUrl) {
+            setTimeout(() => triggerFileDownload(m.mediaUrl, m.mediaName), idx * 250);
+          }
+        });
+        toast.success(`Downloading ${msg.groupMessages.length} media file(s)...`);
+      } else {
+        toast.success("Downloading media file...");
+        triggerFileDownload(msg.mediaUrl, msg.mediaName);
+      }
     } else if (action === "select") {
       setIsMultiSelectMode(true);
-      setSelectedMsgIds(new Set([msg.id]));
+      handleToggleSelect(groupIds);
+    } else if (action === "delete") {
+      const msgsToDelete = isGroupMsg ? msg.groupMessages : [msg];
+      const canDeleteEveryone = msgsToDelete.every((m) => m.isMine || m.senderId === me?.id);
+      setDeleteConfirmTarget({ ids: groupIds, canDeleteEveryone });
     } else if (action === "delete-me") {
-      handleDeleteMessages([msg.id], "for_me");
+      handleDeleteMessages(groupIds, "for_me");
     } else if (action === "delete-all") {
-      handleDeleteMessages([msg.id], "for_everyone");
+      handleDeleteMessages(groupIds, "for_everyone");
     } else if (action === "react") {
       const emoji = extra;
       const existingByMe = msg.reactions?.find((r) => r.reactedByMe);
@@ -1498,7 +1615,7 @@ export function ChatPane() {
                     <button
                       type="button"
                       onClick={handleDownloadAll}
-                      className="flex items-center gap-1.5 rounded-xl bg-elevated px-3 py-1.5 text-xs text-foreground/90 hover:bg-zinc-800 transition-colors border border-border/40"
+                      className="flex items-center gap-1.5 rounded-xl bg-elevated px-3 py-1.5 text-xs text-foreground/90 hover:bg-zinc-800 transition-colors border border-border/40 cursor-pointer"
                     >
                       <Download className="size-3.5" />
                       <span className="hidden sm:inline">Download All</span>
@@ -1508,29 +1625,24 @@ export function ChatPane() {
                     type="button"
                     onClick={() => setForwardDialogOpen(true)}
                     disabled={selectedMsgIds.size > 20}
-                    className="flex items-center gap-1.5 rounded-xl bg-elevated px-3 py-1.5 text-xs text-foreground/90 hover:bg-zinc-800 transition-colors border border-border/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 rounded-xl bg-elevated px-3 py-1.5 text-xs text-foreground/90 hover:bg-zinc-800 transition-colors border border-border/40 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     <Forward className="size-3.5" />
                     <span>Forward</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDeleteMessages(Array.from(selectedMsgIds), "for_me")}
-                    className="flex items-center gap-1.5 rounded-xl bg-destructive/10 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/20 transition-colors border border-destructive/20"
+                    onClick={() => {
+                      setDeleteConfirmTarget({
+                        ids: Array.from(selectedMsgIds),
+                        canDeleteEveryone: allMine,
+                      });
+                    }}
+                    className="flex items-center gap-1.5 rounded-xl bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-500/20 transition-colors border border-rose-500/20 cursor-pointer"
                   >
                     <Trash2 className="size-3.5" />
-                    <span className="hidden sm:inline">Delete for me</span>
+                    <span>Delete</span>
                   </button>
-                  {allMine && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMessages(Array.from(selectedMsgIds), "for_everyone")}
-                      className="flex items-center gap-1.5 rounded-xl bg-rose-500/10 px-3 py-1.5 text-xs text-rose-500 hover:bg-rose-500/20 transition-colors border border-rose-500/20"
-                    >
-                      <Trash2 className="size-3.5" />
-                      <span className="hidden sm:inline">Delete for everyone</span>
-                    </button>
-                  )}
                 </>
               );
             })()}
@@ -1593,8 +1705,26 @@ export function ChatPane() {
         <FullscreenLightbox
           message={selectedMediaMessage}
           messages={messages}
+          meId={me?.id}
           onClose={() => setSelectedMediaMessage(null)}
           onSelect={(msg) => setSelectedMediaMessage(msg)}
+          onSendReply={(text, replyToId) => {
+            sendMut.mutate({ text, replyToId });
+          }}
+          onReply={(msg) => {
+            handleAction("reply", msg);
+          }}
+          onForward={(msg) => {
+            setSingleForwardMsg(msg);
+            setForwardDialogOpen(true);
+          }}
+          onDelete={(msg) => {
+            const canDeleteEveryone = msg.isMine || msg.senderId === me?.id;
+            setDeleteConfirmTarget({ ids: [msg.id], canDeleteEveryone });
+          }}
+          onReact={(msg, emoji) => {
+            handleAction("react", msg, emoji);
+          }}
         />
       )}
 
@@ -1656,6 +1786,14 @@ export function ChatPane() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Delete Confirmation Modal ── */}
+      <DeleteConfirmModal
+        target={deleteConfirmTarget}
+        onClose={() => setDeleteConfirmTarget(null)}
+        onDeleteForMe={(ids) => handleDeleteMessages(ids, "for_me")}
+        onDeleteForEveryone={(ids) => handleDeleteMessages(ids, "for_everyone")}
+      />
     </main>
   );
 }
